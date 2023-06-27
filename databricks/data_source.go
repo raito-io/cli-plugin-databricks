@@ -7,11 +7,9 @@ import (
 	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
-	"github.com/raito-io/cli/base/data_source"
+	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
-
-	ds "github.com/raito-io/cli/base/data_source"
 )
 
 var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
@@ -48,7 +46,7 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 	}
 }
 
-func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context) (*data_source.MetaData, error) {
+func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context) (*ds.MetaData, error) {
 	logger.Debug("Returning meta data for databricks data source")
 
 	return &databricks_metadata, nil
@@ -81,7 +79,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return nil
 	}
 
-	workspaces, err := d.getWorkspaces(ctx, dataSourceHandler, accountClient, metastores)
+	workspaces, err := d.getWorkspaces(ctx, dataSourceHandler, accountClient)
 	if err != nil {
 		return err
 	}
@@ -91,9 +89,11 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return err
 	}
 
-	for i, metastore := range metastores {
+	for i := range metastores {
+		metastore := &metastores[i]
+
 		if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
-			err = d.getDataObjectsForMetastore(ctx, dataSourceHandler, configParams, &metastores[i], metastoreWorkspaces)
+			err = d.getDataObjectsForMetastore(ctx, dataSourceHandler, configParams, metastore, metastoreWorkspaces)
 			if err != nil {
 				return err
 			}
@@ -105,12 +105,15 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 
 func (d *DataSourceSyncer) getMetastores(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, accountClient dataSourceAccountRepository) ([]catalog.MetastoreInfo, error) {
 	logger.Debug("Load metastores")
+
 	metastores, err := accountClient.ListMetastores(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, metastore := range metastores {
+	for i := range metastores {
+		metastore := &metastores[i]
+
 		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
 			Name:       metastore.Name,
 			Type:       metastoreType,
@@ -127,7 +130,7 @@ func (d *DataSourceSyncer) getMetastores(ctx context.Context, dataSourceHandler 
 	return metastores, nil
 }
 
-func (d *DataSourceSyncer) getWorkspaces(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, accountClient dataSourceAccountRepository, metastores []catalog.MetastoreInfo) ([]Workspace, error) {
+func (d *DataSourceSyncer) getWorkspaces(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, accountClient dataSourceAccountRepository) ([]Workspace, error) {
 	workspaces, err := accountClient.GetWorkspaces(ctx)
 	if err != nil {
 		return nil, err
@@ -177,6 +180,7 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 		}
 
 		workspaceRepo = repo
+
 		logger.Debug(fmt.Sprintf("Will use workspace %q for metastore %q", workspaceName, metastore.Name))
 
 		break
@@ -187,6 +191,9 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 	}
 
 	catalogs, err := d.getCatalogs(ctx, dataSourceHandler, metastore.MetastoreId, workspaceRepo)
+	if err != nil {
+		return err
+	}
 
 	for i := range catalogs {
 		schemas, schemaErr := d.getSchemasInCatalog(ctx, dataSourceHandler, metastore.MetastoreId, &catalogs[i], workspaceRepo)
@@ -200,7 +207,6 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 				return tableErr
 			}
 		}
-
 	}
 
 	return nil
@@ -214,14 +220,16 @@ func (d *DataSourceSyncer) getCatalogs(ctx context.Context, dataSourceHandler wr
 		return nil, err
 	}
 
-	for _, catalog := range catalogs {
-		uniqueId := createUniqueId(catalog.MetastoreId, catalog.Name)
+	for i := range catalogs {
+		c := &catalogs[i]
+
+		uniqueId := createUniqueId(c.MetastoreId, c.Name)
 
 		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
-			Name:             catalog.Name,
+			Name:             c.Name,
 			ExternalId:       uniqueId,
-			ParentExternalId: catalog.MetastoreId,
-			Description:      catalog.Comment,
+			ParentExternalId: c.MetastoreId,
+			Description:      c.Comment,
 			FullName:         uniqueId,
 			Type:             catalogType,
 		})
@@ -243,7 +251,9 @@ func (d *DataSourceSyncer) getSchemasInCatalog(ctx context.Context, dataSourceHa
 
 	parentId := createUniqueId(metastoreId, catalogInfo.Name)
 
-	for _, schema := range schemas {
+	for i := range schemas {
+		schema := &schemas[i]
+
 		uniqueId := createUniqueId(metastoreId, schema.FullName)
 
 		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
@@ -272,7 +282,9 @@ func (d *DataSourceSyncer) getTablesAndColumnsInSchema(ctx context.Context, data
 
 	parentId := createUniqueId(metastoreId, schemaInfo.FullName)
 
-	for _, table := range tables {
+	for i := range tables {
+		table := &tables[i]
+
 		uniqueId := createUniqueId(metastoreId, table.FullName)
 
 		doType, doErr := tableTypeToRaitoType(table.TableType)
@@ -289,8 +301,13 @@ func (d *DataSourceSyncer) getTablesAndColumnsInSchema(ctx context.Context, data
 			FullName:         uniqueId,
 			Type:             doType,
 		})
+		if err != nil {
+			return nil, err
+		}
 
-		for _, column := range table.Columns {
+		for i := range table.Columns {
+			column := &table.Columns[i]
+
 			uniqueColumnId := createTableUniqueId(metastoreId, table.FullName, column.Name)
 
 			err = dataSourceHandler.AddDataObjects(&ds.DataObject{
@@ -301,6 +318,9 @@ func (d *DataSourceSyncer) getTablesAndColumnsInSchema(ctx context.Context, data
 				FullName:         uniqueColumnId,
 				Type:             ds.Column,
 			})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -328,6 +348,6 @@ func tableTypeToRaitoType(tType catalog.TableType) (string, error) {
 	case catalog.TableTypeView, catalog.TableTypeMaterializedView:
 		return ds.View, nil
 	default:
-		return "", fmt.Errorf("Unknown table type %s", tType)
+		return "", fmt.Errorf("unknown table type %s", tType)
 	}
 }

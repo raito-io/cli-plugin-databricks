@@ -68,8 +68,6 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		}
 	}()
 
-	logger.Debug(fmt.Sprintf("PRIVILEGE_CACHE: %s", a.privilegeCache.DebugString()))
-
 	metastores, worspaces, metastoreWorkspaceMap, err := a.loadMetastores(ctx, configMap)
 	if err != nil {
 		return err
@@ -82,8 +80,8 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		}
 	}
 
-	for i, metastore := range metastores {
-		if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
+	for i := range metastores {
+		if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastores[i].MetastoreId]; ok {
 			err = a.syncAccessProviderFromMetastore(ctx, accessProviderHandler, configMap, &metastores[i], metastoreWorkspaces)
 			if err != nil {
 				return err
@@ -107,6 +105,10 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 	privilegesToSync := make(map[string][]string)
 
 	assignments, err := accountClient.ListWorkspaceAssignments(ctx, workspace.WorkspaceId)
+	if err != nil {
+		return err
+	}
+
 	for _, assignment := range assignments {
 		var principalId string
 
@@ -132,6 +134,7 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 		apName := fmt.Sprintf("%s_%s", workspace.WorkspaceName, privilege)
 
 		whoItems := sync_from_target.WhoItem{}
+
 		for _, principal := range principleList {
 			// We assume that a group doesn't contain an @ character
 			if strings.Contains(principal, "@") {
@@ -210,6 +213,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			}
 
 			metastoreClientCache[metastoreId] = repo
+
 			return repo, nil
 		}
 
@@ -296,6 +300,7 @@ func (a *AccessSyncer) getUserFromEmail(ctx context.Context, email string, repo 
 
 func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item SecurableItemKey, getMetastoreClient func(metastoreId string) (dataAccessWorkspaceRepository, error), principlePrivilegesMap map[string]*PrivilegesChanges) error {
 	metastore, fullname := getMetastoreAndFullnameOfUniqueId(item.FullName)
+
 	repo, err := getMetastoreClient(metastore)
 	if err != nil {
 		return err
@@ -327,6 +332,7 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item Secu
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -334,31 +340,19 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 	logger.Debug(fmt.Sprintf("Syncing access provider %q to target", ap.Name))
 
 	principals := make([]string, 0, len(ap.Who.UsersInheritedNativeGroupsExcluded)+len(ap.Who.NativeGroupsInherited))
-
-	for _, user := range ap.Who.UsersInheritedNativeGroupsExcluded {
-		principals = append(principals, user)
-	}
-
-	for _, group := range ap.Who.NativeGroupsInherited {
-		principals = append(principals, group)
-	}
+	principals = append(principals, ap.Who.UsersInheritedNativeGroupsExcluded...)
+	principals = append(principals, ap.Who.NativeGroupsInherited...)
 
 	var deletedPrincipals []string
 
 	if ap.DeletedWho != nil {
 		deletedPrincipals = make([]string, 0, len(ap.DeletedWho.UsersInheritedNativeGroupsExcluded)+len(ap.DeletedWho.NativeGroupsInherited))
-
-		for _, user := range ap.DeletedWho.UsersInheritedNativeGroupsExcluded {
-			deletedPrincipals = append(deletedPrincipals, user)
-		}
-
-		for _, group := range ap.DeletedWho.NativeGroupsInherited {
-			deletedPrincipals = append(deletedPrincipals, group)
-		}
+		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.UsersInheritedNativeGroupsExcluded...)
+		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.NativeGroupsInherited...)
 	}
 
-	for _, whatItem := range ap.What {
-		privilegesMap, err := permissionsToDatabricksPrivileges(&whatItem)
+	for i := range ap.What {
+		privilegesMap, err := permissionsToDatabricksPrivileges(&ap.What[i])
 		if err != nil {
 			return err
 		}
@@ -377,10 +371,6 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 				for _, principal := range principals {
 					changeCollection.RemovePrivilege(itemKey, principal, privilegesSlice...)
 				}
-
-				for _, deletedPrincipal := range deletedPrincipals {
-					changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegesSlice...)
-				}
 			} else {
 				for _, principal := range principals {
 					changeCollection.AddPrivilege(itemKey, principal, privilegesSlice...)
@@ -388,10 +378,10 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 					//Add to cache, it must be ignored in sync from target
 					a.privilegeCache.AddPrivilege(do, principal, privilegesSlice...)
 				}
+			}
 
-				for _, deletedPrincipal := range deletedPrincipals {
-					changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegesSlice...)
-				}
+			for _, deletedPrincipal := range deletedPrincipals {
+				changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegesSlice...)
 			}
 		}
 	}
@@ -410,22 +400,12 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 
 			privilegeSlice := privileges.Slice()
 
-			if ap.Delete {
-				for _, principal := range principals {
-					changeCollection.RemovePrivilege(itemKey, principal, privilegeSlice...)
-				}
+			for _, principal := range principals {
+				changeCollection.RemovePrivilege(itemKey, principal, privilegeSlice...)
+			}
 
-				for _, deletedPrincipal := range deletedPrincipals {
-					changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegeSlice...)
-				}
-			} else {
-				for _, principal := range principals {
-					changeCollection.RemovePrivilege(itemKey, principal, privilegeSlice...)
-				}
-
-				for _, deletedPrincipal := range deletedPrincipals {
-					changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegeSlice...)
-				}
+			for _, deletedPrincipal := range deletedPrincipals {
+				changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegeSlice...)
 			}
 		}
 	}
@@ -461,6 +441,7 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 		}
 
 		workspaceRepo = repo
+
 		logger.Debug(fmt.Sprintf("Will use workspace %q for metastore %q", workspaceName, metastore.Name))
 
 		break
@@ -471,12 +452,14 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 	}
 
 	logger.Debug(fmt.Sprintf("Load permissions on metastore %q", metastore.MetastoreId))
+
 	permissionsList, err := workspaceRepo.GetPermissionsOnResource(ctx, catalog.SecurableTypeMetastore, metastore.MetastoreId)
 	if err != nil {
 		return err
 	}
 
 	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
+
 	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: metastore.Name, Type: metastoreType}, permissionsList)
 	if err != nil {
 		return err
@@ -487,7 +470,9 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 		return err
 	}
 
-	for i, catalogInfo := range catalogs {
+	for i := range catalogs {
+		catalogInfo := &catalogs[i]
+
 		err = a.syncAccessProviderFromCatalog(ctx, accessProviderHandler, &catalogs[i], workspaceRepo)
 		if err != nil {
 			return err
@@ -550,9 +535,9 @@ func (a *AccessSyncer) syncAccessProviderFromTable(ctx context.Context, accessPr
 
 func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
 	privilegeToPrincipleMap := make(map[catalog.Privilege][]string)
+
 	for _, assignment := range assignments.PrivilegeAssignments {
 		for _, privilege := range assignment.Privileges {
-
 			logger.Debug(fmt.Sprintf("Check if privilege was assigned by Raito: {%s, %s}, %s, %v", do.FullName, do.Type, assignment.Principal, privilege))
 
 			if a.privilegeCache.ContainsPrivilege(*do, assignment.Principal, string(privilege)) {
@@ -568,6 +553,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 		apName := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
 
 		whoItems := sync_from_target.WhoItem{}
+
 		for _, principal := range principleList {
 			// We assume that a group doesn't contain an @ character
 			if strings.Contains(principal, "@") {

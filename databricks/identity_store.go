@@ -76,6 +76,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 			return nil, item
 		case iam.Group:
 			membergroups := make([]string, 0, len(item.Members))
+
 			for _, member := range item.Members {
 				if strings.HasPrefix(member.Ref, "Groups/") {
 					membergroups = append(membergroups, member.Value)

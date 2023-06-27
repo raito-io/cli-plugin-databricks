@@ -1,9 +1,6 @@
 package databricks
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 )
@@ -95,28 +92,6 @@ func (c *PrivilegeCache) ContainsPrivilege(item data_source.DataObjectReference,
 	}
 
 	return c.m[item][principal].Contains(privilege)
-}
-
-func (c *PrivilegeCache) DebugString() string {
-	var builder strings.Builder
-
-	builder.WriteString("Privilege Cache: {\n")
-
-	for item := range c.m {
-		builder.WriteString(fmt.Sprintf("{{FullName: %s, Type: %s} : [", item.FullName, item.Type))
-
-		for principal, privileges := range c.m[item] {
-			builder.WriteString(fmt.Sprintf("{Pirincipal: %s Privilages [", principal))
-			//builder.WriteString(strings.Join(array.Map(privileges.Slice(), func(i *catalog.Privilege) string { return i.String() }), ", "))
-			builder.WriteString(strings.Join(privileges.Slice(), ", "))
-			builder.WriteString("]}")
-		}
-		builder.WriteString("]}\n")
-	}
-
-	builder.WriteString("}")
-
-	return builder.String()
 }
 
 type databricksUsersFilter struct {

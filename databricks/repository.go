@@ -69,6 +69,7 @@ func (r *AccountRepository) GetWorkspacesForMetastore(ctx context.Context, metas
 
 func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error) {
 	workspacesMap := make(map[int]string)
+
 	for _, workspace := range workspaces {
 		if workspace.WorkspaceStatus != "RUNNING" {
 			logger.Debug(fmt.Sprintf("Workspace %s is not running. Will ignore workspace", workspace.WorkspaceName))
@@ -80,7 +81,9 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 
 	result := make(map[string][]string)
 
-	for _, metastore := range metastores {
+	for i := range metastores {
+		metastore := &metastores[i]
+
 		metastoreWorkspaces, err := r.GetWorkspacesForMetastore(ctx, metastore.MetastoreId)
 		if err != nil {
 			return nil, err
@@ -176,8 +179,8 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 				return
 			}
 
-			for _, user := range result.Resources {
-				if !send(user) {
+			for i := range result.Resources {
+				if !send(result.Resources[i]) {
 					return
 				}
 			}
@@ -231,8 +234,8 @@ func (r *AccountRepository) ListGroups(ctx context.Context) <-chan interface{} {
 				return
 			}
 
-			for _, user := range result.Resources {
-				if !send(user) {
+			for i := range result.Resources {
+				if !send(result.Resources[i]) {
 					return
 				}
 			}
@@ -245,7 +248,6 @@ func (r *AccountRepository) ListGroups(ctx context.Context) <-chan interface{} {
 				return
 			}
 		}
-
 	}()
 
 	return outputChannel

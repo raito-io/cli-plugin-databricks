@@ -41,13 +41,4 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("error while registering plugins: %s", err.Error()))
 	}
-
-	//accountRepo := databricks.NewAccountRepository("ruben@raito.io", "@Ds7r7QyT8OFtiYj", "55b37de5-81ce-4a41-93a9-2c776060c1fc")
-	//result, err := accountRepo.GetWorkspaces(context.Background())
-	//if err != nil {
-	//	logger.Error(fmt.Sprintf("error while getting workspaces: %s", err.Error()))
-	//	return
-	//}
-	//
-	//fmt.Printf("%+v\n", result)
 }
