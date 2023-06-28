@@ -288,7 +288,13 @@ func (r *AccountRepository) ListWorkspaceAssignments(ctx context.Context, worksp
 }
 
 func (r *AccountRepository) UpdateWorkspaceAssignment(ctx context.Context, workspaceId int, principalId int64, permission []iam.WorkspacePermission) error {
-	jsonBytes, err := json.Marshal(permission)
+	permissions := struct {
+		Permissions []iam.WorkspacePermission `json:"permissions"`
+	}{
+		Permissions: permission,
+	}
+
+	jsonBytes, err := json.Marshal(permissions)
 	if err != nil {
 		return err
 	}
