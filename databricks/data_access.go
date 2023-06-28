@@ -203,6 +203,8 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			return nil, werr
 		}
 
+		metastoreClientCache[metastoreId] = *repo
+
 		return *repo, nil
 	}
 
