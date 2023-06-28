@@ -163,32 +163,12 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 	logger.Debug(fmt.Sprintf("Will try %d workspaces. %+v", len(workspaceDeploymentNames), workspaceDeploymentNames))
 
 	// Select workspace
-	var workspaceRepo dataSourceWorkspaceRepository
-	var err error
-
-	for _, workspaceName := range workspaceDeploymentNames {
-		repo, werr := d.workspaceRepoFactory(fmt.Sprintf("https://%s.cloud.databricks.com", workspaceName), username, password)
-		if werr != nil {
-			err = werr
-			continue
-		}
-
-		werr = repo.Ping(ctx)
-		if werr != nil {
-			err = werr
-			continue
-		}
-
-		workspaceRepo = repo
-
-		logger.Debug(fmt.Sprintf("Will use workspace %q for metastore %q", workspaceName, metastore.Name))
-
-		break
+	repo, err := selectWorkspaceRepo(ctx, username, password, workspaceDeploymentNames, d.workspaceRepoFactory)
+	if err != nil {
+		return err
 	}
 
-	if workspaceRepo == nil {
-		return fmt.Errorf("no workspace found for metastore %s: %w", metastore.Name, err)
-	}
+	workspaceRepo := *repo
 
 	catalogs, err := d.getCatalogs(ctx, dataSourceHandler, metastore.MetastoreId, workspaceRepo)
 	if err != nil {

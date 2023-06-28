@@ -4,7 +4,7 @@ import ds "github.com/raito-io/cli/base/data_source"
 
 var databricks_metadata = ds.MetaData{
 	Type: "databricks",
-	//SupportedFeatures: []string{ds.RowFiltering, ds.ColumnMasking}, //TODO verify this
+	//SupportedFeatures: []string{ds.RowFiltering, ds.ColumnMasking}, //TODO include this in future versions
 	DataObjectTypes: []*ds.DataObjectType{
 		{
 			// Account

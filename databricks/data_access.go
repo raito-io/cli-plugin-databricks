@@ -198,31 +198,12 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		username := configMap.GetString(DatabricksUser)
 		password := configMap.GetString(DatabricksPassword)
 
-		var ferr error
-
-		for _, workspaceName := range metastoreWorkspaceMap[metastoreId] {
-			repo, werr := a.workspaceRepoFactory(fmt.Sprintf("https://%s.cloud.databricks.com", workspaceName), username, password)
-			if werr != nil {
-				err = werr
-				continue
-			}
-
-			werr = repo.Ping(ctx)
-			if werr != nil {
-				ferr = werr
-				continue
-			}
-
-			metastoreClientCache[metastoreId] = repo
-
-			return repo, nil
+		repo, werr := selectWorkspaceRepo(ctx, username, password, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
+		if werr != nil {
+			return nil, werr
 		}
 
-		if ferr == nil {
-			return nil, fmt.Errorf("no workspace found for metastore with ID %q", metastoreId)
-		}
-
-		return nil, ferr
+		return *repo, nil
 	}
 
 	permissionsChanges := NewPrivilegesChangeCollection()
