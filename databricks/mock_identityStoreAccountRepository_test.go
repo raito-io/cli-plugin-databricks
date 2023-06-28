@@ -21,13 +21,20 @@ func (_m *mockIdentityStoreAccountRepository) EXPECT() *mockIdentityStoreAccount
 	return &mockIdentityStoreAccountRepository_Expecter{mock: &_m.Mock}
 }
 
-// ListGroups provides a mock function with given fields: ctx
-func (_m *mockIdentityStoreAccountRepository) ListGroups(ctx context.Context) <-chan interface{} {
-	ret := _m.Called(ctx)
+// ListGroups provides a mock function with given fields: ctx, optFn
+func (_m *mockIdentityStoreAccountRepository) ListGroups(ctx context.Context, optFn ...func(*databricksGroupsFilter)) <-chan interface{} {
+	_va := make([]interface{}, len(optFn))
+	for _i := range optFn {
+		_va[_i] = optFn[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 <-chan interface{}
-	if rf, ok := ret.Get(0).(func(context.Context) <-chan interface{}); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, ...func(*databricksGroupsFilter)) <-chan interface{}); ok {
+		r0 = rf(ctx, optFn...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(<-chan interface{})
@@ -44,13 +51,21 @@ type mockIdentityStoreAccountRepository_ListGroups_Call struct {
 
 // ListGroups is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *mockIdentityStoreAccountRepository_Expecter) ListGroups(ctx interface{}) *mockIdentityStoreAccountRepository_ListGroups_Call {
-	return &mockIdentityStoreAccountRepository_ListGroups_Call{Call: _e.mock.On("ListGroups", ctx)}
+//   - optFn ...func(*databricksGroupsFilter)
+func (_e *mockIdentityStoreAccountRepository_Expecter) ListGroups(ctx interface{}, optFn ...interface{}) *mockIdentityStoreAccountRepository_ListGroups_Call {
+	return &mockIdentityStoreAccountRepository_ListGroups_Call{Call: _e.mock.On("ListGroups",
+		append([]interface{}{ctx}, optFn...)...)}
 }
 
-func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) Run(run func(ctx context.Context)) *mockIdentityStoreAccountRepository_ListGroups_Call {
+func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) Run(run func(ctx context.Context, optFn ...func(*databricksGroupsFilter))) *mockIdentityStoreAccountRepository_ListGroups_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		variadicArgs := make([]func(*databricksGroupsFilter), len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*databricksGroupsFilter))
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
 	})
 	return _c
 }
@@ -60,18 +75,25 @@ func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) Return(_a0 <-chan 
 	return _c
 }
 
-func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) RunAndReturn(run func(context.Context) <-chan interface{}) *mockIdentityStoreAccountRepository_ListGroups_Call {
+func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) RunAndReturn(run func(context.Context, ...func(*databricksGroupsFilter)) <-chan interface{}) *mockIdentityStoreAccountRepository_ListGroups_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ListUsers provides a mock function with given fields: ctx
-func (_m *mockIdentityStoreAccountRepository) ListUsers(ctx context.Context) <-chan interface{} {
-	ret := _m.Called(ctx)
+// ListUsers provides a mock function with given fields: ctx, optFn
+func (_m *mockIdentityStoreAccountRepository) ListUsers(ctx context.Context, optFn ...func(*databricksUsersFilter)) <-chan interface{} {
+	_va := make([]interface{}, len(optFn))
+	for _i := range optFn {
+		_va[_i] = optFn[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 <-chan interface{}
-	if rf, ok := ret.Get(0).(func(context.Context) <-chan interface{}); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, ...func(*databricksUsersFilter)) <-chan interface{}); ok {
+		r0 = rf(ctx, optFn...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(<-chan interface{})
@@ -88,13 +110,21 @@ type mockIdentityStoreAccountRepository_ListUsers_Call struct {
 
 // ListUsers is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *mockIdentityStoreAccountRepository_Expecter) ListUsers(ctx interface{}) *mockIdentityStoreAccountRepository_ListUsers_Call {
-	return &mockIdentityStoreAccountRepository_ListUsers_Call{Call: _e.mock.On("ListUsers", ctx)}
+//   - optFn ...func(*databricksUsersFilter)
+func (_e *mockIdentityStoreAccountRepository_Expecter) ListUsers(ctx interface{}, optFn ...interface{}) *mockIdentityStoreAccountRepository_ListUsers_Call {
+	return &mockIdentityStoreAccountRepository_ListUsers_Call{Call: _e.mock.On("ListUsers",
+		append([]interface{}{ctx}, optFn...)...)}
 }
 
-func (_c *mockIdentityStoreAccountRepository_ListUsers_Call) Run(run func(ctx context.Context)) *mockIdentityStoreAccountRepository_ListUsers_Call {
+func (_c *mockIdentityStoreAccountRepository_ListUsers_Call) Run(run func(ctx context.Context, optFn ...func(*databricksUsersFilter))) *mockIdentityStoreAccountRepository_ListUsers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		variadicArgs := make([]func(*databricksUsersFilter), len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*databricksUsersFilter))
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
 	})
 	return _c
 }
@@ -104,7 +134,7 @@ func (_c *mockIdentityStoreAccountRepository_ListUsers_Call) Return(_a0 <-chan i
 	return _c
 }
 
-func (_c *mockIdentityStoreAccountRepository_ListUsers_Call) RunAndReturn(run func(context.Context) <-chan interface{}) *mockIdentityStoreAccountRepository_ListUsers_Call {
+func (_c *mockIdentityStoreAccountRepository_ListUsers_Call) RunAndReturn(run func(context.Context, ...func(*databricksUsersFilter)) <-chan interface{}) *mockIdentityStoreAccountRepository_ListUsers_Call {
 	_c.Call.Return(run)
 	return _c
 }

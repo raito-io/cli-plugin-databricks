@@ -20,7 +20,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	workspace := "test-workspace"
 	dsSyncer, accountMock, workspaceMocks := createDataSourceSyncer(t, deployment)
 
-	dataSourceHanlderMock := mocks.NewSimpleDataSourceObjectHandler(t, 1)
+	dataSourceHandlerMock := mocks.NewSimpleDataSourceObjectHandler(t, 1)
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
 			DatabricksAccountId: "AccountId",
@@ -93,14 +93,14 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	}, nil)
 
 	// When
-	err := dsSyncer.SyncDataSource(context.Background(), dataSourceHanlderMock, configMap)
+	err := dsSyncer.SyncDataSource(context.Background(), dataSourceHandlerMock, configMap)
 
 	// Then
 	require.NoError(t, err)
 
-	assert.Equal(t, "AccountId", dataSourceHanlderMock.DataSourceName)
-	assert.Equal(t, "AccountId", dataSourceHanlderMock.DataSourceFullName)
-	require.Len(t, dataSourceHanlderMock.DataObjects, 6)
+	assert.Equal(t, "AccountId", dataSourceHandlerMock.DataSourceName)
+	assert.Equal(t, "AccountId", dataSourceHandlerMock.DataSourceFullName)
+	require.Len(t, dataSourceHandlerMock.DataObjects, 6)
 
 }
 

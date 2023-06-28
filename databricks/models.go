@@ -97,3 +97,7 @@ func (c *PrivilegeCache) ContainsPrivilege(item data_source.DataObjectReference,
 type databricksUsersFilter struct {
 	username *string
 }
+
+type databricksGroupsFilter struct {
+	groupname *string
+}

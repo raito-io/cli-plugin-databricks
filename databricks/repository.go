@@ -130,7 +130,7 @@ func (r *AccountRepository) GetWorkspaces(ctx context.Context) ([]Workspace, err
 	return result, nil
 }
 
-func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{} {
+func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{} { //nolint:dupl
 	options := databricksUsersFilter{}
 	for _, fn := range optFn {
 		fn(&options)
@@ -198,7 +198,12 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 	return outputChannel
 }
 
-func (r *AccountRepository) ListGroups(ctx context.Context) <-chan interface{} {
+func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{} { //nolint:dupl
+	options := databricksGroupsFilter{}
+	for _, fn := range optFn {
+		fn(&options)
+	}
+
 	outputChannel := make(chan interface{})
 
 	go func() {
@@ -215,13 +220,21 @@ func (r *AccountRepository) ListGroups(ctx context.Context) <-chan interface{} {
 
 		startIndex := "1"
 
+		queryParams := make(map[string]string)
+
+		if options.groupname != nil {
+			queryParams["filter"] = fmt.Sprintf("displayName eq %s", *options.groupname)
+		}
+
 		for {
+			queryParams["startIndex"] = startIndex
+
 			var result iam.ListGroupsResponse
 			response, err := r.client.R().
 				SetContext(ctx).
 				SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
 				SetSuccessResult(&result).SetPathParam("account_id", r.accountId).
-				SetQueryParam("startIndex", startIndex).
+				SetQueryParams(queryParams).
 				Get("/api/2.0/accounts/{account_id}/scim/v2/Groups")
 
 			if err != nil {

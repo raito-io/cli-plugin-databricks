@@ -18,7 +18,7 @@ var _ wrappers.IdentityStoreSyncer = (*IdentityStoreSyncer)(nil)
 //go:generate go run github.com/vektra/mockery/v2 --name=identityStoreAccountRepository
 type identityStoreAccountRepository interface {
 	ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{}
-	ListGroups(ctx context.Context) <-chan interface{}
+	ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{}
 }
 
 type IdentityStoreSyncer struct {

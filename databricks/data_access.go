@@ -20,10 +20,11 @@ import (
 
 var _ wrappers.AccessProviderSyncer = (*AccessSyncer)(nil)
 
-//go:generate go run github.com/vektra/mockery/v2 --name=dataSourceAccountRepository
+//go:generate go run github.com/vektra/mockery/v2 --name=dataAccessAccountRepository
 type dataAccessAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
 	ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{}
+	ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{}
 	GetWorkspaces(ctx context.Context) ([]Workspace, error)
 	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error)
 	ListWorkspaceAssignments(ctx context.Context, workspaceId int) ([]iam.PermissionAssignment, error)
@@ -257,22 +258,31 @@ func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item S
 	}
 
 	for principal, privilegesChanges := range principlePrivilegesMap {
-		user, err2 := a.getUserFromEmail(ctx, principal, repo)
-		if err2 != nil {
-			return err2
+		var principalId int64
+
+		if strings.Contains(principal, "@") {
+			user, err2 := a.getUserFromEmail(ctx, principal, repo)
+			if err2 != nil {
+				return err2
+			}
+
+			principalId, err2 = strconv.ParseInt(user.Id, 10, 64)
+			if err2 != nil {
+				return err2
+			}
+		} else {
+			group, err2 := a.getGroupIdFromName(ctx, principal, repo)
+			if err2 != nil {
+				return err2
+			}
+
+			principalId, err2 = strconv.ParseInt(group.Id, 10, 64)
+			if err2 != nil {
+				return err2
+			}
 		}
 
-		userId, err2 := strconv.ParseInt(user.Id, 10, 64)
-		if err2 != nil {
-			return err2
-		}
-
-		err2 = repo.UpdateWorkspaceAssignment(ctx, workspaceId, userId, workspacePermissionsToDatabricksPermissions(privilegesChanges.Remove.Slice()))
-		if err2 != nil {
-			return err2
-		}
-
-		err2 = repo.UpdateWorkspaceAssignment(ctx, workspaceId, userId, workspacePermissionsToDatabricksPermissions(privilegesChanges.Add.Slice()))
+		err2 := repo.UpdateWorkspaceAssignment(ctx, workspaceId, principalId, workspacePermissionsToDatabricksPermissions(privilegesChanges.Add.Slice()))
 		if err2 != nil {
 			return err2
 		}
@@ -296,6 +306,23 @@ func (a *AccessSyncer) getUserFromEmail(ctx context.Context, email string, repo 
 	}
 
 	return nil, fmt.Errorf("no user found for email %q", email)
+}
+
+func (a *AccessSyncer) getGroupIdFromName(ctx context.Context, groupname string, repo dataAccessAccountRepository) (*iam.Group, error) {
+	cancelCtx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
+
+	groups := repo.ListGroups(cancelCtx, func(options *databricksGroupsFilter) { options.groupname = &groupname })
+	for user := range groups {
+		switch v := user.(type) {
+		case error:
+			return nil, v
+		case iam.Group:
+			return &v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no groupe found with name %q", groupname)
 }
 
 func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item SecurableItemKey, getMetastoreClient func(metastoreId string) (dataAccessWorkspaceRepository, error), principlePrivilegesMap map[string]*PrivilegesChanges) error {
@@ -352,14 +379,12 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 	}
 
 	for i := range ap.What {
-		privilegesMap, err := permissionsToDatabricksPrivileges(&ap.What[i])
+		removePrivilegesMap, addPrivilegesMap, err := permissionsToDatabricksPrivileges(&ap.What[i])
 		if err != nil {
 			return err
 		}
 
-		logger.Debug(fmt.Sprintf("Privileges map of ap %q: %+v", ap.Name, privilegesMap))
-
-		for do, privileges := range privilegesMap {
+		for do, privileges := range removePrivilegesMap {
 			itemKey := SecurableItemKey{
 				Type:     do.Type,
 				FullName: do.FullName,
@@ -371,7 +396,22 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 				for _, principal := range principals {
 					changeCollection.RemovePrivilege(itemKey, principal, privilegesSlice...)
 				}
-			} else {
+			}
+
+			for _, deletedPrincipal := range deletedPrincipals {
+				changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegesSlice...)
+			}
+		}
+
+		for do, privileges := range addPrivilegesMap {
+			itemKey := SecurableItemKey{
+				Type:     do.Type,
+				FullName: do.FullName,
+			}
+
+			privilegesSlice := privileges.Slice()
+
+			if !ap.Delete {
 				for _, principal := range principals {
 					changeCollection.AddPrivilege(itemKey, principal, privilegesSlice...)
 
@@ -379,15 +419,11 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 					a.privilegeCache.AddPrivilege(do, principal, privilegesSlice...)
 				}
 			}
-
-			for _, deletedPrincipal := range deletedPrincipals {
-				changeCollection.RemovePrivilege(itemKey, deletedPrincipal, privilegesSlice...)
-			}
 		}
 	}
 
 	for i := range ap.DeleteWhat {
-		privilegesMap, err := permissionsToDatabricksPrivileges(&ap.DeleteWhat[i])
+		privilegesMap, _, err := permissionsToDatabricksPrivileges(&ap.DeleteWhat[i])
 		if err != nil {
 			return err
 		}
@@ -534,6 +570,10 @@ func (a *AccessSyncer) syncAccessProviderFromTable(ctx context.Context, accessPr
 }
 
 func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
+	if assignments == nil {
+		return nil
+	}
+
 	privilegeToPrincipleMap := make(map[catalog.Privilege][]string)
 
 	for _, assignment := range assignments.PrivilegeAssignments {
@@ -630,21 +670,23 @@ func typeToSecurableType(t string) (catalog.SecurableType, error) {
 	}
 }
 
-func permissionsToDatabricksPrivileges(whatItem *sync_to_target.WhatItem) (map[data_source.DataObjectReference]set.Set[string], error) {
-	result := make(map[data_source.DataObjectReference]set.Set[string])
+func permissionsToDatabricksPrivileges(whatItem *sync_to_target.WhatItem) (map[data_source.DataObjectReference]set.Set[string], map[data_source.DataObjectReference]set.Set[string], error) {
+	objectPermissions := make(map[data_source.DataObjectReference]set.Set[string])
+	additionObjectPermissions := make(map[data_source.DataObjectReference]set.Set[string])
 
 	for _, v := range whatItem.Permissions {
 		priv := permissionToDatabricksPrivilege(v)
 
-		addToSetInMap(result, *whatItem.DataObject, priv)
+		addToSetInMap(objectPermissions, *whatItem.DataObject, priv)
+		addToSetInMap(additionObjectPermissions, *whatItem.DataObject, priv)
 
-		err := addUsageToUpperDataObjects(result, *whatItem.DataObject)
+		err := addUsageToUpperDataObjects(additionObjectPermissions, *whatItem.DataObject)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return result, nil
+	return objectPermissions, additionObjectPermissions, nil
 }
 
 func permissionToDatabricksPrivilege(p string) string {
