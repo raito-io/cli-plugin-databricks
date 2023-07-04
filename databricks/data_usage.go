@@ -135,21 +135,17 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 		case sql.QueryStatementTypeUse:
 			err = d.useStatement(&queryInfo, userLastUsage)
 		case sql.QueryStatementTypeSelect:
-			var selectWhatItems []sync_from_target.WhatItem
-			selectWhatItems, bytes, rows = d.selectStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
-			whatItems = append(whatItems, selectWhatItems...)
-
+			whatItems, bytes, rows = d.selectStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeInsert:
-			// TODO Insert Query
+			whatItems, bytes, rows = d.insertStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeMerge:
-			// TODO Merge Query
+			whatItems, bytes, rows = d.mergeStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeUpdate:
-			var selectWhatItems []sync_from_target.WhatItem
-			selectWhatItems, bytes, rows = d.updateStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
-			whatItems = append(whatItems, selectWhatItems...)
-
+			whatItems, bytes, rows = d.updateStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeDelete:
-			// TODO Delete Query
+			whatItems, bytes, rows = d.deleteStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
+		default:
+			logger.Debug(fmt.Sprintf("Ignore query type: %s", queryInfo.StatementType))
 		}
 
 		if err != nil {
@@ -264,7 +260,7 @@ func (d *DataUsageSyncer) useStatement(queryInfo *sql.QueryInfo, userLastUsage m
 	return fmt.Errorf("unable to parse use query: %s", queryInfo.QueryText)
 }
 
-var selectRegex = regexp.MustCompile(`(?i)select .*? FROM (?P<table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?)*))`)
+var selectRegex = regexp.MustCompile(`(?i)select .*? FROM (?P<table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
 
 func (d *DataUsageSyncer) selectStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing select query: %s", queryInfo.QueryText))
@@ -285,7 +281,7 @@ func (d *DataUsageSyncer) selectStatement(queryInfo *sql.QueryInfo, tableInfo ma
 	return d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "SELECT"), queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-var updateRegex = regexp.MustCompile(`(?i)UPDATE[[:space:]](?P<table>(\x60?[a-zA-Z0-9_]+\x60?)((\.\x60?[a-zA-Z0-9_]+\x60?)+))`)
+var updateRegex = regexp.MustCompile(`(?i)UPDATE[[:space:]](?P<table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
 
 func (d *DataUsageSyncer) updateStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing update query: %s", queryInfo.QueryText))
@@ -312,11 +308,91 @@ func (d *DataUsageSyncer) updateStatement(queryInfo *sql.QueryInfo, tableInfo ma
 	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
+var mergeRegex = regexp.MustCompile(`(?im)MERGE INTO[[:space:]](?P<target_table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2})) .*? USING (?P<source_table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+
+func (d *DataUsageSyncer) mergeStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
+	logger.Debug(fmt.Sprintf("parsing merge query: %s", queryInfo.QueryText))
+
+	matchingTables := mergeRegex.FindAllStringSubmatch(queryInfo.QueryText, -1)
+	if len(matchingTables) == 0 {
+		return nil, 0, 0
+	}
+
+	matchingTablesStrings := make([]string, 0, len(matchingTables))
+
+	tableIndex := mergeRegex.SubexpIndex("target_table")
+	sourceTableIndex := mergeRegex.SubexpIndex("source_table")
+
+	for i := range matchingTables {
+		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][sourceTableIndex])
+	}
+
+	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "MERGE")
+
+	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
+}
+
+var insertRegex = regexp.MustCompile(`(?im)INSERT[[:space:]]+(INTO|OVERWRITE)?([[:space:]]+TABLE)?[[:space:]]+(?P<tale>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+
+func (d *DataUsageSyncer) insertStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
+	logger.Debug(fmt.Sprintf("parsing insert query: %s", queryInfo.QueryText))
+
+	matchingTables := insertRegex.FindAllStringSubmatch(queryInfo.QueryText, -1)
+	if len(matchingTables) == 0 {
+		return nil, 0, 0
+	}
+
+	matchingTablesStrings := make([]string, 0, len(matchingTables))
+
+	tableIndex := insertRegex.SubexpIndex("tale")
+
+	for i := range matchingTables {
+		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+	}
+
+	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "INSERT")
+
+	selectWhatItems, _, _ := d.selectStatement(queryInfo, tableInfo, userLastUsage, metastore)
+	whatItems = append(whatItems, selectWhatItems...)
+
+	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
+}
+
+var deleteRegex = regexp.MustCompile(`(?im)DELETE[[:space:]]+FROM[[:space:]]+(?P<tale>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+
+func (d *DataUsageSyncer) deleteStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
+	logger.Debug(fmt.Sprintf("parsing delete query: %s", queryInfo.QueryText))
+
+	matchingTables := deleteRegex.FindAllStringSubmatch(queryInfo.QueryText, -1)
+	if len(matchingTables) == 0 {
+		return nil, 0, 0
+	}
+
+	matchingTablesStrings := make([]string, 0, len(matchingTables))
+
+	tableIndex := deleteRegex.SubexpIndex("tale")
+
+	for i := range matchingTables {
+		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+	}
+
+	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "DELETE")
+
+	selectWhatItems, _, _ := d.selectStatement(queryInfo, tableInfo, userLastUsage, metastore)
+	whatItems = append(whatItems, selectWhatItems...)
+
+	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
+}
+
 func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId string, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo, permissions ...string) []sync_from_target.WhatItem {
 	data_object_names := set.NewSet[string]()
 
 	for _, tableNameString := range tableNames {
 		tableName := strings.ReplaceAll(tableNameString, "\x60", "")
+
+		logger.Debug(fmt.Sprintf("Search for table: %s", tableName))
+
 		tableNameParts := strings.Split(tableName, ".")
 
 		if possibleTables, ok := tableInfo[tableNameParts[len(tableNameParts)-1]]; !ok || len(possibleTables) == 0 {
@@ -327,6 +403,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 		if len(tableNameParts) > 3 {
 			logger.Warn(fmt.Sprintf("Ignoring table %s because it has too many parts", tableName))
 		} else if len(tableNameParts) == 3 {
+			logger.Debug(fmt.Sprintf("Full name defined: %s", tableName))
 			data_object_names.Add(fmt.Sprintf("%s.%s", metastore.MetastoreId, tableName))
 		} else if len(tableNameParts) == 2 {
 			possibleCatalogs := make([]string, 0, 2)
@@ -347,6 +424,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 
 				for _, possibleTable := range tableInfo[tableNameParts[len(tableNameParts)-1]] {
 					if possibleTable.FullName == fullName {
+						logger.Debug(fmt.Sprintf("Found possible catalog by assuming use catalog %q", possibleCatalog))
 						data_object_names.Add(fmt.Sprintf("%s.%s.%s", metastore.MetastoreId, possibleCatalog, tableName))
 						catalogFound = true
 						break
@@ -355,7 +433,9 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 			}
 
 			if !catalogFound {
-				if len(tableInfo[tableNameParts[len(tableNameParts)-1]]) == 1 {
+				if len(tableInfo[tableNameParts[len(tableNameParts)-1]]) == 1 && tableInfo[tableNameParts[len(tableNameParts)-1]][0].SchemaName == tableNameParts[0] {
+					ti := tableInfo[tableNameParts[len(tableNameParts)-1]][0]
+					logger.Debug(fmt.Sprintf("Found possible catalog %q because only one option exists", ti.CatalogName))
 					data_object_names.Add(fmt.Sprintf("%s.%s", metastore.MetastoreId, tableInfo[tableNameParts[len(tableNameParts)-1]][0].FullName))
 				} else {
 					logger.Warn(fmt.Sprintf("Table %s not found in metastore", tableName))
@@ -380,6 +460,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 
 				for _, possibleTable := range tableInfo[tableName] {
 					if possibleTable.FullName == fullName {
+						logger.Debug(fmt.Sprintf("Found possible catalog by assuming use catalog and schema %q", possibleCatalogSchemaName))
 						data_object_names.Add(fmt.Sprintf("%s.%s.%s", metastore.MetastoreId, possibleCatalogSchemaName, tableName))
 						catalogSchemaFound = true
 						break
@@ -389,7 +470,9 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 
 			if !catalogSchemaFound {
 				if len(tableInfo[tableName]) == 1 {
-					data_object_names.Add(fmt.Sprintf("%s.%s", metastore.MetastoreId, tableInfo[tableName][0].FullName))
+					ti := tableInfo[tableName][0]
+					logger.Debug(fmt.Sprintf("Found possible catalog and schema \"%s.%s\" because only one option exists", ti.CatalogName, ti.SchemaName))
+					data_object_names.Add(fmt.Sprintf("%s.%s", metastore.MetastoreId, ti.FullName))
 				} else {
 					logger.Warn(fmt.Sprintf("Table %s not found in metastore", tableName))
 				}
