@@ -87,3 +87,9 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, username, passwor
 func GetWorkspaceAddress(deploymentId string) string {
 	return fmt.Sprintf("https://%s.cloud.databricks.com", deploymentId)
 }
+
+func reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}

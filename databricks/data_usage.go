@@ -20,6 +20,8 @@ import (
 const (
 	DATABRICKS_DEFAULT_SCHEMA  = "default"
 	DATABRICKS_DEFAULT_CATALOG = "hive_metastore"
+
+	table_regex = "\x60?[a-zA-Z0-9_-]+\x60?((\\.\x60?[a-zA-Z0-9_-]+\x60?){0,2})"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageAccountRepository
@@ -146,6 +148,8 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 			whatItems, bytes, rows = d.updateStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeDelete:
 			whatItems, bytes, rows = d.deleteStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
+		case sql.QueryStatementTypeCopy:
+			whatItems, bytes, rows = d.copyStatement(&queryInfo, tableInfoMap, userLastUsage, metastore)
 		default:
 			logger.Debug(fmt.Sprintf("Ignore query type: %s", queryInfo.StatementType))
 		}
@@ -233,7 +237,7 @@ func (d *DataUsageSyncer) useStatement(queryInfo *sql.QueryInfo, userLastUsage m
 
 	if len(catalogSubstrings) > 0 {
 		i := useCatalogRegex.SubexpIndex("catalog")
-		catalogName := catalogSubstrings[i]
+		catalogName := strings.ReplaceAll(catalogSubstrings[i], "`", "")
 
 		if _, ok := userLastUsage[queryInfo.UserName]; !ok {
 			userLastUsage[queryInfo.UserName] = NewUserDefaults()
@@ -262,7 +266,7 @@ func (d *DataUsageSyncer) useStatement(queryInfo *sql.QueryInfo, userLastUsage m
 	return fmt.Errorf("unable to parse use query: %s", queryInfo.QueryText)
 }
 
-var selectRegex = regexp.MustCompile(`(?i)select .*? FROM (?P<table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+var selectRegex = regexp.MustCompile(fmt.Sprintf(`(?i)select .*? FROM (?P<tables>%[1]s([[:space:]]*,[[:space:]]*%[1]s)*)`, table_regex))
 
 func (d *DataUsageSyncer) selectStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing select query: %s", queryInfo.QueryText))
@@ -274,16 +278,20 @@ func (d *DataUsageSyncer) selectStatement(queryInfo *sql.QueryInfo, tableInfo ma
 
 	matchingTablesStrings := make([]string, 0, len(matchingTables))
 
-	tableIndex := selectRegex.SubexpIndex("table")
+	tableIndex := selectRegex.SubexpIndex("tables")
 
 	for i := range matchingTables {
-		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+		tables := strings.Split(matchingTables[i][tableIndex], ",")
+		for _, table := range tables {
+			t := strings.TrimSpace(table)
+			matchingTablesStrings = append(matchingTablesStrings, t)
+		}
 	}
 
 	return d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "SELECT"), queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-var updateRegex = regexp.MustCompile(`(?i)UPDATE[[:space:]](?P<table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+var updateRegex = regexp.MustCompile(fmt.Sprintf(`(?i)UPDATE[[:space:]](?P<table>%[1]s)`, table_regex))
 
 func (d *DataUsageSyncer) updateStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing update query: %s", queryInfo.QueryText))
@@ -310,7 +318,7 @@ func (d *DataUsageSyncer) updateStatement(queryInfo *sql.QueryInfo, tableInfo ma
 	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-var mergeRegex = regexp.MustCompile(`(?im)MERGE INTO[[:space:]](?P<target_table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2})) .*? USING (?P<source_table>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+var mergeRegex = regexp.MustCompile(fmt.Sprintf(`(?im)MERGE INTO[[:space:]](?P<target_table>%[1]s).*?[[:space:]]USING[[:space:]]+(?P<source_table>%[1]s)`, table_regex))
 
 func (d *DataUsageSyncer) mergeStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing merge query: %s", queryInfo.QueryText))
@@ -320,22 +328,24 @@ func (d *DataUsageSyncer) mergeStatement(queryInfo *sql.QueryInfo, tableInfo map
 		return nil, 0, 0
 	}
 
-	matchingTablesStrings := make([]string, 0, len(matchingTables))
+	matchingTargetTablesStrings := make([]string, 0, 1)
+	matchingSourceTablesStrings := make([]string, 0, 1)
 
 	tableIndex := mergeRegex.SubexpIndex("target_table")
 	sourceTableIndex := mergeRegex.SubexpIndex("source_table")
 
 	for i := range matchingTables {
-		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
-		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][sourceTableIndex])
+		matchingTargetTablesStrings = append(matchingTargetTablesStrings, matchingTables[i][tableIndex])
+		matchingSourceTablesStrings = append(matchingSourceTablesStrings, matchingTables[i][sourceTableIndex])
 	}
 
-	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "MERGE")
+	whatItems := d.generateWhatItemsFromTable(matchingTargetTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "MERGE")
+	whatItems = append(whatItems, d.generateWhatItemsFromTable(matchingSourceTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "SELECT")...)
 
 	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-var insertRegex = regexp.MustCompile(`(?im)INSERT[[:space:]]+(INTO|OVERWRITE)?([[:space:]]+TABLE)?[[:space:]]+(?P<tale>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+var insertRegex = regexp.MustCompile(fmt.Sprintf(`(?i)INSERT[[:space:]]+(INTO|OVERWRITE)[[:space:]]+(?P<table>%[1]s)([[:space:]]+TABLE[[:space:]]+(?P<sourceTable>%[1]s))?`, table_regex))
 
 func (d *DataUsageSyncer) insertStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing insert query: %s", queryInfo.QueryText))
@@ -345,15 +355,22 @@ func (d *DataUsageSyncer) insertStatement(queryInfo *sql.QueryInfo, tableInfo ma
 		return nil, 0, 0
 	}
 
-	matchingTablesStrings := make([]string, 0, len(matchingTables))
+	matchingTargetTablesStrings := make([]string, 0, len(matchingTables))
+	matchingSourceTablesStrings := make([]string, 0, len(matchingTables))
 
-	tableIndex := insertRegex.SubexpIndex("tale")
+	tableIndex := insertRegex.SubexpIndex("table")
+	sourceTableIndex := insertRegex.SubexpIndex("sourceTable")
 
 	for i := range matchingTables {
-		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+		matchingTargetTablesStrings = append(matchingTargetTablesStrings, matchingTables[i][tableIndex])
+
+		if len(matchingTables[i]) > sourceTableIndex {
+			matchingSourceTablesStrings = append(matchingSourceTablesStrings, matchingTables[i][sourceTableIndex])
+		}
 	}
 
-	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "INSERT")
+	whatItems := d.generateWhatItemsFromTable(matchingTargetTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "INSERT")
+	whatItems = append(whatItems, d.generateWhatItemsFromTable(matchingSourceTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "SELECT")...)
 
 	selectWhatItems, _, _ := d.selectStatement(queryInfo, tableInfo, userLastUsage, metastore)
 	whatItems = append(whatItems, selectWhatItems...)
@@ -361,7 +378,7 @@ func (d *DataUsageSyncer) insertStatement(queryInfo *sql.QueryInfo, tableInfo ma
 	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-var deleteRegex = regexp.MustCompile(`(?im)DELETE[[:space:]]+FROM[[:space:]]+(?P<tale>(\x60?[a-zA-Z0-9_-]+\x60?)((\.\x60?[a-zA-Z0-9_-]+\x60?){0,2}))`)
+var deleteRegex = regexp.MustCompile(fmt.Sprintf(`(?i)DELETE[[:space:]]+FROM[[:space:]]+(?P<table>%[1]s)`, table_regex))
 
 func (d *DataUsageSyncer) deleteStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
 	logger.Debug(fmt.Sprintf("parsing delete query: %s", queryInfo.QueryText))
@@ -373,13 +390,39 @@ func (d *DataUsageSyncer) deleteStatement(queryInfo *sql.QueryInfo, tableInfo ma
 
 	matchingTablesStrings := make([]string, 0, len(matchingTables))
 
-	tableIndex := deleteRegex.SubexpIndex("tale")
+	tableIndex := deleteRegex.SubexpIndex("table")
 
 	for i := range matchingTables {
 		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
 	}
 
 	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "DELETE")
+
+	selectWhatItems, _, _ := d.selectStatement(queryInfo, tableInfo, userLastUsage, metastore)
+	whatItems = append(whatItems, selectWhatItems...)
+
+	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
+}
+
+var copyRegex = regexp.MustCompile(fmt.Sprintf(`(?i)COPY[[:space:]]+INTO[[:space:]]+(?P<table>%[1]s)`, table_regex))
+
+func (d *DataUsageSyncer) copyStatement(queryInfo *sql.QueryInfo, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo) ([]sync_from_target.WhatItem, int, int) {
+	logger.Debug(fmt.Sprintf("parsing copy query: %s", queryInfo.QueryText))
+
+	matchingTables := copyRegex.FindAllStringSubmatch(queryInfo.QueryText, -1)
+	if len(matchingTables) == 0 {
+		return nil, 0, 0
+	}
+
+	matchingTablesStrings := make([]string, 0, len(matchingTables))
+
+	tableIndex := deleteRegex.SubexpIndex("table")
+
+	for i := range matchingTables {
+		matchingTablesStrings = append(matchingTablesStrings, matchingTables[i][tableIndex])
+	}
+
+	whatItems := d.generateWhatItemsFromTable(matchingTablesStrings, queryInfo.UserName, tableInfo, userLastUsage, metastore, "COPY")
 
 	selectWhatItems, _, _ := d.selectStatement(queryInfo, tableInfo, userLastUsage, metastore)
 	whatItems = append(whatItems, selectWhatItems...)
