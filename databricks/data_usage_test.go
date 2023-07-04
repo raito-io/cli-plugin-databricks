@@ -466,7 +466,7 @@ func TestDataUsageSyncer_SelectStatement(t *testing.T) {
 			metastore := catalog.MetastoreInfo{Name: "metastore1", MetastoreId: "metastoreId1"}
 
 			// When
-			whatItems, bytes, rows := duSyncer.selectStatement(&queryInfo, tableInfo, userLastUsage, &metastore)
+			whatItems, bytes, rows := duSyncer.selectStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
 			assert.Equal(t, rows, 1)
@@ -558,7 +558,7 @@ func TestDataUsageSyncer_UpdateStatement(t *testing.T) {
 			metastore := catalog.MetastoreInfo{Name: "metastore1", MetastoreId: "metastoreId1"}
 
 			// When
-			whatItems, bytes, rows := duSyncer.updateStatement(&queryInfo, tableInfo, userLastUsage, &metastore)
+			whatItems, bytes, rows := duSyncer.updateStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
 			assert.Equal(t, rows, 1)
@@ -654,7 +654,7 @@ func TestDataUsageSyncer_MergeStatement(t *testing.T) {
 			metastore := catalog.MetastoreInfo{Name: "metastore1", MetastoreId: "metastoreId1"}
 
 			// When
-			whatItems, bytes, rows := duSyncer.mergeStatement(&queryInfo, tableInfo, userLastUsage, &metastore)
+			whatItems, bytes, rows := duSyncer.mergeStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
 			assert.Equal(t, rows, 1)
@@ -780,7 +780,7 @@ func TestDataUsageSyncer_InsertStatement(t *testing.T) {
 			metastore := catalog.MetastoreInfo{Name: "metastore1", MetastoreId: "metastoreId1"}
 
 			// When
-			whatItems, bytes, rows := duSyncer.insertStatement(&queryInfo, tableInfo, userLastUsage, &metastore)
+			whatItems, bytes, rows := duSyncer.insertStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
 			assert.Equal(t, rows, 1)
@@ -871,7 +871,7 @@ func TestDataUsageSyncer_DeleteStatement(t *testing.T) {
 			metastore := catalog.MetastoreInfo{Name: "metastore1", MetastoreId: "metastoreId1"}
 
 			// When
-			whatItems, bytes, rows := duSyncer.deleteStatement(&queryInfo, tableInfo, userLastUsage, &metastore)
+			whatItems, bytes, rows := duSyncer.deleteStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
 			assert.Equal(t, rows, 1)
@@ -907,4 +907,26 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 			return nil, errors.New("no workspace repository")
 		},
 	}, mockAccountRepo, workspaceMockRepos
+}
+
+func TestCleanUpQueryText(t *testing.T) {
+	query := `SELECT * FROM 	events   WHERE
+                            date < '2017-01-01'; --This is a comment
+		-- this is also a comment
+			SELECT column1 FROM table1 WHERE column1 = ';' LIMIT 500;
+ /*
+  	This is all comment
+  	Blablabla
+  */
+  	UPDATE table1 
+  	SET column1 = 'Blablabla' 
+  	WHERE column1 = 'Blab'`
+
+	result := cleanUpQueryText(query)
+
+	expected := `SELECT * FROM events WHERE date < '2017-01-01';
+SELECT column1 FROM table1 WHERE column1 = ';' LIMIT 500;
+UPDATE table1 SET column1 = 'Blablabla' WHERE column1 = 'Blab'`
+
+	assert.Equal(t, result, expected)
 }
