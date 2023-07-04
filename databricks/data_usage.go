@@ -22,12 +22,14 @@ const (
 	DATABRICKS_DEFAULT_CATALOG = "hive_metastore"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name=dataUsageAccountRepository
 type dataUsageAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
 	GetWorkspaces(ctx context.Context) ([]Workspace, error)
 	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error)
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
 type dataUsageWorkspaceRepository interface {
 	QueryHistory(ctx context.Context, startTime *time.Time) ([]sql.QueryInfo, error)
 	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
