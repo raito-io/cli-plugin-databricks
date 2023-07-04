@@ -232,7 +232,12 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
 				},
 			},
-			Actions:  []*ds.DataObjectTypeAction{},
+			Actions: []*ds.DataObjectTypeAction{
+				{
+					Action:        "SELECT",
+					GlobalActions: []string{ds.Read},
+				},
+			},
 			Children: []string{ds.Column},
 		},
 		{
