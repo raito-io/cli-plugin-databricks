@@ -18,7 +18,7 @@ var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
 type dataSourceAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
 	GetWorkspaces(ctx context.Context) ([]Workspace, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataSourceWorkspaceRepository
@@ -84,7 +84,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return err
 	}
 
-	metastoreWorkspaceMap, err := accountClient.GetWorkspaceMap(ctx, metastores, workspaces)
+	metastoreWorkspaceMap, _, err := accountClient.GetWorkspaceMap(ctx, metastores, workspaces)
 	if err != nil {
 		return err
 	}
