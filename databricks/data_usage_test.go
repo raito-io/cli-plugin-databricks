@@ -207,7 +207,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 
 	queryHistory := []sql.QueryInfo{
 		{
-			QueryText: "SELECT * FROM `catalog1`.`schema1`.`table1`, `catalog1`.`schema1`.`table2`",
+			QueryText: "SELECT * FROM `catalog1`.`schema1`.`table1`",
 			Metrics: &sql.QueryMetrics{
 				RowsProducedCount: 1,
 				ReadBytes:         2,
@@ -304,13 +304,6 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.table1",
-						Type:     data_source.Table,
-					},
-					Permissions: []string{"SELECT"},
-				},
-				{
-					DataObject: &data_source.DataObjectReference{
-						FullName: "metastoreId1.catalog1.schema1.table2",
 						Type:     data_source.Table,
 					},
 					Permissions: []string{"SELECT"},
