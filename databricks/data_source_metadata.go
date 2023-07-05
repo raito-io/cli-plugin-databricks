@@ -219,6 +219,10 @@ var databricks_metadata = ds.MetaData{
 					Action:        "DELETE",
 					GlobalActions: []string{ds.Write},
 				},
+				{
+					Action:        "COPY",
+					GlobalActions: []string{ds.Write},
+				},
 			},
 			Children: []string{ds.Column},
 		},
