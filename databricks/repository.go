@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/databricks/databricks-sdk-go"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/imroc/req/v3"
 )
 
@@ -67,7 +69,7 @@ func (r *AccountRepository) GetWorkspacesForMetastore(ctx context.Context, metas
 	return &result, nil
 }
 
-func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error) {
+func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error) {
 	workspacesMap := make(map[int]string)
 
 	for _, workspace := range workspaces {
@@ -79,14 +81,15 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 		workspacesMap[workspace.WorkspaceId] = workspace.DeploymentName
 	}
 
-	result := make(map[string][]string)
+	metastoreToWorkspaceMap := make(map[string][]string)
+	workspaceToMetastoreMap := make(map[string]string)
 
 	for i := range metastores {
 		metastore := &metastores[i]
 
 		metastoreWorkspaces, err := r.GetWorkspacesForMetastore(ctx, metastore.MetastoreId)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		logger.Debug(fmt.Sprintf("Found %d possible workspaces for metastore %q", len(metastoreWorkspaces.WorkspaceIds), metastore.Name))
@@ -94,20 +97,21 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 		for _, workspaceId := range metastoreWorkspaces.WorkspaceIds {
 			if workspaceDeploymentName, ok := workspacesMap[workspaceId]; ok {
 				logger.Debug(fmt.Sprintf("Found workspace deployment %q for metastore %q", workspaceDeploymentName, metastore.Name))
-				result[metastore.MetastoreId] = append(result[metastore.MetastoreId], workspaceDeploymentName)
+				metastoreToWorkspaceMap[metastore.MetastoreId] = append(metastoreToWorkspaceMap[metastore.MetastoreId], workspaceDeploymentName)
+				workspaceToMetastoreMap[workspaceDeploymentName] = metastore.MetastoreId
 			}
 		}
 
-		if len(result[metastore.MetastoreId]) == 0 {
+		if len(metastoreToWorkspaceMap[metastore.MetastoreId]) == 0 {
 			logger.Warn(fmt.Sprintf("No running workspace found for metastore %s", metastore.Name))
 		} else {
-			logger.Debug(fmt.Sprintf("Found %d active workspaces for metastore %q", len(result[metastore.MetastoreId]), metastore.Name))
+			logger.Debug(fmt.Sprintf("Found %d active workspaces for metastore %q", len(metastoreToWorkspaceMap[metastore.MetastoreId]), metastore.Name))
 		}
 	}
 
-	logger.Debug(fmt.Sprintf("Metastore map: %+v", result))
+	logger.Debug(fmt.Sprintf("Metastore map: %+v", metastoreToWorkspaceMap))
 
-	return result, nil
+	return metastoreToWorkspaceMap, workspaceToMetastoreMap, nil
 }
 
 func (r *AccountRepository) GetWorkspaces(ctx context.Context) ([]Workspace, error) {
@@ -400,6 +404,27 @@ func (r *WorkspaceRepository) SetPermissionsOnResource(ctx context.Context, secu
 	}
 
 	return nil
+}
+
+func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.Time) ([]sql.QueryInfo, error) {
+	request := sql.ListQueryHistoryRequest{}
+
+	if startTime != nil {
+		request.FilterBy = &sql.QueryFilter{QueryStartTimeRange: &sql.TimeRange{StartTimeMs: int(startTime.UnixMilli())}}
+	}
+
+	queryInfo, err := r.client.QueryHistory.ListAll(ctx, sql.ListQueryHistoryRequest{
+		FilterBy: &sql.QueryFilter{
+			QueryStartTimeRange: &sql.TimeRange{StartTimeMs: int(startTime.UnixMilli())},
+		},
+		IncludeMetrics: true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return queryInfo, nil
 }
 
 func (r *WorkspaceRepository) Ping(ctx context.Context) error {

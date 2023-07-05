@@ -24,12 +24,13 @@ func (_m *mockDataSourceAccountRepository) EXPECT() *mockDataSourceAccountReposi
 }
 
 // GetWorkspaceMap provides a mock function with given fields: ctx, metastores, workspaces
-func (_m *mockDataSourceAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error) {
+func (_m *mockDataSourceAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error) {
 	ret := _m.Called(ctx, metastores, workspaces)
 
 	var r0 map[string][]string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []Workspace) (map[string][]string, error)); ok {
+	var r1 map[string]string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []Workspace) (map[string][]string, map[string]string, error)); ok {
 		return rf(ctx, metastores, workspaces)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []Workspace) map[string][]string); ok {
@@ -40,13 +41,21 @@ func (_m *mockDataSourceAccountRepository) GetWorkspaceMap(ctx context.Context, 
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []catalog.MetastoreInfo, []Workspace) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, []catalog.MetastoreInfo, []Workspace) map[string]string); ok {
 		r1 = rf(ctx, metastores, workspaces)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(map[string]string)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, []catalog.MetastoreInfo, []Workspace) error); ok {
+		r2 = rf(ctx, metastores, workspaces)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // mockDataSourceAccountRepository_GetWorkspaceMap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkspaceMap'
@@ -69,12 +78,12 @@ func (_c *mockDataSourceAccountRepository_GetWorkspaceMap_Call) Run(run func(ctx
 	return _c
 }
 
-func (_c *mockDataSourceAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]string, _a1 error) *mockDataSourceAccountRepository_GetWorkspaceMap_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *mockDataSourceAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]string, _a1 map[string]string, _a2 error) *mockDataSourceAccountRepository_GetWorkspaceMap_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *mockDataSourceAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []Workspace) (map[string][]string, error)) *mockDataSourceAccountRepository_GetWorkspaceMap_Call {
+func (_c *mockDataSourceAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []Workspace) (map[string][]string, map[string]string, error)) *mockDataSourceAccountRepository_GetWorkspaceMap_Call {
 	_c.Call.Return(run)
 	return _c
 }

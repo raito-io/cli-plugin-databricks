@@ -187,9 +187,10 @@ var databricks_metadata = ds.MetaData{
 			Type: ds.Table,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
-					Permission:        "SELECT",
-					Description:       "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
-					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
+					Permission:             "SELECT",
+					UsageGlobalPermissions: []string{ds.Read},
+					Description:            "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
+					GlobalPermissions:      ds.ReadGlobalPermission().StringValues(),
 				},
 				{
 					Permission:        "MODIFY",
@@ -197,7 +198,32 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
 				},
 			},
-			Actions:  []*ds.DataObjectTypeAction{},
+			Actions: []*ds.DataObjectTypeAction{
+				{
+					Action:        "SELECT",
+					GlobalActions: []string{ds.Read},
+				},
+				{
+					Action:        "UPDATE",
+					GlobalActions: []string{ds.Write},
+				},
+				{
+					Action:        "INSERT",
+					GlobalActions: []string{ds.Write},
+				},
+				{
+					Action:        "MERGE",
+					GlobalActions: []string{ds.Write},
+				},
+				{
+					Action:        "DELETE",
+					GlobalActions: []string{ds.Write},
+				},
+				{
+					Action:        "COPY",
+					GlobalActions: []string{ds.Write},
+				},
+			},
 			Children: []string{ds.Column},
 		},
 		{
@@ -210,7 +236,12 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
 				},
 			},
-			Actions:  []*ds.DataObjectTypeAction{},
+			Actions: []*ds.DataObjectTypeAction{
+				{
+					Action:        "SELECT",
+					GlobalActions: []string{ds.Read},
+				},
+			},
 			Children: []string{ds.Column},
 		},
 		{
@@ -221,14 +252,13 @@ var databricks_metadata = ds.MetaData{
 			Children:    nil,
 		},
 	},
-	// TODO usageMetaInfo
-	//UsageMetaInfo: &ds.UsageMetaInput{
-	//	DefaultLevel: ds.Table,
-	//	Levels: []*ds.UsageMetaInputDetail{
-	//		{
-	//			Name:            ds.Table,
-	//			DataObjectTypes: []string{ds.Table, ds.View, ExternalTable, MaterializedView, "shared-" + ds.Table, "shared-" + ds.View},
-	//		},
-	//	},
-	//},
+	UsageMetaInfo: &ds.UsageMetaInput{
+		DefaultLevel: ds.Table,
+		Levels: []*ds.UsageMetaInputDetail{
+			{
+				Name:            ds.Table,
+				DataObjectTypes: []string{ds.Table, ds.View},
+			},
+		},
+	},
 }
