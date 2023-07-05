@@ -57,7 +57,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			WorkspaceName:   workspace,
 			WorkspaceStatus: "RUNNING",
 		},
-	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil).Once()
+	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil, nil).Once()
 
 	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{

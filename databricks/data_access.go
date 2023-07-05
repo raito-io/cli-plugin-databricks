@@ -26,7 +26,7 @@ type dataAccessAccountRepository interface {
 	ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{}
 	ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{}
 	GetWorkspaces(ctx context.Context) ([]Workspace, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error)
 	ListWorkspaceAssignments(ctx context.Context, workspaceId int) ([]iam.PermissionAssignment, error)
 	UpdateWorkspaceAssignment(ctx context.Context, workspaceId int, principalId int64, permission []iam.WorkspacePermission) error
 }
@@ -447,7 +447,7 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 	var err error
 
 	for _, workspaceName := range workspaceDeploymentNames {
-		repo, werr := a.workspaceRepoFactory(fmt.Sprintf("https://%s.cloud.databricks.com", workspaceName), username, password)
+		repo, werr := a.workspaceRepoFactory(GetWorkspaceAddress(workspaceName), username, password)
 		if werr != nil {
 			err = werr
 			continue
@@ -632,7 +632,7 @@ func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.Con
 		return nil, nil, nil, err
 	}
 
-	metastoreWorkspaceMap, err := accountClient.GetWorkspaceMap(ctx, metastores, workspaces)
+	metastoreWorkspaceMap, _, err := accountClient.GetWorkspaceMap(ctx, metastores, workspaces)
 	if err != nil {
 		return nil, nil, nil, err
 	}
