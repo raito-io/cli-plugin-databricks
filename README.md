@@ -92,3 +92,6 @@ At present, the plugin does not provide support for functions, external location
 
 - **Limited support for usage**:
 The plugin offers support for a subset of SQL statements in a best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
+
+- **Support for Row and Column masking**:
+Currently, the plugin does not support row and column masking.
