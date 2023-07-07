@@ -141,6 +141,7 @@ var databricks_metadata = ds.MetaData{
 					Permission:        "USE SCHEMA",
 					Description:       "Required, but not sufficient to reference any objects in a schema. The principal also needs to have privileges on the individual securable objects.",
 					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
+					CannotBeGranted:   true,
 				},
 				{
 					Permission:  "EXECUTE",
