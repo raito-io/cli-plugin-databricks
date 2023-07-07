@@ -1,5 +1,8 @@
 <h1 align="center">
-  <img height="180px" src="https://github.com/raito-io/docs/raw/main/images/Raito_Logo_Vertical_RGB.png" alt="Raito" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/raito-io/raito-io.github.io/raw/master/assets/images/logo-vertical-dark%402x.png">
+    <img height="250px" src="https://github.com/raito-io/raito-io.github.io/raw/master/assets/images/logo-vertical%402x.png">
+  </picture>
 </h1>
 
 <h4 align="center">
@@ -27,6 +30,7 @@ This Raito CLI plugin implements the integration with Databricks. It can
  - Synchronize the users in a databricks account to an identity store in Raito Cloud.
  - Synchronize the Databricks Unity Catalog meta data (data structure, known permissions, ...) to a data source in Raito Cloud.
  - Synchronize the access providers from Raito Cloud into Databricks Unity Catalog grants.
+ - Synchronize the data usage information to Raito Cloud.
 
 [//]: # ( - Synchronize the data usage information to Raito Cloud.)
 
@@ -43,15 +47,15 @@ To use this plugin, you will need
 ## Usage
 To use the plugin, add the following snippet to your Raito CLI configuration file (`raito.yml`, by default) under the `targets` section:
 
-```json
+```yaml
  - name: databricks
-    connector-name: raito-io/cli-plugin-databricks
-    data-source-id: <<Databricks datasource ID>>   
-    identity-store-id: <<Databricks identitystore ID>>
+   connector-name: raito-io/cli-plugin-databricks
+   data-source-id: <<Databricks datasource ID>>   
+   identity-store-id: <<Databricks identitystore ID>>
 
-    databricks-account-id: <<Databricks account ID>>
-    databricks-user: <<Databricks user email address>>
-    databricks-password: <<Databricks user password>>
+   databricks-account-id: <<Databricks account ID>>
+   databricks-user: <<Databricks user email address>>
+   databricks-password: <<Databricks user password>>
 ```
 
 Next, replace the values of the indicated fields with your specific values:
@@ -81,3 +85,16 @@ $> raito run
 This will take the configuration from the `raito.yml` file (in the current working directory) and start a single synchronization.
 
 Note: if you have multiple targets configured in your configuration file, you can run only this target by adding `--only-targets databricks` at the end of the command.
+
+## Limitations
+
+It is essential to be aware of these limitations to ensure appropriate usage and manage expectations. The current limitations of the plugin include:
+
+- **Lack of support for functions, external locations, and shares**:
+At present, the plugin does not provide support for functions, external locations, or shares data objects.
+
+- **Limited support for usage**:
+The plugin offers support for a subset of SQL statements in a best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
+
+- **Support for Row and Column masking**:
+Currently, the plugin does not support row and column masking.
