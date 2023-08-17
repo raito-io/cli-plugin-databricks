@@ -98,18 +98,20 @@ var databricks_metadata = ds.MetaData{
 					Description: "Invoke a user defined function. The user also requires the USE CATALOG privilege on the catalog and the USE SCHEMA privilege on the schema.",
 				},
 				{
-					Permission:        "MODIFY",
-					Description:       "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
-					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
+					Permission:             "MODIFY",
+					Description:            "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
+					GlobalPermissions:      ds.WriteGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Write},
 				},
 				{
 					Permission:  "REFRESH",
 					Description: "Gives ability to refresh a materialized view",
 				},
 				{
-					Permission:        "SELECT",
-					Description:       "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
-					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
+					Permission:             "SELECT",
+					Description:            "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
+					GlobalPermissions:      ds.ReadGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Read},
 				},
 				{
 					Permission:        "CREATE FUNCTION",
@@ -148,18 +150,20 @@ var databricks_metadata = ds.MetaData{
 					Description: "Invoke a user defined function. The user also requires the USE CATALOG privilege on the catalog and the USE SCHEMA privilege on the schema.",
 				},
 				{
-					Permission:        "MODIFY",
-					Description:       "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
-					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
+					Permission:             "MODIFY",
+					Description:            "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
+					GlobalPermissions:      ds.WriteGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Write},
 				},
 				{
 					Permission:  "REFRESH",
 					Description: "Gives ability to refresh a materialized view",
 				},
 				{
-					Permission:        "SELECT",
-					Description:       "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
-					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
+					Permission:             "SELECT",
+					Description:            "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
+					GlobalPermissions:      ds.ReadGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Read},
 				},
 				{
 					Permission:        "CREATE FUNCTION",
@@ -194,9 +198,10 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions:      ds.ReadGlobalPermission().StringValues(),
 				},
 				{
-					Permission:        "MODIFY",
-					Description:       "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
-					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
+					Permission:             "MODIFY",
+					Description:            "COPY INTO, UPDATE DELETE, INSERT, or MERGE INTO the table.",
+					GlobalPermissions:      ds.WriteGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Write},
 				},
 			},
 			Actions: []*ds.DataObjectTypeAction{
@@ -232,9 +237,10 @@ var databricks_metadata = ds.MetaData{
 			Type: ds.View,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
-					Permission:        "SELECT",
-					Description:       "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
-					GlobalPermissions: ds.ReadGlobalPermission().StringValues(),
+					Permission:             "SELECT",
+					Description:            "Query a table or view, invoke a user defined or anonymous function, or select ANY FILE. The user needs SELECT on the table, view, or function, as well as USE CATALOG on the object’s catalog and USE SCHEMA on the object’s schema.",
+					GlobalPermissions:      ds.ReadGlobalPermission().StringValues(),
+					UsageGlobalPermissions: []string{ds.Read},
 				},
 			},
 			Actions: []*ds.DataObjectTypeAction{
