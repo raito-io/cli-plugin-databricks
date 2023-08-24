@@ -6,7 +6,7 @@
 </h1>
 
 <h4 align="center">
-  Databricks plugin for the Raito CLI
+  Databricks Unity Catalog plugin for the Raito CLI
 </h4>
 
 <p align="center">
@@ -16,15 +16,10 @@
 
 <hr/>
 
-# Raito CLI Plugin - Databricks
+# Raito CLI Plugin - Databricks Unity Catalog
 
-:rotating_light: :rotating_light: :rotating_light:
-
-**Note: This repository is still in a very early stage of development.  
-It contains code that will allow communication with Raito Cloud once it is released.
+**Note: This repository is still in an early stage of development.
 At this point, no contributions are accepted to the project yet.**
-
-:rotating_light: :rotating_light: :rotating_light:
 
 This Raito CLI plugin implements the integration with Databricks. It can
  - Synchronize the users in a databricks account to an identity store in Raito Cloud.
@@ -41,6 +36,7 @@ To use this plugin, you will need
 1. The Raito CLI to be correctly installed. You can check out our [documentation](http://docs.raito.io/docs/cli/installation) for help on this.
 2. A Raito Cloud account to synchronize your Databricks account with. If you don't have this yet, visit our webpage at (https://raito.io) and request a trial account.
 3. An admin user on your databricks account with admin access on all workspaces
+4. Within the databricks account and all workspaces, Unity Catalog should be enabled
 
 [//]: # (A full example on how to start using Raito Cloud with Databricks can be found as a [guide in our documentation]&#40;http://docs.raito.io/docs/guide/cloud&#41;.)
 
