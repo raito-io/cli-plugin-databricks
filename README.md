@@ -50,6 +50,8 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
    identity-store-id: <<Databricks identitystore ID>>
 
    databricks-account-id: <<Databricks account ID>>
+   databricks-client-id: <<Databricks client ID>>
+   databricks-client-secret: <<Databricks client secret>>
    databricks-user: <<Databricks user email address>>
    databricks-password: <<Databricks user password>>
 ```
@@ -57,9 +59,11 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
 Next, replace the values of the indicated fields with your specific values:
 - `<<Databricks datasource ID>>`: the ID of the Data source you created in the Raito Cloud UI.
 - `<<Databricks identitystore ID>>`: the ID of the Identity Store you created in the Raito Cloud UI.
-- `<<Databricks account ID>>`: the Databricks account ID
-- `<<Databricks user email address>>`: The email address of an admin user in your databricks account with admin access to all workspaces
-- `<<Databricks user password>>`: The email password of the user specified above
+- `<<Databricks account ID>>`: the Databricks account ID`
+- `<<Databricks client ID>>`: if using oauth, the Databricks client ID of an account with admin access to all workspaces
+- `<<Databricks client secret>>`: if using oauth, the Databricks client secret of the account specified in `databricks-client-id`
+- `<<Databricks user email address>>`: if using basic auth, the email address of an admin user in your databricks account with admin access to all workspaces
+- `<<Databricks user password>>`: if using basic auth, the email password of the `databricks-user` user
 
 
 You will also need to configure the Raito CLI further to connect to your Raito Cloud account, if that's not set up yet.
