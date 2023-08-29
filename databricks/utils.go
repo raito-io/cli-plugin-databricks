@@ -26,24 +26,19 @@ func cleanDoubleQuotes(input string) string {
 	return input
 }
 
-func getAndValidateParameters(configParams *config.ConfigMap) (accountId string, username string, password string, err error) {
+func getAndValidateParameters(configParams *config.ConfigMap) (accountId string, repoCredentials RepositoryCredentials, err error) {
 	accountId = configParams.GetString(DatabricksAccountId)
 
 	if accountId == "" {
-		return "", "", "", fmt.Errorf("%s is not set", DatabricksAccountId)
+		return "", RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
 	}
 
-	username = configParams.GetString(DatabricksUser)
-	if username == "" {
-		return "", "", "", fmt.Errorf("%s is not set", DatabricksUser)
-	}
+	username := configParams.GetString(DatabricksUser)
+	password := configParams.GetString(DatabricksPassword)
+	clientId := configParams.GetString(DatabricksClientId)
+	clientSecret := configParams.GetString(DatabricksClientSecret)
 
-	password = configParams.GetString(DatabricksPassword)
-	if password == "" {
-		return "", "", "", fmt.Errorf("%s is not set", DatabricksPassword)
-	}
-
-	return accountId, username, password, nil
+	return accountId, RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
 }
 
 func addToSetInMap[K comparable, V comparable](m map[K]set.Set[V], k K, v ...V) {
@@ -58,11 +53,11 @@ type workspaceRepo interface {
 	Ping(ctx context.Context) error
 }
 
-func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, username, password string, workspaces []string, repoFn func(string, string, string) (R, error)) (*R, error) {
+func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials RepositoryCredentials, workspaces []string, repoFn func(string, RepositoryCredentials) (R, error)) (*R, error) {
 	var err error
 
 	for _, workspaceName := range workspaces {
-		repo, werr := repoFn(GetWorkspaceAddress(workspaceName), username, password)
+		repo, werr := repoFn(GetWorkspaceAddress(workspaceName), repoCredentials)
 		if werr != nil {
 			err = multierror.Append(err, werr)
 			continue

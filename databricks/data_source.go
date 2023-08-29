@@ -31,17 +31,17 @@ type dataSourceWorkspaceRepository interface {
 }
 
 type DataSourceSyncer struct {
-	accountRepoFactory   func(user string, password string, accountId string) dataSourceAccountRepository
-	workspaceRepoFactory func(host string, user string, password string) (dataSourceWorkspaceRepository, error)
+	accountRepoFactory   func(user string, repoCredentials RepositoryCredentials) dataSourceAccountRepository
+	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 }
 
 func NewDataSourceSyncer() *DataSourceSyncer {
 	return &DataSourceSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) dataSourceAccountRepository {
-			return NewAccountRepository(user, password, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, user string, password string) (dataSourceWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, user, password)
+		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, repoCredentials)
 		},
 	}
 }
@@ -59,12 +59,12 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		}
 	}()
 
-	accountId, username, password, err := getAndValidateParameters(configParams)
+	accountId, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
 
-	accountClient := d.accountRepoFactory(username, password, accountId)
+	accountClient := d.accountRepoFactory(accountId, repoCredentials)
 
 	dataSourceHandler.SetDataSourceFullname(accountId)
 	dataSourceHandler.SetDataSourceName(accountId)
@@ -156,14 +156,16 @@ func (d *DataSourceSyncer) getWorkspaces(ctx context.Context, dataSourceHandler 
 }
 
 func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configParams *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
-	username := configParams.GetString(DatabricksUser)
-	password := configParams.GetString(DatabricksPassword)
+	_, repoCredentials, err := getAndValidateParameters(configParams)
+	if err != nil {
+		return err
+	}
 
 	logger.Debug(fmt.Sprintf("Get data objects for metastore %s", metastore.Name))
 	logger.Debug(fmt.Sprintf("Will try %d workspaces. %+v", len(workspaceDeploymentNames), workspaceDeploymentNames))
 
 	// Select workspace
-	repo, err := selectWorkspaceRepo(ctx, username, password, workspaceDeploymentNames, d.workspaceRepoFactory)
+	repo, err := selectWorkspaceRepo(ctx, repoCredentials, workspaceDeploymentNames, d.workspaceRepoFactory)
 	if err != nil {
 		return err
 	}

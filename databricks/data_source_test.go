@@ -114,10 +114,10 @@ func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyn
 	}
 
 	return &DataSourceSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) dataSourceAccountRepository {
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
 			return mockAccountRepo
 		},
-		workspaceRepoFactory: func(host string, user string, password string) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

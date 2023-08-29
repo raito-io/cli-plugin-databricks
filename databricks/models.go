@@ -101,3 +101,11 @@ type databricksUsersFilter struct {
 type databricksGroupsFilter struct {
 	groupname *string
 }
+
+type RepositoryCredentials struct {
+	Username string
+	Password string
+
+	ClientId     string
+	ClientSecret string
+}

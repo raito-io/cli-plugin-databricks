@@ -42,17 +42,17 @@ type dataUsageWorkspaceRepository interface {
 var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
-	accountRepoFactory   func(user string, password string, accountId string) dataUsageAccountRepository
-	workspaceRepoFactory func(host string, user string, password string) (dataUsageWorkspaceRepository, error)
+	accountRepoFactory   func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository
+	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
 	return &DataUsageSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) dataUsageAccountRepository {
-			return NewAccountRepository(user, password, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, user string, password string) (dataUsageWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, user, password)
+		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, repoCredentials)
 		},
 	}
 }
@@ -94,12 +94,12 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
-	_, username, password, err := getAndValidateParameters(configParams)
+	_, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
 
-	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), username, password)
+	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), repoCredentials)
 	if err != nil {
 		return err
 	}
@@ -511,12 +511,12 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 }
 
 func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []Workspace, map[string]string, error) {
-	accountId, username, password, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	accountClient := d.accountRepoFactory(username, password, accountId)
+	accountClient := d.accountRepoFactory(accountId, repoCredentials)
 
 	metastores, err := accountClient.ListMetastores(ctx)
 	if err != nil {
