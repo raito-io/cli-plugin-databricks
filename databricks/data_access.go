@@ -110,6 +110,8 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 		return err
 	}
 
+	logger.Debug(fmt.Sprintf("Found %d workspace assignments for workspace %s", len(assignments), workspace.WorkspaceName))
+
 	for _, assignment := range assignments {
 		var principalId string
 
@@ -117,8 +119,13 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 			principalId = assignment.Principal.UserName
 		} else if assignment.Principal.GroupName != "" {
 			principalId = assignment.Principal.GroupName
+		} else if assignment.Principal.ServicePrincipalName != "" {
+			logger.Warn(fmt.Sprintf("Service principles assignments are not supported at this moment. Skipping assignment for service principal %s", assignment.Principal.ServicePrincipalName))
+			continue
 		} else {
-			return fmt.Errorf("invalid principal: %v", assignment.Principal)
+			logger.Error(fmt.Sprintf("Unknown principal assignment type %+v", assignment.Principal))
+
+			continue
 		}
 
 		do := data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: workspaceType}
