@@ -22,13 +22,13 @@ type identityStoreAccountRepository interface {
 }
 
 type IdentityStoreSyncer struct {
-	accountRepoFactory func(user string, password string, accountId string) identityStoreAccountRepository
+	accountRepoFactory func(accountId string, repoCredentials RepositoryCredentials) identityStoreAccountRepository
 }
 
 func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) identityStoreAccountRepository {
-			return NewAccountRepository(user, password, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) identityStoreAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
 	}
 }
@@ -42,12 +42,12 @@ func (i *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context) (*is.M
 }
 
 func (i *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	accountId, user, password, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
 
-	accountRepo := i.accountRepoFactory(user, password, accountId)
+	accountRepo := i.accountRepoFactory(accountId, repoCredentials)
 
 	userMemberMap, err := i.getGroups(ctx, identityHandler, accountRepo)
 	if err != nil {

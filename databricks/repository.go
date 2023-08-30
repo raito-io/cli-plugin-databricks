@@ -14,25 +14,128 @@ import (
 	"github.com/imroc/req/v3"
 )
 
-type AccountRepository struct {
-	// currently not possible to use the databricks SDK as there is a bug in the List metatsores call
-	client *req.Client
+const databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
 
-	accountId string
+type accountRepositoryRequestFactory interface {
+	NewRequest(ctx context.Context) (*req.Request, error)
 }
 
-func NewAccountRepository(user string, password string, accountId string) *AccountRepository {
+func getDefaultClient() *req.Client {
+	return req.NewClient().SetBaseURL("https://accounts.cloud.databricks.com/").SetCommonHeader("user-agent", "Raito")
+}
+
+type BasicAuthAccountRepositoryRequestFactory struct {
+	client *req.Client
+}
+
+func NewBasicAuthAccountRepositoryRequestFactory(user, password string) *BasicAuthAccountRepositoryRequestFactory {
+	logger.Debug("Creating basic auth request factory")
+
+	return &BasicAuthAccountRepositoryRequestFactory{
+		client: getDefaultClient().SetCommonBasicAuth(user, password),
+	}
+}
+
+func (f *BasicAuthAccountRepositoryRequestFactory) NewRequest(ctx context.Context) (*req.Request, error) {
+	return f.client.R().SetContext(ctx), nil
+}
+
+type OAuthRepositoryRequestFactory struct {
+	client *req.Client
+
+	clientId     string
+	clientSecret string
+	accountId    string
+
+	token       string
+	tokenExpiry time.Time
+}
+
+func NewOAuthAccountRepositoryRequestFactory(clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
+	logger.Debug("Creating oauth request factory")
+
+	return &OAuthRepositoryRequestFactory{
+		client:       getDefaultClient(),
+		clientId:     clientId,
+		clientSecret: clientSecret,
+		accountId:    accountId,
+	}
+}
+
+func (f *OAuthRepositoryRequestFactory) NewRequest(ctx context.Context) (*req.Request, error) {
+	if f.tokenExpiry.Before(time.Now()) {
+		if err := f.RefreshToken(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return f.client.R().SetBearerAuthToken(f.token).SetContext(ctx), nil
+}
+
+func (f *OAuthRepositoryRequestFactory) RefreshToken(ctx context.Context) error {
+	logger.Debug("Refresh databricks oauth token")
+
+	accessTokenResponse := struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
+		Scope       string `json:"scope"`
+		TokenType   string `json:"token_type"`
+	}{}
+
+	response, err := f.client.R().SetContext(ctx).SetFormData(map[string]string{"grant_type": "client_credentials", "scope": "all-apis"}).SetPathParams(map[string]string{"account_id": f.accountId}).
+		SetBasicAuth(f.clientId, f.clientSecret).Post("/oidc/accounts/{account_id}/v1/token")
+
+	if err != nil {
+		return err
+	}
+
+	err = response.UnmarshalJson(&accessTokenResponse)
+	if err != nil {
+		return err
+	}
+
+	f.token = accessTokenResponse.AccessToken
+	f.tokenExpiry = time.Now().Add(time.Duration(accessTokenResponse.ExpiresIn-5) * time.Second)
+
+	return nil
+}
+
+type AccountRepository struct {
+	// currently not possible to use the databricks SDK as there is a bug in the List metatsores call
+	clientFactory accountRepositoryRequestFactory
+
+	accountId string
+
+	// If OAuth is used we store the token here so we can use it for subsequent calls
+	token       string
+	tokenExpiry time.Time
+}
+
+func NewAccountRepository(credentials RepositoryCredentials, accountId string) *AccountRepository {
+	var factory accountRepositoryRequestFactory
+
+	if credentials.ClientId != "" && credentials.ClientSecret != "" {
+		factory = NewOAuthAccountRepositoryRequestFactory(credentials.ClientId, credentials.ClientSecret, accountId)
+	} else {
+		factory = NewBasicAuthAccountRepositoryRequestFactory(credentials.Username, credentials.Password)
+	}
+
 	return &AccountRepository{
-		client:    req.NewClient().SetCommonBasicAuth(user, password).SetBaseURL("https://accounts.cloud.databricks.com/"),
-		accountId: accountId,
+		clientFactory: factory,
+		accountId:     accountId,
 	}
 }
 
 func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error) {
 	var result catalog.ListMetastoresResponse
-	response, err := r.client.R().
-		SetContext(ctx).
-		SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+
+	request, err := r.clientFactory.NewRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request.
+		SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 		SetSuccessResult(&result).
 		SetPathParam("accountId", r.accountId).
 		Get("/api/2.0/accounts/{accountId}/metastores")
@@ -50,9 +153,14 @@ func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.Metas
 
 func (r *AccountRepository) GetWorkspacesForMetastore(ctx context.Context, metastoreId string) (*MetastoreAssignment, error) {
 	var result MetastoreAssignment
-	response, err := r.client.R().
-		SetContext(ctx).
-		SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+
+	request, err := r.clientFactory.NewRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request.
+		SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 		SetSuccessResult(&result).
 		SetPathParams(map[string]string{"account_id": r.accountId, "metastore_id": metastoreId}).
 		EnableDump().
@@ -116,9 +224,14 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 
 func (r *AccountRepository) GetWorkspaces(ctx context.Context) ([]Workspace, error) {
 	var result []Workspace
-	response, err := r.client.R().
-		SetContext(ctx).
-		SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+
+	request, err := r.clientFactory.NewRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request.
+		SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 		SetSuccessResult(&result).
 		SetPathParam("accountId", r.accountId).
 		Get("/api/2.0/accounts/{accountId}/workspaces")
@@ -166,9 +279,15 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 			queryParams["startIndex"] = startIndex
 
 			var result iam.ListUsersResponse
-			response, err := r.client.R().
-				SetContext(ctx).
-				SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+
+			request, err := r.clientFactory.NewRequest(ctx)
+			if err != nil {
+				send(err)
+				return
+			}
+
+			response, err := request.
+				SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 				SetSuccessResult(&result).SetPathParam("account_id", r.accountId).
 				SetQueryParams(queryParams).
 				Get("/api/2.0/accounts/{account_id}/scim/v2/Users")
@@ -234,9 +353,15 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 			queryParams["startIndex"] = startIndex
 
 			var result iam.ListGroupsResponse
-			response, err := r.client.R().
-				SetContext(ctx).
-				SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+
+			request, err := r.clientFactory.NewRequest(ctx)
+			if err != nil {
+				send(err)
+				return
+			}
+
+			response, err := request.
+				SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 				SetSuccessResult(&result).SetPathParam("account_id", r.accountId).
 				SetQueryParams(queryParams).
 				Get("/api/2.0/accounts/{account_id}/scim/v2/Groups")
@@ -273,9 +398,13 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 func (r *AccountRepository) ListWorkspaceAssignments(ctx context.Context, workspaceId int) ([]iam.PermissionAssignment, error) {
 	var result iam.PermissionAssignments
 
-	response, err := r.client.R().
-		SetContext(ctx).
-		SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+	request, err := r.clientFactory.NewRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := request.
+		SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 		SetSuccessResult(&result).
 		SetPathParams(map[string]string{"account_id": r.accountId, "workspace_id": strconv.Itoa(workspaceId)}).
 		Get("/api/2.0/accounts/{account_id}/workspaces/{workspace_id}/permissionassignments")
@@ -303,7 +432,12 @@ func (r *AccountRepository) UpdateWorkspaceAssignment(ctx context.Context, works
 		return err
 	}
 
-	response, err := r.client.R().SetContext(ctx).SetHeader("X-Databricks-Account-Console-API-Version", "2.0").
+	request, err := r.clientFactory.NewRequest(ctx)
+	if err != nil {
+		return err
+	}
+
+	response, err := request.SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 		SetPathParams(map[string]string{"account_id": r.accountId, "workspace_id": strconv.Itoa(workspaceId), "principal_id": strconv.FormatInt(principalId, 10)}).
 		SetBody(jsonBytes).Put("/api/2.0/accounts/{account_id}/workspaces/{workspace_id}/permissionassignments/principals/{principal_id}")
 
@@ -322,11 +456,13 @@ type WorkspaceRepository struct {
 	client *databricks.WorkspaceClient
 }
 
-func NewWorkspaceRepository(host string, user string, password string) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(host string, credentials RepositoryCredentials) (*WorkspaceRepository, error) {
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
-		Username: user,
-		Password: password,
-		Host:     host,
+		Username:     credentials.Username,
+		Password:     credentials.Password,
+		ClientID:     credentials.ClientId,
+		ClientSecret: credentials.ClientSecret,
+		Host:         host,
 	})
 	if err != nil {
 		return nil, err

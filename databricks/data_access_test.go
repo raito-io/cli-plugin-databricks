@@ -486,10 +486,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 	}
 
 	return &AccessSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) dataAccessAccountRepository {
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository {
 			return accountRepo
 		},
-		workspaceRepoFactory: func(host string, user string, password string) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

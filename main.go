@@ -11,9 +11,8 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 
 	"cli-plugin-databricks/databricks"
+	"cli-plugin-databricks/version"
 )
-
-var version = "0.0.0"
 
 var logger hclog.Logger
 
@@ -29,11 +28,13 @@ func main() {
 		&info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "Databricks",
-				Version: plugin.ParseVersion(version),
+				Version: plugin.ParseVersion(version.Version),
 				Parameters: []*plugin.ParameterInfo{
 					{Name: databricks.DatabricksAccountId, Description: "The Databricks account to connect to.", Mandatory: true},
-					{Name: databricks.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: true},
-					{Name: databricks.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: true},
+					{Name: databricks.DatabricksClientId, Description: "The (oauth) client ID to use when authenticating against the Databricks account.", Mandatory: false},
+					{Name: databricks.DatabricksClientSecret, Description: "The (oauth)  client Secret to use when authentic against the Databricks account.", Mandatory: false},
+					{Name: databricks.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: false},
+					{Name: databricks.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: false},
 					{Name: databricks.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 14. Maximum is 90 days.", Mandatory: false},
 				},
 			},

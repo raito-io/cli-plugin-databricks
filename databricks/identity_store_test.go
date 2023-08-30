@@ -132,7 +132,7 @@ func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *mockIdentit
 
 	repo := newMockIdentityStoreAccountRepository(t)
 
-	return &IdentityStoreSyncer{accountRepoFactory: func(user string, password string, accountId string) identityStoreAccountRepository {
+	return &IdentityStoreSyncer{accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) identityStoreAccountRepository {
 		return repo
 	}}, repo
 }

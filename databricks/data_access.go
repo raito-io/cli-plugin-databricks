@@ -43,19 +43,19 @@ type dataAccessWorkspaceRepository interface {
 }
 
 type AccessSyncer struct {
-	accountRepoFactory   func(user string, password string, accountId string) dataAccessAccountRepository
-	workspaceRepoFactory func(host string, user string, password string) (dataAccessWorkspaceRepository, error)
+	accountRepoFactory   func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository
+	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error)
 
 	privilegeCache PrivilegeCache
 }
 
 func NewAccessSyncer() *AccessSyncer {
 	return &AccessSyncer{
-		accountRepoFactory: func(user string, password string, accountId string) dataAccessAccountRepository {
-			return NewAccountRepository(user, password, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, user string, password string) (dataAccessWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, user, password)
+		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, repoCredentials)
 		},
 
 		privilegeCache: NewPrivilegeCache(),
@@ -96,12 +96,12 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *Workspace, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap) error {
 	logger.Debug(fmt.Sprintf("Sync workspace %s from target", workspace.WorkspaceName))
 
-	accountId, username, password, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
 
-	accountClient := a.accountRepoFactory(username, password, accountId)
+	accountClient := a.accountRepoFactory(accountId, repoCredentials)
 
 	privilegesToSync := make(map[string][]string)
 
@@ -180,12 +180,12 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		}
 	}()
 
-	accountId, username, password, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
 
-	accountRepo := a.accountRepoFactory(username, password, accountId)
+	accountRepo := a.accountRepoFactory(accountId, repoCredentials)
 
 	_, _, metastoreWorkspaceMap, err := a.loadMetastores(ctx, configMap)
 	metastoreClientCache := make(map[string]dataAccessWorkspaceRepository)
@@ -195,10 +195,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			return repo, nil
 		}
 
-		username := configMap.GetString(DatabricksUser)
-		password := configMap.GetString(DatabricksPassword)
-
-		repo, werr := selectWorkspaceRepo(ctx, username, password, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
+		repo, werr := selectWorkspaceRepo(ctx, repoCredentials, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
 		if werr != nil {
 			return nil, werr
 		}
@@ -436,18 +433,19 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 }
 
 func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
-	username := configMap.GetString(DatabricksUser)
-	password := configMap.GetString(DatabricksPassword)
+	_, repoCredentials, err := getAndValidateParameters(configMap)
+	if err != nil {
+		return err
+	}
 
 	logger.Debug(fmt.Sprintf("Get data access objects from metastore %s", metastore.Name))
 	logger.Debug(fmt.Sprintf("Will try %d workspaces. %+v", len(workspaceDeploymentNames), workspaceDeploymentNames))
 
 	// Select workspace
 	var workspaceRepo dataAccessWorkspaceRepository
-	var err error
 
 	for _, workspaceName := range workspaceDeploymentNames {
-		repo, werr := a.workspaceRepoFactory(GetWorkspaceAddress(workspaceName), username, password)
+		repo, werr := a.workspaceRepoFactory(GetWorkspaceAddress(workspaceName), repoCredentials)
 		if werr != nil {
 			err = werr
 			continue
@@ -611,12 +609,12 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 }
 
 func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []Workspace, map[string][]string, error) {
-	accountId, username, password, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	accountClient := a.accountRepoFactory(username, password, accountId)
+	accountClient := a.accountRepoFactory(accountId, repoCredentials)
 
 	metastores, err := accountClient.ListMetastores(ctx)
 	if err != nil {
