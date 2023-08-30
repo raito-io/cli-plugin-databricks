@@ -12,8 +12,6 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/imroc/req/v3"
-
-	"cli-plugin-databricks/version"
 )
 
 const databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
@@ -23,7 +21,7 @@ type accountRepositoryRequestFactory interface {
 }
 
 func getDefaultClient() *req.Client {
-	return req.NewClient().SetBaseURL("https://accounts.cloud.databricks.com/").SetCommonHeader("user-agent", fmt.Sprintf("RaitoDatabricksPlugin/%s", version.Version))
+	return req.NewClient().SetBaseURL("https://accounts.cloud.databricks.com/").SetCommonHeader("user-agent", "Raito")
 }
 
 type BasicAuthAccountRepositoryRequestFactory struct {
