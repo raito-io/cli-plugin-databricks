@@ -35,7 +35,7 @@ func main() {
 					{Name: databricks.DatabricksClientSecret, Description: "The (oauth)  client Secret to use when authentic against the Databricks account.", Mandatory: false},
 					{Name: databricks.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: false},
 					{Name: databricks.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: false},
-					{Name: databricks.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 14. Maximum is 90 days.", Mandatory: false},
+					{Name: databricks.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 90. Maximum is 90 days.", Mandatory: false},
 				},
 			},
 		},
