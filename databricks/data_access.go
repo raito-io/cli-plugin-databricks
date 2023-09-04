@@ -601,7 +601,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  do,
-						Permissions: []string{privilege.String()},
+						Permissions: []string{strings.ToUpper(strings.ReplaceAll(privilege.String(), "_", " "))},
 					},
 				},
 				Who: &whoItems,

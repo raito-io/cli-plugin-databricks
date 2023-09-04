@@ -198,7 +198,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						FullName: "metastore-id1.catalog-1",
 						Type:     catalogType,
 					},
-					Permissions: []string{"USE_CATALOG"},
+					Permissions: []string{"USE CATALOG"},
 				},
 			},
 		},
