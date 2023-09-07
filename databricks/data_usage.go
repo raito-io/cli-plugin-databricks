@@ -221,7 +221,7 @@ func (d *DataUsageSyncer) getTableInfoMap(ctx context.Context, workspaceRepo dat
 				return nil, err
 			}
 
-			for ti := range tables {
+			for ti := range tables { //nolint:gosimple
 				tableSchemaCatalogMap[tables[ti].Name] = append(tableSchemaCatalogMap[tables[ti].Name], tables[ti])
 			}
 		}
@@ -400,7 +400,7 @@ func (d *DataUsageSyncer) parseRegularStatementWithSingleGroup(regex *regexp.Reg
 	return whatItems, queryInfo.Metrics.ReadBytes, queryInfo.Metrics.RowsProducedCount
 }
 
-func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId string, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo, permissions ...string) []sync_from_target.WhatItem { //nolint:cyclop
+func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId string, tableInfo map[string][]catalog.TableInfo, userLastUsage map[string]*UserDefaults, metastore *catalog.MetastoreInfo, permissions ...string) []sync_from_target.WhatItem {
 	data_object_names := set.NewSet[string]()
 
 	for _, tableNameString := range tableNames {
