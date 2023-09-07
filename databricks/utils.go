@@ -18,7 +18,7 @@ func init() {
 	logger = base.Logger()
 }
 
-func cleanDoubleQuotes(input string) string {
+func cleanDoubleQuotes(input string) string { //nolint:unused
 	if len(input) >= 2 && strings.HasPrefix(input, "\"") && strings.HasSuffix(input, "\"") {
 		return input[1 : len(input)-1]
 	}
@@ -83,7 +83,7 @@ func GetWorkspaceAddress(deploymentId string) string {
 	return fmt.Sprintf("https://%s.cloud.databricks.com", deploymentId)
 }
 
-func reverse[S ~[]E, E any](s S) {
+func reverse[S ~[]E, E any](s S) { //nolint:unused
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
