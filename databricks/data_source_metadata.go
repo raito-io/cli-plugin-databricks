@@ -1,9 +1,13 @@
 package databricks
 
-import ds "github.com/raito-io/cli/base/data_source"
+import (
+	"github.com/raito-io/cli/base/access_provider"
+	ds "github.com/raito-io/cli/base/data_source"
+)
 
 var databricks_metadata = ds.MetaData{
-	Type: "databricks",
+	Type:                  "databricks",
+	SupportsApInheritance: false,
 	//SupportedFeatures: []string{ds.RowFiltering, ds.ColumnMasking}, //TODO include this in future versions
 	DataObjectTypes: []*ds.DataObjectType{
 		{
@@ -266,6 +270,17 @@ var databricks_metadata = ds.MetaData{
 				Name:            ds.Table,
 				DataObjectTypes: []string{ds.Table, ds.View},
 			},
+		},
+	},
+	AccessProviderTypes: []*ds.AccessProviderType{
+		{
+			Type:                          access_provider.AclSet,
+			Label:                         access_provider.AclSet,
+			IsNamedEntity:                 false,
+			CanBeCreated:                  true,
+			CanBeAssumed:                  false,
+			CanAssumeMultiple:             false,
+			AllowedWhoAccessProviderTypes: []string{access_provider.AclSet},
 		},
 	},
 }
