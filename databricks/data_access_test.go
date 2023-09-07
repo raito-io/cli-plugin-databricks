@@ -6,8 +6,10 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
@@ -152,6 +154,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "test-workspace_USER",
 			ActualName: "test-workspace_USER",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
 			},
@@ -171,6 +174,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "test-workspace_ADMIN",
 			ActualName: "test-workspace_ADMIN",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"dieter@raito.io"},
 			},
@@ -190,6 +194,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1_SELECT",
 			ActualName: "metastore-id1.catalog-1_SELECT",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Groups: []string{"group1"},
 			},
@@ -209,6 +214,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1_USE_CATALOG",
 			ActualName: "metastore-id1.catalog-1_USE_CATALOG",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users:  []string{"ruben@raito.io"},
 				Groups: []string{"group1"},
@@ -229,6 +235,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1_EXECUTE",
 			ActualName: "metastore-id1.catalog-1_EXECUTE",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
 			},
@@ -248,6 +255,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1.schema-1_EXECUTE",
 			ActualName: "metastore-id1.catalog-1.schema-1_EXECUTE",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Groups: []string{"principal1"},
 			},
@@ -267,6 +275,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1.schema-1_SELECT",
 			ActualName: "metastore-id1.catalog-1.schema-1_SELECT",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
 				// Groups principal1 should be excluded
@@ -287,6 +296,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1.schema-1_MODIFY",
 			ActualName: "metastore-id1.catalog-1.schema-1_MODIFY",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
 			},
@@ -306,6 +316,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			NamingHint: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
 			ActualName: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
 			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"bart@raito.io"},
 			},

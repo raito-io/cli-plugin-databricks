@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
@@ -159,6 +161,7 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  &data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: workspaceType},
@@ -610,6 +613,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  do,
