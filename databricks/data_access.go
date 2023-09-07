@@ -669,6 +669,8 @@ func typeToSecurableType(t string) (catalog.SecurableType, error) {
 		return catalog.SecurableTypeCatalog, nil
 	case data_source.Schema:
 		return catalog.SecurableTypeSchema, nil
+	case data_source.Table:
+		return catalog.SecurableTypeTable, nil
 	default:
 		return "", fmt.Errorf("unknown type %q", t)
 	}
