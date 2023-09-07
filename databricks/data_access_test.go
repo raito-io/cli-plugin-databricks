@@ -118,6 +118,27 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
+	mockWorkspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
+		{
+			Name:        "table-1",
+			MetastoreId: metastore1.MetastoreId,
+			CatalogName: "catalog-1",
+			SchemaName:  "schema-1",
+			Comment:     "comment on table-1",
+			FullName:    "catalog-1.schema-1.table-1",
+			TableType:   catalog.TableTypeManaged,
+		},
+	}, nil)
+	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").
+		Return(&catalog.PermissionsList{
+			PrivilegeAssignments: []catalog.PrivilegeAssignment{
+				{
+					Principal:  "bart@raito.io",
+					Privileges: []catalog.Privilege{catalog.PrivilegeSelect},
+				},
+			},
+		}, nil).Once()
+
 	// When
 	err := accessSyncer.SyncAccessProvidersFromTarget(context.Background(), accessProviderHandlerMock, configMap)
 
@@ -279,6 +300,23 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 			},
 		},
+		{
+			ExternalId: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
+			Name:       "metastore-id1.catalog-1.schema-1.table-1_SELECT",
+			NamingHint: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
+			ActualName: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
+			Action:     sync_from_target.Grant,
+			Who: &sync_from_target.WhoItem{
+				Users: []string{"bart@raito.io"},
+			},
+			What: []sync_from_target.WhatItem{{
+				DataObject: &data_source.DataObjectReference{
+					FullName: "metastore-id1.catalog-1.schema-1.table-1",
+					Type:     data_source.Table,
+				},
+				Permissions: []string{"SELECT"},
+			}},
+		},
 	})
 }
 
@@ -304,11 +342,11 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					},
 				},
 				Who: sync_to_target.WhoItem{
-					UsersInheritedNativeGroupsExcluded: []string{"ruben@raito.io"},
-					NativeGroupsInherited:              []string{"group1"},
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
 				},
 				DeletedWho: &sync_to_target.WhoItem{
-					UsersInheritedNativeGroupsExcluded: []string{"dieter@raito.io"},
+					Users: []string{"dieter@raito.io"},
 				},
 			},
 			{
@@ -323,10 +361,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					},
 				},
 				Who: sync_to_target.WhoItem{
-					UsersInheritedNativeGroupsExcluded: []string{"wannes@raito.io"},
+					Users: []string{"wannes@raito.io"},
 				},
 				DeletedWho: &sync_to_target.WhoItem{
-					UsersInheritedNativeGroupsExcluded: []string{"jonas@raito.io"},
+					Users: []string{"jonas@raito.io"},
 				},
 			},
 			{
@@ -348,12 +386,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					},
 				},
 				Who: sync_to_target.WhoItem{
-					UsersInheritedNativeGroupsExcluded: []string{"bart@raito.io"},
-					Groups:                             []string{"group2"},
+					Users: []string{"bart@raito.io"},
 				},
-				DeletedWho: &sync_to_target.WhoItem{
-					Groups: []string{"group3"},
-				},
+				DeletedWho: &sync_to_target.WhoItem{},
 			},
 		},
 	}
