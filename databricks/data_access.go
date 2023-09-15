@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
@@ -159,6 +161,7 @@ func (a *AccessSyncer) syncWorkspaceFromTarget(ctx context.Context, workspace *W
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  &data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: workspaceType},
@@ -353,16 +356,16 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item Secu
 func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to_target.AccessProvider, changeCollection *PrivilegesChangeCollection, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) error {
 	logger.Debug(fmt.Sprintf("Syncing access provider %q to target", ap.Name))
 
-	principals := make([]string, 0, len(ap.Who.UsersInheritedNativeGroupsExcluded)+len(ap.Who.NativeGroupsInherited))
-	principals = append(principals, ap.Who.UsersInheritedNativeGroupsExcluded...)
-	principals = append(principals, ap.Who.NativeGroupsInherited...)
+	principals := make([]string, 0, len(ap.Who.Users)+len(ap.Who.Groups))
+	principals = append(principals, ap.Who.Users...)
+	principals = append(principals, ap.Who.Groups...)
 
 	var deletedPrincipals []string
 
 	if ap.DeletedWho != nil {
-		deletedPrincipals = make([]string, 0, len(ap.DeletedWho.UsersInheritedNativeGroupsExcluded)+len(ap.DeletedWho.NativeGroupsInherited))
-		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.UsersInheritedNativeGroupsExcluded...)
-		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.NativeGroupsInherited...)
+		deletedPrincipals = make([]string, 0, len(ap.DeletedWho.Users)+len(ap.DeletedWho.Groups))
+		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.Users...)
+		deletedPrincipals = append(deletedPrincipals, ap.DeletedWho.Groups...)
 	}
 
 	for i := range ap.What {
@@ -512,6 +515,18 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 			if err != nil {
 				return err
 			}
+
+			tables, tableErr := workspaceRepo.ListTables(ctx, catalogInfo.Name, schemas[j].Name)
+			if tableErr != nil {
+				return err
+			}
+
+			for k := range tables {
+				err = a.syncAccessProviderFromTable(ctx, accessProviderHandler, &tables[k], workspaceRepo)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -598,6 +613,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  do,
@@ -653,6 +669,8 @@ func typeToSecurableType(t string) (catalog.SecurableType, error) {
 		return catalog.SecurableTypeCatalog, nil
 	case data_source.Schema:
 		return catalog.SecurableTypeSchema, nil
+	case data_source.Table:
+		return catalog.SecurableTypeTable, nil
 	default:
 		return "", fmt.Errorf("unknown type %q", t)
 	}

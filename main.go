@@ -23,7 +23,7 @@ func main() {
 	err := base.RegisterPlugins(
 		wrappers.DataSourceSync(databricks.NewDataSourceSyncer()),
 		wrappers.IdentityStoreSync(databricks.NewIdentityStoreSyncer()),
-		wrappers.DataAccessSync(databricks.NewAccessSyncer(), access_provider.WithAccessProviderExportWhoList(access_provider.AccessProviderExportWhoList_ACCESSPROVIDER_EXPORT_WHO_LIST_NATIVE_GROUPS_INHERITED, access_provider.AccessProviderExportWhoList_ACCESSPROVIDER_EXPORT_WHO_LIST_USERS_INHERITED_NATIVE_GROUPS_EXCLUDED)),
+		wrappers.DataAccessSync(databricks.NewAccessSyncer(), access_provider.WithSupportPartialSync()),
 		wrappers.DataUsageSync(databricks.NewDataUsageSyncer()),
 		&info.InfoImpl{
 			Info: &plugin.PluginInfo{

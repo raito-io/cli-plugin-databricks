@@ -105,10 +105,6 @@ type AccountRepository struct {
 	clientFactory accountRepositoryRequestFactory
 
 	accountId string
-
-	// If OAuth is used we store the token here so we can use it for subsequent calls
-	token       string
-	tokenExpiry time.Time
 }
 
 func NewAccountRepository(credentials RepositoryCredentials, accountId string) *AccountRepository {
