@@ -117,7 +117,7 @@ func (d *DataSourceSyncer) getMetastores(ctx context.Context, dataSourceHandler 
 		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
 			Name:       metastore.Name,
 			Type:       metastoreType,
-			FullName:   metastore.Name,
+			FullName:   metastore.MetastoreId,
 			ExternalId: metastore.MetastoreId,
 		})
 		if err != nil {
