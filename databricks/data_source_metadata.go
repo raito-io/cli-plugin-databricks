@@ -179,11 +179,6 @@ var databricks_metadata = ds.MetaData{
 					Description: "Gives ability to create a materialized view",
 				},
 				{
-					Permission:        "CREATE SCHEMA",
-					Description:       "Create a schema in a catalog. The user also requires the USE CATALOG privilege on the catalog.",
-					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
-				},
-				{
 					Permission:        "CREATE TABLE",
 					Description:       "Create a table or view in a schema. The user also requires the USE CATALOG privilege on the catalog and the USE SCHEMA privilege on the schema. To create an external table, the user also requires the CREATE EXTERNAL TABLE privilege on the external location and storage credential.",
 					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),

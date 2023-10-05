@@ -316,7 +316,14 @@ func (a *AccessSyncer) getGroupIdFromName(ctx context.Context, groupname string,
 }
 
 func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item SecurableItemKey, getMetastoreClient func(metastoreId string) (dataAccessWorkspaceRepository, error), principlePrivilegesMap map[string]*PrivilegesChanges) error {
-	metastore, fullname := getMetastoreAndFullnameOfUniqueId(item.FullName)
+	var metastore, fullname string
+
+	if item.Type == metastoreType {
+		metastore = item.FullName
+		fullname = item.FullName
+	} else {
+		metastore, fullname = getMetastoreAndFullnameOfUniqueId(item.FullName)
+	}
 
 	repo, err := getMetastoreClient(metastore)
 	if err != nil {
