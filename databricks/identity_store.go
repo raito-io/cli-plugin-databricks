@@ -33,7 +33,7 @@ func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	}
 }
 
-func (i *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context) (*is.MetaData, error) {
+func (i *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *config.ConfigMap) (*is.MetaData, error) {
 	return &is.MetaData{
 		Type:        "databricks",
 		CanBeMaster: false,
