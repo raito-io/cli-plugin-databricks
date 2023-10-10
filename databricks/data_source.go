@@ -46,7 +46,7 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 	}
 }
 
-func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context) (*ds.MetaData, error) {
+func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData, error) {
 	logger.Debug("Returning meta data for databricks data source")
 
 	return &databricks_metadata, nil
