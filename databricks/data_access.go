@@ -9,6 +9,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -235,18 +236,22 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		a.apFeedbackObjects[accessProviders.AccessProviders[i].Id] = feedbackElement
 	}
 
+	defer func() {
+		for _, feedbackItem := range a.apFeedbackObjects {
+			fbErr := accessProviderFeedbackHandler.AddAccessProviderFeedback(feedbackItem)
+			if fbErr != nil {
+				err = multierror.Append(err, fbErr)
+			}
+		}
+
+		a.apFeedbackObjects = nil
+	}()
+
 	for item, principlePrivilegesMap := range permissionsChanges.m {
 		if item.Type == workspaceType {
 			a.storePrivilegesInComputePlane(ctx, item, principlePrivilegesMap, accountRepo)
 		} else {
 			a.storePrivilegesInDataplane(ctx, item, getMetastoreClient, principlePrivilegesMap)
-		}
-	}
-
-	for _, feedbackItem := range a.apFeedbackObjects {
-		err = accessProviderFeedbackHandler.AddAccessProviderFeedback(feedbackItem)
-		if err != nil {
-			return err
 		}
 	}
 
