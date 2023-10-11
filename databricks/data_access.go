@@ -259,8 +259,6 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 }
 
 func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item SecurableItemKey, principlePrivilegesMap map[string]*PrivilegesChanges, repo dataAccessAccountRepository) {
-	var err error
-
 	workspaceId, err := strconv.Atoi(item.FullName)
 	if err != nil {
 		for _, privilegesChanges := range principlePrivilegesMap {
@@ -273,8 +271,6 @@ func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item S
 	for principal, privilegesChanges := range principlePrivilegesMap {
 		a.storePrivilegesInComputePlaneForPrincipal(ctx, principal, repo, workspaceId, privilegesChanges)
 	}
-
-	return
 }
 
 func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Context, principal string, repo dataAccessAccountRepository, workspaceId int, privilegesChanges *PrivilegesChanges) {
@@ -289,7 +285,9 @@ func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Con
 	var principalId int64
 
 	if strings.Contains(principal, "@") {
-		user, err := a.getUserFromEmail(ctx, principal, repo)
+		var user *iam.User
+
+		user, err = a.getUserFromEmail(ctx, principal, repo)
 		if err != nil {
 			return
 		}
@@ -299,7 +297,9 @@ func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Con
 			return
 		}
 	} else {
-		group, err := a.getGroupIdFromName(ctx, principal, repo)
+		var group *iam.Group
+
+		group, err = a.getGroupIdFromName(ctx, principal, repo)
 		if err != nil {
 			return
 		}
@@ -314,7 +314,6 @@ func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Con
 	if err != nil {
 		return
 	}
-	return
 }
 
 func (a *AccessSyncer) handleAccessProviderError(privilegeChanges *PrivilegesChanges, err error) {
@@ -409,8 +408,6 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item Secu
 	if err != nil {
 		return
 	}
-
-	return
 }
 
 func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to_target.AccessProvider, changeCollection *PrivilegesChangeCollection) error {
