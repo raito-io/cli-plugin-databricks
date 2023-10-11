@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imroc/req/v3 v3.41.11
-	github.com/raito-io/cli v0.50.0
+	github.com/raito-io/cli v0.52.0-dev0
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.8.4
 	github.com/vektra/mockery/v2 v2.35.3

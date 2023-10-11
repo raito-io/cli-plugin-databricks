@@ -24,6 +24,8 @@ type SecurableItemKey struct {
 type PrivilegesChanges struct {
 	Add    set.Set[string]
 	Remove set.Set[string]
+
+	AssociatedAPs set.Set[string]
 }
 
 type PrivilegesChangeCollection struct {
@@ -36,15 +38,16 @@ func NewPrivilegesChangeCollection() PrivilegesChangeCollection {
 	}
 }
 
-func (c *PrivilegesChangeCollection) AddPrivilege(securableItem SecurableItemKey, principal string, privilege ...string) {
+func (c *PrivilegesChangeCollection) AddPrivilege(securableItem SecurableItemKey, apID string, principal string, privilege ...string) {
 	if _, ok := c.m[securableItem]; !ok {
 		c.m[securableItem] = make(map[string]*PrivilegesChanges)
 	}
 
 	if _, ok := c.m[securableItem][principal]; !ok {
-		c.m[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](privilege...), Remove: set.NewSet[string]()}
+		c.m[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](privilege...), Remove: set.NewSet[string](), AssociatedAPs: set.NewSet[string](apID)}
 	} else {
 		c.m[securableItem][principal].Add.Add(privilege...)
+		c.m[securableItem][principal].AssociatedAPs.Add(apID)
 	}
 }
 
