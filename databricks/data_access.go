@@ -243,6 +243,13 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		}
 	}
 
+	for _, feedbackItem := range a.apFeedbackObjects {
+		err = accessProviderFeedbackHandler.AddAccessProviderFeedback(feedbackItem)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
