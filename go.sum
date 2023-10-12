@@ -320,8 +320,8 @@ github.com/quic-go/qtls-go1-20 v0.3.3 h1:17/glZSLI9P9fDAeyCHBFSWSqJcwx1byhLwP5eU
 github.com/quic-go/qtls-go1-20 v0.3.3/go.mod h1:X9Nh97ZL80Z+bX/gUXMbipO6OxdiDi58b/fMC9mAL+k=
 github.com/quic-go/quic-go v0.38.1 h1:M36YWA5dEhEeT+slOu/SwMEucbYd0YFidxG3KlGPZaE=
 github.com/quic-go/quic-go v0.38.1/go.mod h1:ijnZM7JsFIkp4cRyjxJNIzdSfCLmUMg9wdyhGmg+SN4=
-github.com/raito-io/cli v0.50.0 h1:BJ/04Cl1RayGtTjOpiUimGlzMq4xrHr1A6KA2Ymxp3Y=
-github.com/raito-io/cli v0.50.0/go.mod h1:lb23EFNoSK7y4uYzBfeUOOY7LnP4aXeU5SvmOVWqwYA=
+github.com/raito-io/cli v0.52.0-dev0 h1:utpHDLvWtPzwGWRWWUuRJHJDj8x8mHCnlJWyX3W6NRY=
+github.com/raito-io/cli v0.52.0-dev0/go.mod h1:lb23EFNoSK7y4uYzBfeUOOY7LnP4aXeU5SvmOVWqwYA=
 github.com/raito-io/golang-set v0.0.4 h1:7zk8r1TCE/F9JOOgseIXYx7oZJdC9/j5uivkCYjnCg0=
 github.com/raito-io/golang-set v0.0.4/go.mod h1:ktKACNnQeSpzo0Nes6jDTs74UOau8psJpAesatiEKQE=
 github.com/refraction-networking/utls v1.5.3 h1:Ds5Ocg1+MC1ahNx5iBEcHe0jHeLaA/fLey61EENm7ro=

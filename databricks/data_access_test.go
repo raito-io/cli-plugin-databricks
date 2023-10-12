@@ -337,11 +337,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	workspace := "test-workspace"
 	accessSyncer, mockAccountRepo, mockWorkspaceRepoMap := createAccessSyncer(t, deployment)
 
-	accessProviderHandlerMock := mocks.NewSimpleAccessProviderFeedbackHandler(t, 1)
+	accessProviderHandlerMock := mocks.NewSimpleAccessProviderFeedbackHandler(t)
 
 	accessProviders := sync_to_target.AccessProviderImport{
 		AccessProviders: []*sync_to_target.AccessProvider{
 			{
+				Id:   "workspace-ap-id",
 				Name: "workspace-ap",
 				What: []sync_to_target.WhatItem{
 					{
@@ -361,6 +362,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				},
 			},
 			{
+				Id:   "catalog-ap-id",
 				Name: "catalog-ap",
 				What: []sync_to_target.WhatItem{
 					{
@@ -379,6 +381,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				},
 			},
 			{
+				Id:   "multiple-do-ap-id",
 				Name: "multiple-do-ap",
 				What: []sync_to_target.WhatItem{
 					{
@@ -520,6 +523,239 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
+
+	assert.Len(t, accessProviderHandlerMock.AccessProviderFeedback, 3)
+	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
+		{
+			AccessProvider: "workspace-ap-id",
+			ActualName:     "workspace-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+		},
+		{
+			AccessProvider: "catalog-ap-id",
+			ActualName:     "catalog-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+		},
+		{
+			AccessProvider: "multiple-do-ap-id",
+			ActualName:     "multiple-do-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+		},
+	}, accessProviderHandlerMock.AccessProviderFeedback)
+}
+
+func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
+	// Given
+	deployment := "test-deployment"
+	workspace := "test-workspace"
+	accessSyncer, mockAccountRepo, mockWorkspaceRepoMap := createAccessSyncer(t, deployment)
+
+	accessProviderHandlerMock := mocks.NewSimpleAccessProviderFeedbackHandler(t)
+
+	accessProviders := sync_to_target.AccessProviderImport{
+		AccessProviders: []*sync_to_target.AccessProvider{
+			{
+				Id:   "workspace-ap-id",
+				Name: "workspace-ap",
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "42",
+							Type:     workspaceType,
+						},
+						Permissions: []string{"USER"},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+				DeletedWho: &sync_to_target.WhoItem{
+					Users: []string{"dieter@raito.io"},
+				},
+			},
+			{
+				Id:   "catalog-ap-id",
+				Name: "catalog-ap",
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-1",
+							Type:     catalogType,
+						},
+						Permissions: []string{"SELECT"},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Users: []string{"wannes@raito.io"},
+				},
+				DeletedWho: &sync_to_target.WhoItem{
+					Users: []string{"jonas@raito.io"},
+				},
+			},
+			{
+				Id:   "multiple-do-ap-id",
+				Name: "multiple-do-ap",
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-1.schema-1",
+							Type:     data_source.Schema,
+						},
+						Permissions: []string{"SELECT", "MODIFY"},
+					},
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-2",
+							Type:     catalogType,
+						},
+						Permissions: []string{"CREATE TABLE"},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Users: []string{"bart@raito.io"},
+				},
+				DeletedWho: &sync_to_target.WhoItem{},
+			},
+		},
+	}
+
+	configMap := &config.ConfigMap{
+		Parameters: map[string]string{
+			DatabricksAccountId: "AccountId",
+			DatabricksUser:      "User",
+			DatabricksPassword:  "Password",
+		},
+	}
+
+	metastore1 := catalog.MetastoreInfo{
+		Name:        "metastore1",
+		MetastoreId: "metastore-id1",
+	}
+
+	workspaceObject := Workspace{
+		WorkspaceId:     42,
+		DeploymentName:  deployment,
+		WorkspaceName:   workspace,
+		WorkspaceStatus: "RUNNING",
+	}
+
+	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
+		assert.Len(t, change, 3)
+
+		wannes := -1
+		bart := -1
+		jonas := -1
+
+		for i, c := range change {
+			switch c.Principal {
+			case "bart@raito.io":
+				bart = i
+			case "wannes@raito.io":
+				wannes = i
+			case "jonas@raito.io":
+				jonas = i
+			}
+		}
+
+		require.NotEqual(t, -1, bart)
+		require.NotEqual(t, -1, wannes)
+		require.NotEqual(t, -1, jonas)
+
+		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeUseCatalog, catalog.PrivilegeSelect}, change[wannes].Add)
+		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeUseCatalog}, change[bart].Add)
+		assert.ElementsMatch(t, []catalog.Privilege{}, change[jonas].Add)
+		assert.ElementsMatch(t, []catalog.Privilege{}, change[bart].Remove)
+		assert.ElementsMatch(t, []catalog.Privilege{}, change[wannes].Remove)
+		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeSelect}, change[jonas].Remove) // USE CATALOG should not be removed
+
+		return nil
+	}).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-2", mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
+		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeCreateTable, catalog.PrivilegeUseCatalog}, change[0].Add)
+
+		return nil
+	}).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeSchema, "catalog-1.schema-1", mock.Anything).RunAndReturn(func(ctx context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
+		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeModify, catalog.PrivilegeUseSchema, catalog.PrivilegeSelect}, change[0].Add)
+		assert.Equal(t, "bart@raito.io", change[0].Principal)
+
+		return errors.New("boom")
+	}).Once()
+
+	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksUsersFilter)) <-chan interface{} {
+		options := databricksUsersFilter{}
+		for _, fn := range f {
+			fn(&options)
+		}
+
+		require.NotNil(t, options.username)
+
+		if *options.username == "ruben@raito.io" {
+			return array.ArrayToChannel([]interface{}{
+				iam.User{
+					DisplayName: "Ruben Mennes",
+					Id:          "314",
+				},
+			})
+		} else if *options.username == "dieter@raito.io" {
+			return array.ArrayToChannel([]interface{}{
+				iam.User{
+					DisplayName: "Dieter Wachters",
+					Id:          "1592",
+				},
+			})
+		} else {
+			assert.Fail(t, "unexpected username")
+		}
+
+		return array.ArrayToChannel[interface{}]([]interface{}{})
+	})
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksGroupsFilter)) <-chan interface{} {
+		options := databricksGroupsFilter{}
+		for _, fn := range f {
+			fn(&options)
+		}
+
+		require.NotNil(t, options.groupname)
+		require.Equal(t, "group1", *options.groupname)
+
+		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
+	})
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(1592), []iam.WorkspacePermission{}).Return(nil).Once()
+
+	// When
+	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
+
+	// Then
+	require.NoError(t, err)
+
+	assert.Len(t, accessProviderHandlerMock.AccessProviderFeedback, 3)
+	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
+		{
+			AccessProvider: "workspace-ap-id",
+			ActualName:     "workspace-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+		},
+		{
+			AccessProvider: "catalog-ap-id",
+			ActualName:     "catalog-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+		},
+		{
+			AccessProvider: "multiple-do-ap-id",
+			ActualName:     "multiple-do-ap-id",
+			Type:           ptr.String(access_provider.AclSet),
+			Errors:         []string{"boom"},
+		},
+	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
 
 func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mockDataAccessAccountRepository, map[string]*mockDataAccessWorkspaceRepository) {

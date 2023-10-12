@@ -9,6 +9,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -49,6 +50,8 @@ type AccessSyncer struct {
 	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error)
 
 	privilegeCache PrivilegeCache
+
+	apFeedbackObjects map[string]sync_to_target.AccessProviderSyncFeedback // Cache apFeedback objects
 }
 
 func NewAccessSyncer() *AccessSyncer {
@@ -216,69 +219,109 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	}
 
 	permissionsChanges := NewPrivilegesChangeCollection()
+	a.apFeedbackObjects = make(map[string]sync_to_target.AccessProviderSyncFeedback)
 
 	for i := range accessProviders.AccessProviders {
-		apErr := a.syncAccessProviderToTarget(ctx, accessProviders.AccessProviders[i], &permissionsChanges, accessProviderFeedbackHandler)
-		if apErr != nil {
-			return apErr
+		feedbackElement := sync_to_target.AccessProviderSyncFeedback{
+			AccessProvider: accessProviders.AccessProviders[i].Id,
+			ActualName:     accessProviders.AccessProviders[i].Id,
+			Type:           ptr.String(access_provider.AclSet),
 		}
+
+		apErr := a.syncAccessProviderToTarget(ctx, accessProviders.AccessProviders[i], &permissionsChanges)
+		if apErr != nil {
+			feedbackElement.Errors = append(feedbackElement.Errors, apErr.Error())
+		}
+
+		a.apFeedbackObjects[accessProviders.AccessProviders[i].Id] = feedbackElement
 	}
+
+	defer func() {
+		for _, feedbackItem := range a.apFeedbackObjects {
+			fbErr := accessProviderFeedbackHandler.AddAccessProviderFeedback(feedbackItem)
+			if fbErr != nil {
+				err = multierror.Append(err, fbErr)
+			}
+		}
+
+		a.apFeedbackObjects = nil
+	}()
 
 	for item, principlePrivilegesMap := range permissionsChanges.m {
 		if item.Type == workspaceType {
-			err2 := a.storePrivilegesInComputePlane(ctx, item, principlePrivilegesMap, accountRepo)
-			if err2 != nil {
-				return err2
-			}
+			a.storePrivilegesInComputePlane(ctx, item, principlePrivilegesMap, accountRepo)
 		} else {
-			err2 := a.storePrivilegesInDataplane(ctx, item, getMetastoreClient, principlePrivilegesMap)
-			if err2 != nil {
-				return err2
-			}
+			a.storePrivilegesInDataplane(ctx, item, getMetastoreClient, principlePrivilegesMap)
 		}
 	}
 
 	return nil
 }
 
-func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item SecurableItemKey, principlePrivilegesMap map[string]*PrivilegesChanges, repo dataAccessAccountRepository) error {
+func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item SecurableItemKey, principlePrivilegesMap map[string]*PrivilegesChanges, repo dataAccessAccountRepository) {
 	workspaceId, err := strconv.Atoi(item.FullName)
 	if err != nil {
-		return err
+		for _, privilegesChanges := range principlePrivilegesMap {
+			a.handleAccessProviderError(privilegesChanges, err)
+		}
+
+		return
 	}
 
 	for principal, privilegesChanges := range principlePrivilegesMap {
-		var principalId int64
+		a.storePrivilegesInComputePlaneForPrincipal(ctx, principal, repo, workspaceId, privilegesChanges)
+	}
+}
 
-		if strings.Contains(principal, "@") {
-			user, err2 := a.getUserFromEmail(ctx, principal, repo)
-			if err2 != nil {
-				return err2
-			}
+func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Context, principal string, repo dataAccessAccountRepository, workspaceId int, privilegesChanges *PrivilegesChanges) {
+	var err error
 
-			principalId, err2 = strconv.ParseInt(user.Id, 10, 64)
-			if err2 != nil {
-				return err2
-			}
-		} else {
-			group, err2 := a.getGroupIdFromName(ctx, principal, repo)
-			if err2 != nil {
-				return err2
-			}
+	defer func() {
+		if err != nil {
+			a.handleAccessProviderError(privilegesChanges, err)
+		}
+	}()
 
-			principalId, err2 = strconv.ParseInt(group.Id, 10, 64)
-			if err2 != nil {
-				return err2
-			}
+	var principalId int64
+
+	if strings.Contains(principal, "@") {
+		var user *iam.User
+
+		user, err = a.getUserFromEmail(ctx, principal, repo)
+		if err != nil {
+			return
 		}
 
-		err2 := repo.UpdateWorkspaceAssignment(ctx, workspaceId, principalId, workspacePermissionsToDatabricksPermissions(privilegesChanges.Add.Slice()))
-		if err2 != nil {
-			return err2
+		principalId, err = strconv.ParseInt(user.Id, 10, 64)
+		if err != nil {
+			return
+		}
+	} else {
+		var group *iam.Group
+
+		group, err = a.getGroupIdFromName(ctx, principal, repo)
+		if err != nil {
+			return
+		}
+
+		principalId, err = strconv.ParseInt(group.Id, 10, 64)
+		if err != nil {
+			return
 		}
 	}
 
-	return nil
+	err = repo.UpdateWorkspaceAssignment(ctx, workspaceId, principalId, workspacePermissionsToDatabricksPermissions(privilegesChanges.Add.Slice()))
+	if err != nil {
+		return
+	}
+}
+
+func (a *AccessSyncer) handleAccessProviderError(privilegeChanges *PrivilegesChanges, err error) {
+	for ap := range privilegeChanges.AssociatedAPs {
+		fo := a.apFeedbackObjects[ap]
+		fo.Errors = append(fo.Errors, err.Error())
+		a.apFeedbackObjects[ap] = fo
+	}
 }
 
 func (a *AccessSyncer) getUserFromEmail(ctx context.Context, email string, repo dataAccessAccountRepository) (*iam.User, error) {
@@ -315,8 +358,17 @@ func (a *AccessSyncer) getGroupIdFromName(ctx context.Context, groupname string,
 	return nil, fmt.Errorf("no groupe found with name %q", groupname)
 }
 
-func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item SecurableItemKey, getMetastoreClient func(metastoreId string) (dataAccessWorkspaceRepository, error), principlePrivilegesMap map[string]*PrivilegesChanges) error {
+func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item SecurableItemKey, getMetastoreClient func(metastoreId string) (dataAccessWorkspaceRepository, error), principlePrivilegesMap map[string]*PrivilegesChanges) {
 	var metastore, fullname string
+	var err error
+
+	defer func() {
+		if err != nil {
+			for _, privilegesChanges := range principlePrivilegesMap {
+				a.handleAccessProviderError(privilegesChanges, err)
+			}
+		}
+	}()
 
 	if item.Type == metastoreType {
 		metastore = item.FullName
@@ -327,7 +379,7 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item Secu
 
 	repo, err := getMetastoreClient(metastore)
 	if err != nil {
-		return err
+		return
 	}
 
 	changes := make([]catalog.PermissionsChange, 0, len(principlePrivilegesMap))
@@ -349,18 +401,16 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item Secu
 
 	securableType, err := typeToSecurableType(item.Type)
 	if err != nil {
-		return err
+		return
 	}
 
 	err = repo.SetPermissionsOnResource(ctx, securableType, fullname, changes...)
 	if err != nil {
-		return err
+		return
 	}
-
-	return nil
 }
 
-func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to_target.AccessProvider, changeCollection *PrivilegesChangeCollection, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) error {
+func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to_target.AccessProvider, changeCollection *PrivilegesChangeCollection) error {
 	logger.Debug(fmt.Sprintf("Syncing access provider %q to target", ap.Name))
 
 	principals := make([]string, 0, len(ap.Who.Users)+len(ap.Who.Groups))
@@ -410,7 +460,7 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 
 			if !ap.Delete {
 				for _, principal := range principals {
-					changeCollection.AddPrivilege(itemKey, principal, privilegesSlice...)
+					changeCollection.AddPrivilege(itemKey, ap.Id, principal, privilegesSlice...)
 
 					//Add to cache, it must be ignored in sync from target
 					a.privilegeCache.AddPrivilege(do, principal, privilegesSlice...)
@@ -443,10 +493,7 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 		}
 	}
 
-	return accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, sync_to_target.AccessSyncFeedbackInformation{
-		AccessId:   ap.Id,
-		ActualName: ap.Id,
-	})
+	return nil
 }
 
 func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
