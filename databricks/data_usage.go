@@ -43,7 +43,7 @@ var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
 	accountRepoFactory   func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository
-	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, accountId string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
@@ -51,8 +51,8 @@ func NewDataUsageSyncer() *DataUsageSyncer {
 		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository {
 			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, repoCredentials)
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
 	}
 }
@@ -94,12 +94,12 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
-	_, repoCredentials, err := getAndValidateParameters(configParams)
+	accountId, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
 
-	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), repoCredentials)
+	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), accountId, repoCredentials)
 	if err != nil {
 		return err
 	}

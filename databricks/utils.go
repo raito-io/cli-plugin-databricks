@@ -53,11 +53,11 @@ type workspaceRepo interface {
 	Ping(ctx context.Context) error
 }
 
-func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials RepositoryCredentials, workspaces []string, repoFn func(string, RepositoryCredentials) (R, error)) (*R, error) {
+func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials RepositoryCredentials, accountId string, workspaces []string, repoFn func(string, string, RepositoryCredentials) (R, error)) (*R, error) {
 	var err error
 
 	for _, workspaceName := range workspaces {
-		repo, werr := repoFn(GetWorkspaceAddress(workspaceName), repoCredentials)
+		repo, werr := repoFn(GetWorkspaceAddress(workspaceName), accountId, repoCredentials)
 		if werr != nil {
 			err = multierror.Append(err, werr)
 			continue

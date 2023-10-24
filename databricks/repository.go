@@ -16,23 +16,25 @@ import (
 
 const databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
 
-type accountRepositoryRequestFactory interface {
+const accountHost = "https://accounts.cloud.databricks.com/"
+
+type repositoryRequestFactory interface {
 	NewRequest(ctx context.Context) (*req.Request, error)
 }
 
-func getDefaultClient() *req.Client {
-	return req.NewClient().SetBaseURL("https://accounts.cloud.databricks.com/").SetCommonHeader("user-agent", "Raito")
+func getDefaultClient(host string) *req.Client {
+	return req.NewClient().SetBaseURL(host).SetCommonHeader("user-agent", "Raito")
 }
 
 type BasicAuthAccountRepositoryRequestFactory struct {
 	client *req.Client
 }
 
-func NewBasicAuthAccountRepositoryRequestFactory(user, password string) *BasicAuthAccountRepositoryRequestFactory {
+func NewBasicAuthAccountRepositoryRequestFactory(host, user, password string) *BasicAuthAccountRepositoryRequestFactory {
 	logger.Debug("Creating basic auth request factory")
 
 	return &BasicAuthAccountRepositoryRequestFactory{
-		client: getDefaultClient().SetCommonBasicAuth(user, password),
+		client: getDefaultClient(host).SetCommonBasicAuth(user, password),
 	}
 }
 
@@ -41,7 +43,8 @@ func (f *BasicAuthAccountRepositoryRequestFactory) NewRequest(ctx context.Contex
 }
 
 type OAuthRepositoryRequestFactory struct {
-	client *req.Client
+	client           *req.Client
+	tokenRenewClient *req.Client
 
 	clientId     string
 	clientSecret string
@@ -51,14 +54,15 @@ type OAuthRepositoryRequestFactory struct {
 	tokenExpiry time.Time
 }
 
-func NewOAuthAccountRepositoryRequestFactory(clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
+func NewOAuthAccountRepositoryRequestFactory(host string, clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
 	logger.Debug("Creating oauth request factory")
 
 	return &OAuthRepositoryRequestFactory{
-		client:       getDefaultClient(),
-		clientId:     clientId,
-		clientSecret: clientSecret,
-		accountId:    accountId,
+		client:           getDefaultClient(host),
+		tokenRenewClient: getDefaultClient(accountHost),
+		clientId:         clientId,
+		clientSecret:     clientSecret,
+		accountId:        accountId,
 	}
 }
 
@@ -82,7 +86,7 @@ func (f *OAuthRepositoryRequestFactory) RefreshToken(ctx context.Context) error 
 		TokenType   string `json:"token_type"`
 	}{}
 
-	response, err := f.client.R().SetContext(ctx).SetFormData(map[string]string{"grant_type": "client_credentials", "scope": "all-apis"}).SetPathParams(map[string]string{"account_id": f.accountId}).
+	response, err := f.tokenRenewClient.R().SetContext(ctx).SetFormData(map[string]string{"grant_type": "client_credentials", "scope": "all-apis"}).SetPathParams(map[string]string{"account_id": f.accountId}).
 		SetBasicAuth(f.clientId, f.clientSecret).Post("/oidc/accounts/{account_id}/v1/token")
 
 	if err != nil {
@@ -102,18 +106,18 @@ func (f *OAuthRepositoryRequestFactory) RefreshToken(ctx context.Context) error 
 
 type AccountRepository struct {
 	// currently not possible to use the databricks SDK as there is a bug in the List metatsores call
-	clientFactory accountRepositoryRequestFactory
+	clientFactory repositoryRequestFactory
 
 	accountId string
 }
 
 func NewAccountRepository(credentials RepositoryCredentials, accountId string) *AccountRepository {
-	var factory accountRepositoryRequestFactory
+	var factory repositoryRequestFactory
 
 	if credentials.ClientId != "" && credentials.ClientSecret != "" {
-		factory = NewOAuthAccountRepositoryRequestFactory(credentials.ClientId, credentials.ClientSecret, accountId)
+		factory = NewOAuthAccountRepositoryRequestFactory(accountHost, credentials.ClientId, credentials.ClientSecret, accountId)
 	} else {
-		factory = NewBasicAuthAccountRepositoryRequestFactory(credentials.Username, credentials.Password)
+		factory = NewBasicAuthAccountRepositoryRequestFactory(accountHost, credentials.Username, credentials.Password)
 	}
 
 	return &AccountRepository{
@@ -450,9 +454,12 @@ func (r *AccountRepository) UpdateWorkspaceAssignment(ctx context.Context, works
 
 type WorkspaceRepository struct {
 	client *databricks.WorkspaceClient
+
+	// SDK workaround
+	restClient repositoryRequestFactory
 }
 
-func NewWorkspaceRepository(host string, credentials RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(host string, accountId string, credentials RepositoryCredentials) (*WorkspaceRepository, error) {
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
 		Username:     credentials.Username,
 		Password:     credentials.Password,
@@ -464,8 +471,16 @@ func NewWorkspaceRepository(host string, credentials RepositoryCredentials) (*Wo
 		return nil, err
 	}
 
+	var restClient repositoryRequestFactory
+	if credentials.ClientId != "" {
+		restClient = NewOAuthAccountRepositoryRequestFactory(host, credentials.ClientId, credentials.ClientSecret, accountId)
+	} else {
+		restClient = NewBasicAuthAccountRepositoryRequestFactory(host, credentials.Username, credentials.Password)
+	}
+
 	return &WorkspaceRepository{
-		client: client,
+		client:     client,
+		restClient: restClient,
 	}, nil
 }
 
@@ -501,16 +516,98 @@ func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string
 	return response, nil
 }
 
-func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error) {
-	response, err := r.client.Functions.ListAll(ctx, catalog.ListFunctionsRequest{
-		CatalogName: catalogName,
-		SchemaName:  schemaName,
-	})
+// FunctionInfo Temporarily defined until bug in SDK is fixed
+type FunctionInfo struct {
+	// Name of parent catalog.
+	CatalogName string `json:"catalog_name,omitempty"`
+	// User-provided free-form text description.
+	Comment string `json:"comment,omitempty"`
+	// Time at which this function was created, in epoch milliseconds.
+	CreatedAt int64 `json:"created_at,omitempty"`
+	// Username of function creator.
+	CreatedBy string `json:"created_by,omitempty"`
+	// Scalar function return data type.
+	DataType catalog.ColumnTypeName `json:"data_type,omitempty"`
+	// External function language.
+	ExternalLanguage string `json:"external_language,omitempty"`
+	// External function name.
+	ExternalName string `json:"external_name,omitempty"`
+	// Pretty printed function data type.
+	FullDataType string `json:"full_data_type,omitempty"`
+	// Full name of function, in form of
+	// __catalog_name__.__schema_name__.__function__name__
+	FullName string `json:"full_name,omitempty"`
+	// Id of Function, relative to parent schema.
+	FunctionId string `json:"function_id,omitempty"`
+	// The array of __FunctionParameterInfo__ definitions of the function's
+	// parameters.
+	InputParams []catalog.FunctionParameterInfo `json:"input_params,omitempty"`
+	// Whether the function is deterministic.
+	IsDeterministic bool `json:"is_deterministic,omitempty"`
+	// Function null call.
+	IsNullCall bool `json:"is_null_call,omitempty"`
+	// Unique identifier of parent metastore.
+	MetastoreId string `json:"metastore_id,omitempty"`
+	// Name of function, relative to parent schema.
+	Name string `json:"name,omitempty"`
+	// Username of current owner of function.
+	Owner string `json:"owner,omitempty"`
+	// Function parameter style. **S** is the value for SQL.
+	ParameterStyle catalog.FunctionInfoParameterStyle `json:"parameter_style,omitempty"`
+	// A map of key-value properties attached to the securable.
+	// INVALID Properties map[string]string `json:"properties,omitempty"`
+	// Table function return parameters.
+	ReturnParams []catalog.FunctionParameterInfo `json:"return_params,omitempty"`
+	// Function language. When **EXTERNAL** is used, the language of the routine
+	// function should be specified in the __external_language__ field, and the
+	// __return_params__ of the function cannot be used (as **TABLE** return
+	// type is not supported), and the __sql_data_access__ field must be
+	// **NO_SQL**.
+	RoutineBody catalog.FunctionInfoRoutineBody `json:"routine_body,omitempty"`
+	// Function body.
+	RoutineDefinition string `json:"routine_definition,omitempty"`
+	// Function dependencies.
+	RoutineDependencies []catalog.Dependency `json:"routine_dependencies,omitempty"`
+	// Name of parent schema relative to its parent catalog.
+	SchemaName string `json:"schema_name,omitempty"`
+	// Function security type.
+	SecurityType catalog.FunctionInfoSecurityType `json:"security_type,omitempty"`
+	// Specific name of the function; Reserved for future use.
+	SpecificName string `json:"specific_name,omitempty"`
+	// Function SQL data access.
+	SqlDataAccess catalog.FunctionInfoSqlDataAccess `json:"sql_data_access,omitempty"`
+	// List of schemes whose objects can be referenced without qualification.
+	SqlPath string `json:"sql_path,omitempty"`
+	// Time at which this function was created, in epoch milliseconds.
+	UpdatedAt int64 `json:"updated_at,omitempty"`
+	// Username of user who last modified function.
+	UpdatedBy string `json:"updated_by,omitempty"`
+
+	ForceSendFields []string `json:"-"`
+}
+
+type FunctionsInfo struct {
+	Functions []FunctionInfo `json:"functions,omitempty"`
+}
+
+func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error) {
+	request, err := r.restClient.NewRequest(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return response, nil
+	result := FunctionsInfo{}
+
+	response, err := request.SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.1").SetSuccessResult(&result).SetQueryParams(map[string]string{"catalog_name": catalogName, "schema_name": schemaName}).Get("/api/2.1/unity-catalog/functions")
+	if err != nil {
+		return nil, err
+	}
+
+	if response.IsErrorState() {
+		return nil, fmt.Errorf("list functions failed status: %d", response.StatusCode)
+	}
+
+	return result.Functions, nil
 }
 
 func (r *WorkspaceRepository) GetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string) (*catalog.PermissionsList, error) {

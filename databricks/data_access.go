@@ -40,14 +40,14 @@ type dataAccessWorkspaceRepository interface {
 	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
 	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
 	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
-	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error)
+	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error)
 	GetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string) (*catalog.PermissionsList, error)
 	SetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string, changes ...catalog.PermissionsChange) error
 }
 
 type AccessSyncer struct {
 	accountRepoFactory   func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository
-	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, accountId string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error)
 
 	privilegeCache PrivilegeCache
 
@@ -59,8 +59,8 @@ func NewAccessSyncer() *AccessSyncer {
 		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository {
 			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, repoCredentials)
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
 
 		privilegeCache: NewPrivilegeCache(),
@@ -208,7 +208,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			return repo, nil
 		}
 
-		repo, werr := selectWorkspaceRepo(ctx, repoCredentials, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
+		repo, werr := selectWorkspaceRepo(ctx, repoCredentials, accountId, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
 		if werr != nil {
 			return nil, werr
 		}
@@ -497,7 +497,7 @@ func (a *AccessSyncer) syncAccessProviderToTarget(_ context.Context, ap *sync_to
 }
 
 func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
-	_, repoCredentials, err := getAndValidateParameters(configMap)
+	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
@@ -509,7 +509,7 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 	var workspaceRepo dataAccessWorkspaceRepository
 
 	for _, workspaceName := range workspaceDeploymentNames {
-		repo, werr := a.workspaceRepoFactory(GetWorkspaceAddress(workspaceName), repoCredentials)
+		repo, werr := a.workspaceRepoFactory(GetWorkspaceAddress(workspaceName), accountId, repoCredentials)
 		if werr != nil {
 			err = werr
 			continue
@@ -581,6 +581,18 @@ func (a *AccessSyncer) syncAccessProviderFromMetastore(ctx context.Context, acce
 					return err
 				}
 			}
+
+			functions, functionErr := workspaceRepo.ListFunctions(ctx, catalogInfo.Name, schemas[j].Name)
+			if functionErr != nil {
+				return err
+			}
+
+			for k := range functions {
+				err = a.syncAccessProviderFromFunction(ctx, accessProviderHandler, &functions[k], workspaceRepo)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -624,6 +636,17 @@ func (a *AccessSyncer) syncAccessProviderFromTable(ctx context.Context, accessPr
 	}
 
 	return a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: createUniqueId(tableInfo.MetastoreId, tableInfo.FullName), Type: doType}, permissionsList)
+}
+
+func (a *AccessSyncer) syncAccessProviderFromFunction(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, functionInfo *FunctionInfo, repo dataAccessWorkspaceRepository) error {
+	logger.Debug(fmt.Sprintf("Get data access objects from function %q", functionInfo.FullName))
+
+	permissionsList, err := repo.GetPermissionsOnResource(ctx, catalog.SecurableTypeFunction, functionInfo.FullName)
+	if err != nil {
+		return err
+	}
+
+	return a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: createUniqueId(functionInfo.MetastoreId, functionInfo.FullName), Type: functionType}, permissionsList)
 }
 
 func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
@@ -725,6 +748,8 @@ func typeToSecurableType(t string) (catalog.SecurableType, error) {
 		return catalog.SecurableTypeSchema, nil
 	case data_source.Table:
 		return catalog.SecurableTypeTable, nil
+	case functionType:
+		return catalog.SecurableTypeFunction, nil
 	default:
 		return "", fmt.Errorf("unknown type %q", t)
 	}
@@ -775,7 +800,7 @@ func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.S
 		}
 
 		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: catalogType})
-	case data_source.Table, data_source.View: //TODO also include functions
+	case data_source.Table, data_source.View, functionType:
 		fullname, err := cutLastPartFullName(object.FullName)
 		if err != nil {
 			return err

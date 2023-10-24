@@ -184,7 +184,17 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
 				},
 			},
-			Children: []string{ds.Table},
+			Children: []string{ds.Table, functionType},
+		},
+		{
+			Name: functionType,
+			Type: functionType,
+			Permissions: []*ds.DataObjectTypePermission{
+				{
+					Permission:  "EXECUTE",
+					Description: "Invoke a user defined function. The user also requires the USE CATALOG privilege on the catalog and the USE SCHEMA privilege on the schema.",
+				},
+			},
 		},
 		{
 			Name: ds.Table,

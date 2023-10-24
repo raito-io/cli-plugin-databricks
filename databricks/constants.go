@@ -12,4 +12,5 @@ const (
 	workspaceType = "workspace"
 	metastoreType = "metastore"
 	catalogType   = "catalog"
+	functionType  = "function"
 )
