@@ -91,6 +91,15 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			},
 		},
 	}, nil)
+	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]FunctionInfo{
+		{
+			Name:        "function-1",
+			MetastoreId: "metastore-Id1",
+			Comment:     "comment on function-1",
+			FullName:    "catalog-1.schema-1.function-1",
+			CatalogName: "catalog-1",
+		},
+	}, nil)
 
 	// When
 	err := dsSyncer.SyncDataSource(context.Background(), dataSourceHandlerMock, configMap)
@@ -100,7 +109,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 
 	assert.Equal(t, "AccountId", dataSourceHandlerMock.DataSourceName)
 	assert.Equal(t, "AccountId", dataSourceHandlerMock.DataSourceFullName)
-	require.Len(t, dataSourceHandlerMock.DataObjects, 6)
+	require.Len(t, dataSourceHandlerMock.DataObjects, 7)
 
 }
 
@@ -117,7 +126,7 @@ func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyn
 		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
 			return mockAccountRepo
 		},
-		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

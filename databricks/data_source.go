@@ -27,12 +27,12 @@ type dataSourceWorkspaceRepository interface {
 	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
 	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
 	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
-	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error)
+	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error)
 }
 
 type DataSourceSyncer struct {
 	accountRepoFactory   func(user string, repoCredentials RepositoryCredentials) dataSourceAccountRepository
-	workspaceRepoFactory func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 }
 
 func NewDataSourceSyncer() *DataSourceSyncer {
@@ -40,8 +40,8 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
 			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, repoCredentials)
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
 	}
 }
@@ -156,7 +156,7 @@ func (d *DataSourceSyncer) getWorkspaces(ctx context.Context, dataSourceHandler 
 }
 
 func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configParams *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
-	_, repoCredentials, err := getAndValidateParameters(configParams)
+	accountId, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 	logger.Debug(fmt.Sprintf("Will try %d workspaces. %+v", len(workspaceDeploymentNames), workspaceDeploymentNames))
 
 	// Select workspace
-	repo, err := selectWorkspaceRepo(ctx, repoCredentials, workspaceDeploymentNames, d.workspaceRepoFactory)
+	repo, err := selectWorkspaceRepo(ctx, repoCredentials, accountId, workspaceDeploymentNames, d.workspaceRepoFactory)
 	if err != nil {
 		return err
 	}
@@ -187,6 +187,11 @@ func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataS
 			_, tableErr := d.getTablesAndColumnsInSchema(ctx, dataSourceHandler, metastore.MetastoreId, &schemas[j], workspaceRepo)
 			if tableErr != nil {
 				return tableErr
+			}
+
+			_, functionErr := d.getFunctionsInSchema(ctx, dataSourceHandler, metastore.MetastoreId, &schemas[j], workspaceRepo)
+			if functionErr != nil {
+				return functionErr
 			}
 		}
 	}
@@ -252,6 +257,39 @@ func (d *DataSourceSyncer) getSchemasInCatalog(ctx context.Context, dataSourceHa
 	}
 
 	return schemas, nil
+}
+
+func (d *DataSourceSyncer) getFunctionsInSchema(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, schemaInfo *catalog.SchemaInfo, repo dataSourceWorkspaceRepository) ([]FunctionInfo, error) {
+	logger.Debug(fmt.Sprintf("Load functions in schema %s in metastore %s", schemaInfo.FullName, metastoreId))
+
+	functions, err := repo.ListFunctions(ctx, schemaInfo.CatalogName, schemaInfo.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	parentId := createUniqueId(metastoreId, schemaInfo.FullName)
+
+	for i := range functions {
+		function := &functions[i]
+
+		logger.Debug(fmt.Sprintf("Pares function %s: %+v", function.Name, function))
+
+		uniqueId := createUniqueId(metastoreId, function.FullName)
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:             function.Name,
+			ExternalId:       uniqueId,
+			ParentExternalId: parentId,
+			Description:      function.Comment,
+			FullName:         uniqueId,
+			Type:             functionType,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return functions, nil
 }
 
 func (d *DataSourceSyncer) getTablesAndColumnsInSchema(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, schemaInfo *catalog.SchemaInfo, repo dataSourceWorkspaceRepository) ([]catalog.TableInfo, error) {

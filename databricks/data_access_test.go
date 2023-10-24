@@ -141,6 +141,26 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
+	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]FunctionInfo{
+		{
+			Name:        "function-1",
+			MetastoreId: metastore1.MetastoreId,
+			CatalogName: "catalog-1",
+			SchemaName:  "schema-1",
+			Comment:     "comment on function-1",
+			FullName:    "catalog-1.schema-1.function-1",
+		},
+	}, nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.function-1").
+		Return(&catalog.PermissionsList{
+			PrivilegeAssignments: []catalog.PrivilegeAssignment{
+				{
+					Principal:  "bart@raito.io",
+					Privileges: []catalog.Privilege{catalog.PrivilegeExecute},
+				},
+			},
+		}, nil).Once()
+
 	// When
 	err := accessSyncer.SyncAccessProvidersFromTarget(context.Background(), accessProviderHandlerMock, configMap)
 
@@ -326,6 +346,24 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Type:     data_source.Table,
 				},
 				Permissions: []string{"SELECT"},
+			}},
+		},
+		{
+			ExternalId: "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
+			Name:       "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
+			NamingHint: "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
+			ActualName: "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
+			Action:     sync_from_target.Grant,
+			Type:       ptr.String(access_provider.AclSet),
+			Who: &sync_from_target.WhoItem{
+				Users: []string{"bart@raito.io"},
+			},
+			What: []sync_from_target.WhatItem{{
+				DataObject: &data_source.DataObjectReference{
+					FullName: "metastore-id1.catalog-1.schema-1.function-1",
+					Type:     functionType,
+				},
+				Permissions: []string{"EXECUTE"},
 			}},
 		},
 	})
@@ -771,7 +809,7 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository {
 			return accountRepo
 		},
-		workspaceRepoFactory: func(host string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
