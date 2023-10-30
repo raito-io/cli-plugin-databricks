@@ -1,20 +1,9 @@
-package databricks
+package types
 
 import (
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 )
-
-type MetastoreAssignment struct {
-	WorkspaceIds []int `json:"workspace_ids,omitempty"`
-}
-
-type Workspace struct {
-	WorkspaceId     int    `json:"workspace_id"`
-	WorkspaceName   string `json:"workspace_name"`
-	WorkspaceStatus string `json:"workspace_status"`
-	DeploymentName  string `json:"deployment_name"`
-}
 
 type SecurableItemKey struct {
 	Type     string
@@ -29,37 +18,37 @@ type PrivilegesChanges struct {
 }
 
 type PrivilegesChangeCollection struct {
-	m map[SecurableItemKey]map[string]*PrivilegesChanges
+	M map[SecurableItemKey]map[string]*PrivilegesChanges
 }
 
 func NewPrivilegesChangeCollection() PrivilegesChangeCollection {
 	return PrivilegesChangeCollection{
-		m: make(map[SecurableItemKey]map[string]*PrivilegesChanges),
+		M: make(map[SecurableItemKey]map[string]*PrivilegesChanges),
 	}
 }
 
 func (c *PrivilegesChangeCollection) AddPrivilege(securableItem SecurableItemKey, apID string, principal string, privilege ...string) {
-	if _, ok := c.m[securableItem]; !ok {
-		c.m[securableItem] = make(map[string]*PrivilegesChanges)
+	if _, ok := c.M[securableItem]; !ok {
+		c.M[securableItem] = make(map[string]*PrivilegesChanges)
 	}
 
-	if _, ok := c.m[securableItem][principal]; !ok {
-		c.m[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](privilege...), Remove: set.NewSet[string](), AssociatedAPs: set.NewSet[string](apID)}
+	if _, ok := c.M[securableItem][principal]; !ok {
+		c.M[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](privilege...), Remove: set.NewSet[string](), AssociatedAPs: set.NewSet[string](apID)}
 	} else {
-		c.m[securableItem][principal].Add.Add(privilege...)
-		c.m[securableItem][principal].AssociatedAPs.Add(apID)
+		c.M[securableItem][principal].Add.Add(privilege...)
+		c.M[securableItem][principal].AssociatedAPs.Add(apID)
 	}
 }
 
 func (c *PrivilegesChangeCollection) RemovePrivilege(securableItem SecurableItemKey, principal string, privilege ...string) {
-	if _, ok := c.m[securableItem]; !ok {
-		c.m[securableItem] = make(map[string]*PrivilegesChanges)
+	if _, ok := c.M[securableItem]; !ok {
+		c.M[securableItem] = make(map[string]*PrivilegesChanges)
 	}
 
-	if _, ok := c.m[securableItem][principal]; !ok {
-		c.m[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](), Remove: set.NewSet(privilege...)}
+	if _, ok := c.M[securableItem][principal]; !ok {
+		c.M[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](), Remove: set.NewSet(privilege...)}
 	} else {
-		c.m[securableItem][principal].Remove.Add(privilege...)
+		c.M[securableItem][principal].Remove.Add(privilege...)
 	}
 }
 
@@ -97,18 +86,26 @@ func (c *PrivilegeCache) ContainsPrivilege(item data_source.DataObjectReference,
 	return c.m[item][principal].Contains(privilege)
 }
 
-type databricksUsersFilter struct {
-	username *string
+type MaskDataObjectsOfSchema struct {
+	DataObjects        map[string][]string //Table Name => []Column Name
+	DeletedDataObjects map[string][]string //Table Name => []Column Name
 }
 
-type databricksGroupsFilter struct {
-	groupname *string
+func (m *MaskDataObjectsOfSchema) AllDataObjects() map[string][]string {
+	result := make(map[string][]string)
+
+	for k, v := range m.DataObjects {
+		result[k] = append(result[k], v...)
+	}
+
+	for k, v := range m.DeletedDataObjects {
+		result[k] = append(result[k], v...)
+	}
+
+	return result
 }
 
-type RepositoryCredentials struct {
-	Username string
-	Password string
-
-	ClientId     string
-	ClientSecret string
+type WarehouseDetails struct {
+	Workspace string `json:"workspace"`
+	Warehouse string `json:"warehouse"`
 }

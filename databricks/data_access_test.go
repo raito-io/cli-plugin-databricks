@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/types"
 	"cli-plugin-databricks/utils/array"
 )
 
@@ -44,7 +46,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := Workspace{
+	workspaceObject := repo.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -52,8 +54,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Twice()
 	mockAccountRepo.EXPECT().ListWorkspaceAssignments(mock.Anything, workspaceObject.WorkspaceId).Return([]iam.PermissionAssignment{
 		{
 			Principal: &iam.PrincipalOutput{
@@ -73,12 +75,13 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 	}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeMetastore, "metastore-id1").Return(nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
+			FullName:    "catalog-1",
 			MetastoreId: metastore1.MetastoreId,
 			Comment:     "comment on catalog-1",
 		},
@@ -129,6 +132,17 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Comment:     "comment on table-1",
 			FullName:    "catalog-1.schema-1.table-1",
 			TableType:   catalog.TableTypeManaged,
+			Columns: []catalog.ColumnInfo{
+				{
+					Name: "column-1",
+					Mask: &catalog.ColumnMask{
+						FunctionName: "catalog-1.schema-1.function-2",
+					},
+				},
+				{
+					Name: "column-2",
+				},
+			},
 		},
 	}, nil)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").
@@ -141,7 +155,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]FunctionInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]repo.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: metastore1.MetastoreId,
@@ -149,6 +163,15 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			SchemaName:  "schema-1",
 			Comment:     "comment on function-1",
 			FullName:    "catalog-1.schema-1.function-1",
+		},
+		{
+			Name:              "function-2",
+			MetastoreId:       metastore1.MetastoreId,
+			CatalogName:       "catalog-1",
+			SchemaName:        "schema-1",
+			Comment:           "Used as mask",
+			FullName:          "catalog-1.schema-1.function-2",
+			RoutineDefinition: "CASE username() IN ('ruben@raito.io') THEN val else '****'",
 		},
 	}, nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.function-1").
@@ -366,6 +389,23 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				Permissions: []string{"EXECUTE"},
 			}},
 		},
+		{
+			ExternalId:        "metastore-id1.catalog-1.schema-1.function-2",
+			Name:              "function-2",
+			Action:            sync_from_target.Mask,
+			Policy:            "CASE username() IN ('ruben@raito.io') THEN val else '****'",
+			NotInternalizable: true,
+			ActualName:        "metastore-id1.catalog-1.schema-1.function-2",
+			What: []sync_from_target.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "metastore-id1.catalog-1.schema-1.table-1.column-1",
+						Type:     data_source.Column,
+					},
+				},
+			},
+			Incomplete: ptr.Bool(true),
+		},
 	})
 }
 
@@ -458,7 +498,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := Workspace{
+	workspaceObject := repo.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -466,8 +506,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
@@ -513,22 +553,22 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		return nil
 	}).Once()
 
-	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksUsersFilter)) <-chan interface{} {
-		options := databricksUsersFilter{}
+	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksUsersFilter)) <-chan interface{} {
+		options := repo.DatabricksUsersFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
 
-		require.NotNil(t, options.username)
+		require.NotNil(t, options.Username)
 
-		if *options.username == "ruben@raito.io" {
+		if *options.Username == "ruben@raito.io" {
 			return array.ArrayToChannel([]interface{}{
 				iam.User{
 					DisplayName: "Ruben Mennes",
 					Id:          "314",
 				},
 			})
-		} else if *options.username == "dieter@raito.io" {
+		} else if *options.Username == "dieter@raito.io" {
 			return array.ArrayToChannel([]interface{}{
 				iam.User{
 					DisplayName: "Dieter Wachters",
@@ -541,14 +581,14 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 		return array.ArrayToChannel[interface{}]([]interface{}{})
 	})
-	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksGroupsFilter)) <-chan interface{} {
-		options := databricksGroupsFilter{}
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksGroupsFilter)) <-chan interface{} {
+		options := repo.DatabricksGroupsFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
 
-		require.NotNil(t, options.groupname)
-		require.Equal(t, "group1", *options.groupname)
+		require.NotNil(t, options.Groupname)
+		require.Equal(t, "group1", *options.Groupname)
 
 		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
 	})
@@ -671,7 +711,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := Workspace{
+	workspaceObject := repo.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -679,8 +719,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
@@ -726,22 +766,22 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		return errors.New("boom")
 	}).Once()
 
-	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksUsersFilter)) <-chan interface{} {
-		options := databricksUsersFilter{}
+	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksUsersFilter)) <-chan interface{} {
+		options := repo.DatabricksUsersFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
 
-		require.NotNil(t, options.username)
+		require.NotNil(t, options.Username)
 
-		if *options.username == "ruben@raito.io" {
+		if *options.Username == "ruben@raito.io" {
 			return array.ArrayToChannel([]interface{}{
 				iam.User{
 					DisplayName: "Ruben Mennes",
 					Id:          "314",
 				},
 			})
-		} else if *options.username == "dieter@raito.io" {
+		} else if *options.Username == "dieter@raito.io" {
 			return array.ArrayToChannel([]interface{}{
 				iam.User{
 					DisplayName: "Dieter Wachters",
@@ -754,14 +794,14 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 
 		return array.ArrayToChannel[interface{}]([]interface{}{})
 	})
-	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(*databricksGroupsFilter)) <-chan interface{} {
-		options := databricksGroupsFilter{}
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksGroupsFilter)) <-chan interface{} {
+		options := repo.DatabricksGroupsFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
 
-		require.NotNil(t, options.groupname)
-		require.Equal(t, "group1", *options.groupname)
+		require.NotNil(t, options.Groupname)
+		require.Equal(t, "group1", *options.Groupname)
 
 		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
 	})
@@ -806,10 +846,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 	}
 
 	return &AccessSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataAccessAccountRepository {
+		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataAccessAccountRepository {
 			return accountRepo
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
@@ -821,6 +861,6 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 			return nil, errors.New("no workspace repository")
 		},
 
-		privilegeCache: NewPrivilegeCache(),
+		privilegeCache: types.NewPrivilegeCache(),
 	}, accountRepo, workspaceMockRepos
 }

@@ -15,6 +15,8 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
+
+	"cli-plugin-databricks/databricks/repo"
 )
 
 const (
@@ -27,8 +29,8 @@ const (
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageAccountRepository
 type dataUsageAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
-	GetWorkspaces(ctx context.Context) ([]Workspace, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error)
+	GetWorkspaces(ctx context.Context) ([]repo.Workspace, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []repo.Workspace) (map[string][]string, map[string]string, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
@@ -42,17 +44,17 @@ type dataUsageWorkspaceRepository interface {
 var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
-	accountRepoFactory   func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository
-	workspaceRepoFactory func(host string, accountId string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	accountRepoFactory   func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository
+	workspaceRepoFactory func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
 	return &DataUsageSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository {
-			return NewAccountRepository(repoCredentials, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository {
+			return repo.NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return NewWorkspaceRepository(host, accountId, repoCredentials)
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
 	}
 }
@@ -91,7 +93,7 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 	return nil
 }
 
-func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
+func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
 	accountId, repoCredentials, err := getAndValidateParameters(configParams)
@@ -99,7 +101,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 		return err
 	}
 
-	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), accountId, repoCredentials)
+	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), accountId, &repoCredentials)
 	if err != nil {
 		return err
 	}
@@ -510,13 +512,13 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 	return result
 }
 
-func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []Workspace, map[string]string, error) {
+func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []repo.Workspace, map[string]string, error) {
 	accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	accountClient := d.accountRepoFactory(accountId, repoCredentials)
+	accountClient := d.accountRepoFactory(accountId, &repoCredentials)
 
 	metastores, err := accountClient.ListMetastores(ctx)
 	if err != nil {
