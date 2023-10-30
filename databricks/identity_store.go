@@ -10,7 +10,6 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 
-	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils"
 )
 
@@ -18,18 +17,18 @@ var _ wrappers.IdentityStoreSyncer = (*IdentityStoreSyncer)(nil)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=identityStoreAccountRepository
 type identityStoreAccountRepository interface {
-	ListUsers(ctx context.Context, optFn ...func(options *repo.DatabricksUsersFilter)) <-chan interface{}
-	ListGroups(ctx context.Context, optFn ...func(options *repo.DatabricksGroupsFilter)) <-chan interface{}
+	ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{}
+	ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{}
 }
 
 type IdentityStoreSyncer struct {
-	accountRepoFactory func(accountId string, repoCredentials *repo.RepositoryCredentials) identityStoreAccountRepository
+	accountRepoFactory func(accountId string, repoCredentials RepositoryCredentials) identityStoreAccountRepository
 }
 
 func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) identityStoreAccountRepository {
-			return repo.NewAccountRepository(repoCredentials, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) identityStoreAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
 	}
 }
@@ -48,7 +47,7 @@ func (i *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		return err
 	}
 
-	accountRepo := i.accountRepoFactory(accountId, &repoCredentials)
+	accountRepo := i.accountRepoFactory(accountId, repoCredentials)
 
 	userMemberMap, err := i.getGroups(ctx, identityHandler, accountRepo)
 	if err != nil {

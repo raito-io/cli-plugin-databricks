@@ -10,36 +10,39 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
-	"github.com/raito-io/golang-set/set"
-
-	"cli-plugin-databricks/databricks/repo"
 )
 
 var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
 
+//go:generate go run github.com/vektra/mockery/v2 --name=dataSourceAccountRepository
+type dataSourceAccountRepository interface {
+	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
+	GetWorkspaces(ctx context.Context) ([]Workspace, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []Workspace) (map[string][]string, map[string]string, error)
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name=dataSourceWorkspaceRepository
 type dataSourceWorkspaceRepository interface {
 	Ping(ctx context.Context) error
-	workspaceRepository
+	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
+	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
+	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
+	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error)
 }
 
 type DataSourceSyncer struct {
-	accountRepoFactory   func(user string, repoCredentials *repo.RepositoryCredentials) accountRepository
-	workspaceRepoFactory func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
-
-	functionUsedAsMask set.Set[string]
+	accountRepoFactory   func(user string, repoCredentials RepositoryCredentials) dataSourceAccountRepository
+	workspaceRepoFactory func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 }
 
 func NewDataSourceSyncer() *DataSourceSyncer {
 	return &DataSourceSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) accountRepository {
-			return repo.NewAccountRepository(repoCredentials, accountId)
+		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
+			return NewAccountRepository(repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(host, accountId, repoCredentials)
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+			return NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
-
-		functionUsedAsMask: set.NewSet[string](),
 	}
 }
 
@@ -61,198 +64,287 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return err
 	}
 
+	accountClient := d.accountRepoFactory(accountId, repoCredentials)
+
 	dataSourceHandler.SetDataSourceFullname(accountId)
 	dataSourceHandler.SetDataSourceName(accountId)
 
-	traverser := NewDataObjectTraverser(func() (accountRepository, error) {
-		return d.accountRepoFactory(accountId, &repoCredentials), nil
-	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
-		return selectWorkspaceRepo(ctx, &repoCredentials, accountId, metastoreWorkspaces, d.workspaceRepoFactory)
-	})
-
-	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *string) error {
-		switch securableType {
-		case metastoreType:
-			return d.parseMetastore(ctx, dataSourceHandler, object)
-		case workspaceType:
-			return d.parseWorkspace(ctx, dataSourceHandler, object)
-		case catalogType:
-			return d.parseCatalog(ctx, dataSourceHandler, object)
-		case ds.Schema:
-			return d.parseSchema(ctx, dataSourceHandler, parentObject, object)
-		case ds.Table:
-			return d.parseTable(ctx, dataSourceHandler, parentObject, object)
-		case ds.Column:
-			return d.parseColumn(ctx, dataSourceHandler, parentObject, object)
-		case functionType:
-			return d.parseFunctions(ctx, dataSourceHandler, parentObject, object)
-		}
-
-		return fmt.Errorf("unsupported type: %s", securableType)
-	}, func(traverserOptions *DataObjectTraverserOptions) {
-		traverserOptions.SecurableTypesToReturn = set.NewSet[string](metastoreType, workspaceType, catalogType, ds.Schema, ds.Table, ds.Column, functionType)
-	})
-
+	metastores, err := d.getMetastores(ctx, dataSourceHandler, accountClient)
 	if err != nil {
 		return err
+	}
+
+	if len(metastores) == 0 {
+		logger.Warn("No metastores found")
+		return nil
+	}
+
+	workspaces, err := d.getWorkspaces(ctx, dataSourceHandler, accountClient)
+	if err != nil {
+		return err
+	}
+
+	metastoreWorkspaceMap, _, err := accountClient.GetWorkspaceMap(ctx, metastores, workspaces)
+	if err != nil {
+		return err
+	}
+
+	for i := range metastores {
+		metastore := &metastores[i]
+
+		if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
+			err = d.getDataObjectsForMetastore(ctx, dataSourceHandler, configParams, metastore, metastoreWorkspaces)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	metastore, ok := object.(*catalog.MetastoreInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse MetastoreInfo object. Expected *catalog.MetastoreInfo but got %T", object)
+func (d *DataSourceSyncer) getMetastores(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, accountClient dataSourceAccountRepository) ([]catalog.MetastoreInfo, error) {
+	logger.Debug("Load metastores")
+
+	metastores, err := accountClient.ListMetastores(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:       metastore.Name,
-		Type:       metastoreType,
-		FullName:   metastore.MetastoreId,
-		ExternalId: metastore.MetastoreId,
-	})
+	for i := range metastores {
+		metastore := &metastores[i]
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:       metastore.Name,
+			Type:       metastoreType,
+			FullName:   metastore.MetastoreId,
+			ExternalId: metastore.MetastoreId,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	logger.Debug(fmt.Sprintf("Found %d metastores", len(metastores)))
+
+	return metastores, nil
 }
 
-func (d *DataSourceSyncer) parseWorkspace(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	workspace, ok := object.(*repo.Workspace)
-	if !ok {
-		return fmt.Errorf("unable to parse Workspace object. Expected *repo.Workspace but got %T", object)
+func (d *DataSourceSyncer) getWorkspaces(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, accountClient dataSourceAccountRepository) ([]Workspace, error) {
+	workspaces, err := accountClient.GetWorkspaces(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	id := strconv.Itoa(workspace.WorkspaceId)
+	logger.Debug(fmt.Sprintf("Found %d workspaces", len(workspaces)))
 
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:       workspace.WorkspaceName,
-		FullName:   id,
-		Type:       workspaceType,
-		ExternalId: id,
-	})
+	for _, workspace := range workspaces {
+		id := strconv.Itoa(workspace.WorkspaceId)
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:       workspace.WorkspaceName,
+			FullName:   id,
+			Type:       workspaceType,
+			ExternalId: id,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return workspaces, nil
 }
 
-func (d *DataSourceSyncer) parseCatalog(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	c, ok := object.(*catalog.CatalogInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse CatalogInfo object. Expected *catalog.CatalogInfo but got %T", object)
+func (d *DataSourceSyncer) getDataObjectsForMetastore(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configParams *config.ConfigMap, metastore *catalog.MetastoreInfo, workspaceDeploymentNames []string) error {
+	accountId, repoCredentials, err := getAndValidateParameters(configParams)
+	if err != nil {
+		return err
 	}
 
-	uniqueId := createUniqueId(c.MetastoreId, c.Name)
+	logger.Debug(fmt.Sprintf("Get data objects for metastore %s", metastore.Name))
+	logger.Debug(fmt.Sprintf("Will try %d workspaces. %+v", len(workspaceDeploymentNames), workspaceDeploymentNames))
 
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             c.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: c.MetastoreId,
-		Description:      c.Comment,
-		FullName:         uniqueId,
-		Type:             catalogType,
-	})
+	// Select workspace
+	repo, err := selectWorkspaceRepo(ctx, repoCredentials, accountId, workspaceDeploymentNames, d.workspaceRepoFactory)
+	if err != nil {
+		return err
+	}
+
+	workspaceRepo := *repo
+
+	catalogs, err := d.getCatalogs(ctx, dataSourceHandler, metastore.MetastoreId, workspaceRepo)
+	if err != nil {
+		return err
+	}
+
+	for i := range catalogs {
+		schemas, schemaErr := d.getSchemasInCatalog(ctx, dataSourceHandler, metastore.MetastoreId, &catalogs[i], workspaceRepo)
+		if schemaErr != nil {
+			return schemaErr
+		}
+
+		for j := range schemas {
+			_, tableErr := d.getTablesAndColumnsInSchema(ctx, dataSourceHandler, metastore.MetastoreId, &schemas[j], workspaceRepo)
+			if tableErr != nil {
+				return tableErr
+			}
+
+			_, functionErr := d.getFunctionsInSchema(ctx, dataSourceHandler, metastore.MetastoreId, &schemas[j], workspaceRepo)
+			if functionErr != nil {
+				return functionErr
+			}
+		}
+	}
+
+	return nil
 }
 
-func (d *DataSourceSyncer) parseSchema(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parent interface{}, object interface{}) error {
-	schema, ok := object.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse SchemaInfo object. Expected *catalog.SchemaInfo but got %T", object)
+func (d *DataSourceSyncer) getCatalogs(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, repo dataSourceWorkspaceRepository) ([]catalog.CatalogInfo, error) {
+	logger.Debug(fmt.Sprintf("Load catalogs for metastore %s", metastoreId))
+
+	catalogs, err := repo.ListCatalogs(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	c, ok := parent.(*catalog.CatalogInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent CatalogInfo object. Expected *catalog.CatalogInfo but got %T", object)
+	for i := range catalogs {
+		c := &catalogs[i]
+
+		uniqueId := createUniqueId(c.MetastoreId, c.Name)
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:             c.Name,
+			ExternalId:       uniqueId,
+			ParentExternalId: c.MetastoreId,
+			Description:      c.Comment,
+			FullName:         uniqueId,
+			Type:             catalogType,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	uniqueId := createUniqueId(schema.MetastoreId, schema.FullName)
-	parentId := createUniqueId(c.MetastoreId, c.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             schema.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      schema.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Schema,
-	})
+	return catalogs, nil
 }
 
-func (d *DataSourceSyncer) parseTable(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parent interface{}, object interface{}) error {
-	table, ok := object.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse TableInfo object. Expected *catalog.TableInfo but got %T", object)
+func (d *DataSourceSyncer) getSchemasInCatalog(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, catalogInfo *catalog.CatalogInfo, repo dataSourceWorkspaceRepository) ([]catalog.SchemaInfo, error) {
+	logger.Debug(fmt.Sprintf("Load schemas in catalog %s in metastore %s", catalogInfo.Name, metastoreId))
+
+	schemas, err := repo.ListSchemas(ctx, catalogInfo.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	schema, ok := parent.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent SchemaInfo object. Expected *catalog.SchemaInfo but got %T", parent)
+	parentId := createUniqueId(metastoreId, catalogInfo.Name)
+
+	for i := range schemas {
+		schema := &schemas[i]
+
+		uniqueId := createUniqueId(metastoreId, schema.FullName)
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:             schema.Name,
+			ExternalId:       uniqueId,
+			ParentExternalId: parentId,
+			Description:      schema.Comment,
+			FullName:         uniqueId,
+			Type:             ds.Schema,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	uniqueId := createUniqueId(table.MetastoreId, table.FullName)
-	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             table.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      table.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Table,
-	})
+	return schemas, nil
 }
 
-func (d *DataSourceSyncer) parseColumn(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parentObject interface{}, object interface{}) error {
-	column, ok := object.(*catalog.ColumnInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse ColumnInfo object. Expected *catalog.ColumnInfo but got %T", object)
+func (d *DataSourceSyncer) getFunctionsInSchema(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, schemaInfo *catalog.SchemaInfo, repo dataSourceWorkspaceRepository) ([]FunctionInfo, error) {
+	logger.Debug(fmt.Sprintf("Load functions in schema %s in metastore %s", schemaInfo.FullName, metastoreId))
+
+	functions, err := repo.ListFunctions(ctx, schemaInfo.CatalogName, schemaInfo.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	table, ok := parentObject.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent TableInfo object. Expected *catalog.TableInfo but got %T", parentObject)
+	parentId := createUniqueId(metastoreId, schemaInfo.FullName)
+
+	for i := range functions {
+		function := &functions[i]
+
+		logger.Debug(fmt.Sprintf("Pares function %s: %+v", function.Name, function))
+
+		uniqueId := createUniqueId(metastoreId, function.FullName)
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:             function.Name,
+			ExternalId:       uniqueId,
+			ParentExternalId: parentId,
+			Description:      function.Comment,
+			FullName:         uniqueId,
+			Type:             functionType,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	uniqueId := createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
-	parentId := createUniqueId(table.MetastoreId, table.FullName)
-
-	if column.Mask != nil {
-		d.functionUsedAsMask.Add(createUniqueId(table.MetastoreId, column.Mask.FunctionName))
-	}
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             column.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      column.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Column,
-	})
+	return functions, nil
 }
 
-func (d *DataSourceSyncer) parseFunctions(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parentObject interface{}, object interface{}) error {
-	function, ok := object.(*repo.FunctionInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
+func (d *DataSourceSyncer) getTablesAndColumnsInSchema(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, metastoreId string, schemaInfo *catalog.SchemaInfo, repo dataSourceWorkspaceRepository) ([]catalog.TableInfo, error) {
+	logger.Debug(fmt.Sprintf("Load tables in schema %s in metastore %s", schemaInfo.FullName, metastoreId))
+
+	tables, err := repo.ListTables(ctx, schemaInfo.CatalogName, schemaInfo.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	uniqueId := createUniqueId(function.MetastoreId, function.FullName)
+	parentId := createUniqueId(metastoreId, schemaInfo.FullName)
 
-	if d.functionUsedAsMask.Contains(uniqueId) {
-		logger.Debug(fmt.Sprintf("Function %s used as mask. Will ignore function", uniqueId))
+	for i := range tables {
+		table := &tables[i]
 
-		return nil
+		uniqueId := createUniqueId(metastoreId, table.FullName)
+
+		doType, doErr := tableTypeToRaitoType(table.TableType)
+		if doErr != nil {
+			logger.Warn(doErr.Error())
+			continue
+		}
+
+		err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+			Name:             table.Name,
+			ExternalId:       uniqueId,
+			ParentExternalId: parentId,
+			Description:      table.Comment,
+			FullName:         uniqueId,
+			Type:             doType,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range table.Columns {
+			column := &table.Columns[i]
+
+			uniqueColumnId := createTableUniqueId(metastoreId, table.FullName, column.Name)
+
+			err = dataSourceHandler.AddDataObjects(&ds.DataObject{
+				Name:             column.Name,
+				ExternalId:       uniqueColumnId,
+				ParentExternalId: uniqueId,
+				Description:      column.Comment,
+				FullName:         uniqueColumnId,
+				Type:             ds.Column,
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	schema, ok := parentObject.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent SchemaInfo object. Expected *catalog.SchemaInfo but got %T", parentObject)
-	}
-
-	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             function.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      function.Comment,
-		FullName:         uniqueId,
-		Type:             functionType,
-	})
+	return tables, nil
 }
 
 func createUniqueId(metastoreId string, fullName string) string {
@@ -268,7 +360,7 @@ func getMetastoreAndFullnameOfUniqueId(uniqueId string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func TableTypeToRaitoType(tType catalog.TableType) (string, error) {
+func tableTypeToRaitoType(tType catalog.TableType) (string, error) {
 	switch tType {
 	case catalog.TableTypeManaged, catalog.TableTypeExternal, catalog.TableTypeStreamingTable:
 		//Regular table

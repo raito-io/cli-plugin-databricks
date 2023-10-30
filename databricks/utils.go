@@ -10,8 +10,6 @@ import (
 	"github.com/raito-io/cli/base"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
-
-	"cli-plugin-databricks/databricks/repo"
 )
 
 var logger hclog.Logger
@@ -28,11 +26,11 @@ func cleanDoubleQuotes(input string) string { //nolint:unused
 	return input
 }
 
-func getAndValidateParameters(configParams *config.ConfigMap) (accountId string, repoCredentials repo.RepositoryCredentials, err error) {
+func getAndValidateParameters(configParams *config.ConfigMap) (accountId string, repoCredentials RepositoryCredentials, err error) {
 	accountId = configParams.GetString(DatabricksAccountId)
 
 	if accountId == "" {
-		return "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
+		return "", RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
 	}
 
 	username := configParams.GetString(DatabricksUser)
@@ -40,7 +38,7 @@ func getAndValidateParameters(configParams *config.ConfigMap) (accountId string,
 	clientId := configParams.GetString(DatabricksClientId)
 	clientSecret := configParams.GetString(DatabricksClientSecret)
 
-	return accountId, repo.RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
+	return accountId, RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
 }
 
 func addToSetInMap[K comparable, V comparable](m map[K]set.Set[V], k K, v ...V) {
@@ -55,7 +53,7 @@ type workspaceRepo interface {
 	Ping(ctx context.Context) error
 }
 
-func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *repo.RepositoryCredentials, accountId string, workspaces []string, repoFn func(string, string, *repo.RepositoryCredentials) (R, error)) (R, string, error) {
+func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials RepositoryCredentials, accountId string, workspaces []string, repoFn func(string, string, RepositoryCredentials) (R, error)) (*R, error) {
 	var err error
 
 	for _, workspaceName := range workspaces {
@@ -71,16 +69,14 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 			continue
 		}
 
-		return repo, workspaceName, nil
+		return &repo, nil
 	}
-
-	var r R
 
 	if err == nil {
-		return r, "", fmt.Errorf("no workspace found for metastore")
+		return nil, fmt.Errorf("no workspace found for metastore")
 	}
 
-	return r, "", err
+	return nil, err
 }
 
 func GetWorkspaceAddress(deploymentId string) string {
