@@ -33,7 +33,7 @@ type dataUsageAccountRepository interface {
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
 type dataUsageWorkspaceRepository interface {
-	QueryHistory(ctx context.Context, startTime *time.Time) ([]sql.QueryInfo, error)
+	QueryHistory(ctx context.Context, startTime *time.Time, f func(context.Context, *sql.QueryInfo) error) error
 	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
 	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
 	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
@@ -104,10 +104,10 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 		return err
 	}
 
-	numberOfDays := configParams.GetIntWithDefault(DatabricksDataUsageWindow, 90)
-	if numberOfDays > 90 {
+	numberOfDays := configParams.GetIntWithDefault(DatabricksDataUsageWindow, 29)
+	if numberOfDays > 29 {
 		logger.Info(fmt.Sprintf("Capping data usage window to 90 days (from %d days)", numberOfDays))
-		numberOfDays = 90
+		numberOfDays = 29
 	}
 
 	if numberOfDays <= 0 {
@@ -124,14 +124,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 		return err
 	}
 
-	queryHistory, err := repo.QueryHistory(ctx, &startDate)
-	if err != nil {
-		return err
-	}
-
-	for i := len(queryHistory) - 1; i >= 0; i-- {
-		queryInfo := queryHistory[i]
-
+	err = repo.QueryHistory(ctx, &startDate, func(ctx context.Context, queryInfo *sql.QueryInfo) error {
 		query := cleanUpQueryText(queryInfo.QueryText)
 
 		var whatItems []sync_from_target.WhatItem
@@ -140,19 +133,19 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 
 		switch queryInfo.StatementType { //nolint:exhaustive
 		case sql.QueryStatementTypeUse:
-			err = d.useStatement(&queryInfo, query, userLastUsage)
+			err = d.useStatement(queryInfo, query, userLastUsage)
 		case sql.QueryStatementTypeSelect:
-			whatItems, bytes, rows = d.selectStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.selectStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeInsert:
-			whatItems, bytes, rows = d.insertStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.insertStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeMerge:
-			whatItems, bytes, rows = d.mergeStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.mergeStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeUpdate:
-			whatItems, bytes, rows = d.updateStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.updateStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeDelete:
-			whatItems, bytes, rows = d.deleteStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.deleteStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		case sql.QueryStatementTypeCopy:
-			whatItems, bytes, rows = d.copyStatement(&queryInfo, query, tableInfoMap, userLastUsage, metastore)
+			whatItems, bytes, rows = d.copyStatement(queryInfo, query, tableInfoMap, userLastUsage, metastore)
 		default:
 			logger.Debug(fmt.Sprintf("Ignore query type: %s", queryInfo.StatementType))
 		}
@@ -196,6 +189,11 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 				},
 			})
 		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
