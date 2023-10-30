@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils/array"
 )
 
@@ -43,7 +44,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 		},
 	}
 
-	workspaces := []Workspace{
+	workspaces := []repo.Workspace{
 		{
 			WorkspaceId:     42,
 			DeploymentName:  deployment,
@@ -291,7 +292,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything).Return(queryHistory, nil).Once()
 
 	// When
-	err := duSyncer.syncWorkspace(context.Background(), &Workspace{WorkspaceId: 42, DeploymentName: deployment, WorkspaceName: "workspaceName", WorkspaceStatus: "RUNNING"}, &catalog.MetastoreInfo{Name: "Metastore1", MetastoreId: metastoreId}, fileCreatorMock, configMap)
+	err := duSyncer.syncWorkspace(context.Background(), &repo.Workspace{WorkspaceId: 42, DeploymentName: deployment, WorkspaceName: "workspaceName", WorkspaceStatus: "RUNNING"}, &catalog.MetastoreInfo{Name: "Metastore1", MetastoreId: metastoreId}, fileCreatorMock, configMap)
 
 	// Then
 	require.NoError(t, err)
@@ -885,10 +886,10 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 	}
 
 	return &DataUsageSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataUsageAccountRepository {
+		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository {
 			return mockAccountRepo
 		},
-		workspaceRepoFactory: func(host string, account string, repoCredentials RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, account string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

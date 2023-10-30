@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"cli-plugin-databricks/databricks/repo"
 )
 
 func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
@@ -36,7 +38,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		},
 	}, nil).Once()
 
-	accountMock.EXPECT().GetWorkspaces(mock.Anything).Return([]Workspace{
+	accountMock.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{
 		{
 			WorkspaceId:     42,
 			DeploymentName:  deployment,
@@ -50,16 +52,16 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			Name:        "metastore-1",
 			MetastoreId: "metastore-Id1",
 		},
-	}, []Workspace{
+	}, []repo.Workspace{
 		{
 			WorkspaceId:     42,
 			DeploymentName:  deployment,
 			WorkspaceName:   workspace,
 			WorkspaceStatus: "RUNNING",
 		},
-	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil, nil).Once()
+	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil, nil).Twice()
 
-	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
+	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
@@ -91,7 +93,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			},
 		},
 	}, nil)
-	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]FunctionInfo{
+	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]repo.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: "metastore-Id1",
@@ -113,20 +115,20 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 
 }
 
-func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyncer, *mockDataSourceAccountRepository, map[string]*mockDataSourceWorkspaceRepository) {
+func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyncer, *mockAccountRepository, map[string]*mockDataSourceWorkspaceRepository) {
 	t.Helper()
 
-	mockAccountRepo := newMockDataSourceAccountRepository(t)
+	mockAccountRepo := newMockAccountRepository(t)
 	workspaceMockRepos := make(map[string]*mockDataSourceWorkspaceRepository)
 	for _, deployment := range deployments {
 		workspaceMockRepos[deployment] = newMockDataSourceWorkspaceRepository(t)
 	}
 
 	return &DataSourceSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials RepositoryCredentials) dataSourceAccountRepository {
+		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) accountRepository {
 			return mockAccountRepo
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
