@@ -593,7 +593,9 @@ func (a *AccessSyncer) syncMaskToTarget(ctx context.Context, ap *sync_to_target.
 
 	logger.Debug(fmt.Sprintf("Syncing mask %q to target", maskName))
 
-	schemas, warehouseIdMap := a.syncMasksGetSchemaAndWarehouses(ap)
+	schemas := a.syncMasksGetSchema(ap)
+
+	warehouseIdMap := make(map[string]types.WarehouseDetails)
 
 	if found, err := configMap.Unmarshal(DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
 		return maskName, err
@@ -766,7 +768,7 @@ func (a *AccessSyncer) deleteMaskInSchema(ctx context.Context, maskName string, 
 	return nil
 }
 
-func (a *AccessSyncer) syncMasksGetSchemaAndWarehouses(ap *sync_to_target.AccessProvider) (map[string]types.MaskDataObjectsOfSchema, map[string]types.WarehouseDetails) {
+func (a *AccessSyncer) syncMasksGetSchema(ap *sync_to_target.AccessProvider) map[string]types.MaskDataObjectsOfSchema {
 	schemas := make(map[string]types.MaskDataObjectsOfSchema)
 
 	for _, whatItem := range ap.What {
@@ -804,9 +806,7 @@ func (a *AccessSyncer) syncMasksGetSchemaAndWarehouses(ap *sync_to_target.Access
 		}
 	}
 
-	warehouseIdMap := make(map[string]types.WarehouseDetails)
-
-	return schemas, warehouseIdMap
+	return schemas
 }
 
 func (a *AccessSyncer) syncGrantToTarget(_ context.Context, ap *sync_to_target.AccessProvider, changeCollection *types.PrivilegesChangeCollection) error {

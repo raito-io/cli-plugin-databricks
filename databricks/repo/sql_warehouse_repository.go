@@ -18,6 +18,7 @@ const (
 
 var _ WarehouseRepository = (*SqlWarehouseRepository)(nil)
 
+//go:generate go run github.com/vektra/mockery/v2 --name=WarehouseRepository --testonly=false
 type WarehouseRepository interface {
 	ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error)
 	GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*ColumnInformation, error)

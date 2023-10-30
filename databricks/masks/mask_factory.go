@@ -83,7 +83,7 @@ func NewSimpleMaskGenerator(method SimpleMaskMethod) *SimpleMaskGenerator {
 var typeParseRegex = regexp.MustCompile("(^[a-zA-Z]*)")
 
 func (g *SimpleMaskGenerator) Generate(maskName string, columnTypeString string, beneficiaries *MaskingBeneficiaries) (MaskingPolicy, error) {
-	trimmedColumnType := typeParseRegex.ReplaceAllLiteralString(columnTypeString, "$1")
+	trimmedColumnType := typeParseRegex.ReplaceAllString(columnTypeString, "${1}")
 
 	columnType, err := SqlDataTypeString(trimmedColumnType)
 	if err != nil {

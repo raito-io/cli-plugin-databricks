@@ -3,6 +3,7 @@ package databricks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -420,8 +421,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	accessProviders := sync_to_target.AccessProviderImport{
 		AccessProviders: []*sync_to_target.AccessProvider{
 			{
-				Id:   "workspace-ap-id",
-				Name: "workspace-ap",
+				Id:     "workspace-ap-id",
+				Name:   "workspace-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -440,8 +442,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				},
 			},
 			{
-				Id:   "catalog-ap-id",
-				Name: "catalog-ap",
+				Id:     "catalog-ap-id",
+				Name:   "catalog-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -459,8 +462,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				},
 			},
 			{
-				Id:   "multiple-do-ap-id",
-				Name: "multiple-do-ap",
+				Id:     "multiple-do-ap-id",
+				Name:   "multiple-do-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -622,6 +626,94 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
 
+func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
+	// Given
+	deployment := "test-deployment"
+	workspace := "test-workspace"
+	accessSyncer, mockAccountRepo, mockWorkspaceRepoMap := createAccessSyncer(t, deployment)
+
+	accessProviderHandlerMock := mocks.NewSimpleAccessProviderFeedbackHandler(t)
+
+	accessProviders := sync_to_target.AccessProviderImport{
+		AccessProviders: []*sync_to_target.AccessProvider{
+			{
+				Id:     "workspace-ap-id",
+				Name:   "workspace-ap",
+				Action: sync_to_target.Mask,
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-1.schema-1.table-1.column-1",
+							Type:     data_source.Column,
+						},
+						Permissions: []string{"USER"},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+				DeletedWho: &sync_to_target.WhoItem{
+					Users: []string{"dieter@raito.io"},
+				},
+			},
+		},
+	}
+
+	configMap := &config.ConfigMap{
+		Parameters: map[string]string{
+			DatabricksAccountId:     "AccountId",
+			DatabricksUser:          "User",
+			DatabricksPassword:      "Password",
+			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+		},
+	}
+
+	metastore1 := catalog.MetastoreInfo{
+		Name:        "metastore1",
+		MetastoreId: "metastore-id1",
+	}
+
+	workspaceObject := repo.Workspace{
+		WorkspaceId:     42,
+		DeploymentName:  deployment,
+		WorkspaceName:   workspace,
+		WorkspaceStatus: "RUNNING",
+	}
+
+	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+
+	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
+
+	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
+
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*repo.ColumnInformation{
+		"column-1": {
+			Name: "column-1",
+			Type: "string",
+		},
+	}, nil).Once()
+	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_workspace-ap_string(val string)\nRETURN CASE\n\tWHEN current_user() IN ('ruben@raito.io') THEN val\n\tWHEN is_account_group_member('group1') THEN val\n\tELSE *****\nEND;").Return(nil, nil).Once()
+	mockWarehouseRepo.EXPECT().SetMask(mock.Anything, "catalog-1", "schema-1", "table-1", "column-1", "raito_workspace-ap_string").Return(nil).Once()
+
+	// When
+	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
+
+	// Then
+	require.NoError(t, err)
+
+	assert.Len(t, accessProviderHandlerMock.AccessProviderFeedback, 1)
+	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
+		{
+			AccessProvider: "workspace-ap-id",
+			ActualName:     "raito_workspace-ap",
+			ExternalId:     ptr.String("raito_workspace-ap"),
+		},
+	}, accessProviderHandlerMock.AccessProviderFeedback)
+}
+
 func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	// Given
 	deployment := "test-deployment"
@@ -633,8 +725,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	accessProviders := sync_to_target.AccessProviderImport{
 		AccessProviders: []*sync_to_target.AccessProvider{
 			{
-				Id:   "workspace-ap-id",
-				Name: "workspace-ap",
+				Id:     "workspace-ap-id",
+				Name:   "workspace-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -653,8 +746,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 				},
 			},
 			{
-				Id:   "catalog-ap-id",
-				Name: "catalog-ap",
+				Id:     "catalog-ap-id",
+				Name:   "catalog-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -672,8 +766,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 				},
 			},
 			{
-				Id:   "multiple-do-ap-id",
-				Name: "multiple-do-ap",
+				Id:     "multiple-do-ap-id",
+				Name:   "multiple-do-ap",
+				Action: sync_to_target.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
