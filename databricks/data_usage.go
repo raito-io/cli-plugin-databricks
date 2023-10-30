@@ -140,7 +140,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 		var bytes int
 		var rows int
 
-		switch queryInfo.StatementType {
+		switch queryInfo.StatementType { //nolint:exhaustive
 		case sql.QueryStatementTypeUse:
 			err = d.useStatement(&queryInfo, query, userLastUsage)
 		case sql.QueryStatementTypeSelect:

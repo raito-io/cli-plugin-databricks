@@ -406,7 +406,7 @@ func (a *AccessSyncer) syncAccessProviderToTarget(ctx context.Context, accessPro
 		AccessProvider: accessProvider.Id,
 	}
 
-	switch accessProvider.Action {
+	switch accessProvider.Action { //nolint:exhaustive
 	case sync_to_target.Mask:
 		maskName, apErr := a.syncMaskToTarget(ctx, accessProvider, configMap)
 
