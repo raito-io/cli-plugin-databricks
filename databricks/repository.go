@@ -14,9 +14,11 @@ import (
 	"github.com/imroc/req/v3"
 )
 
-const databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
-
-const accountHost = "https://accounts.cloud.databricks.com/"
+const (
+	databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
+	accountHost                              = "https://accounts.cloud.databricks.com/"
+	queryHistoryLimit                        = 10000
+)
 
 type repositoryRequestFactory interface {
 	NewRequest(ctx context.Context) (*req.Request, error)
@@ -635,25 +637,34 @@ func (r *WorkspaceRepository) SetPermissionsOnResource(ctx context.Context, secu
 	return nil
 }
 
-func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.Time) ([]sql.QueryInfo, error) {
-	request := sql.ListQueryHistoryRequest{}
+func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.Time, f func(context.Context, *sql.QueryInfo) error) error {
+	request := sql.ListQueryHistoryRequest{
+		IncludeMetrics: true,
+	}
 
 	if startTime != nil {
 		request.FilterBy = &sql.QueryFilter{QueryStartTimeRange: &sql.TimeRange{StartTimeMs: int(startTime.UnixMilli())}}
 	}
 
-	queryInfo, err := r.client.QueryHistory.ListAll(ctx, sql.ListQueryHistoryRequest{
-		FilterBy: &sql.QueryFilter{
-			QueryStartTimeRange: &sql.TimeRange{StartTimeMs: int(startTime.UnixMilli())},
-		},
-		IncludeMetrics: true,
-	})
+	iterator := r.client.QueryHistory.List(ctx, request)
 
-	if err != nil {
-		return nil, err
+	i := 0
+
+	for iterator.HasNext(ctx) && i < queryHistoryLimit {
+		it, err := iterator.Next(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = f(ctx, &it)
+		if err != nil {
+			return err
+		}
+
+		i += 1
 	}
 
-	return queryInfo, nil
+	return nil
 }
 
 func (r *WorkspaceRepository) Ping(ctx context.Context) error {
