@@ -1,4 +1,4 @@
-package databricks
+package repo
 
 import (
 	"context"
@@ -113,7 +113,7 @@ type AccountRepository struct {
 	accountId string
 }
 
-func NewAccountRepository(credentials RepositoryCredentials, accountId string) *AccountRepository {
+func NewAccountRepository(credentials *RepositoryCredentials, accountId string) *AccountRepository {
 	var factory repositoryRequestFactory
 
 	if credentials.ClientId != "" && credentials.ClientSecret != "" {
@@ -249,8 +249,8 @@ func (r *AccountRepository) GetWorkspaces(ctx context.Context) ([]Workspace, err
 	return result, nil
 }
 
-func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *databricksUsersFilter)) <-chan interface{} { //nolint:dupl
-	options := databricksUsersFilter{}
+func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *DatabricksUsersFilter)) <-chan interface{} { //nolint:dupl
+	options := DatabricksUsersFilter{}
 	for _, fn := range optFn {
 		fn(&options)
 	}
@@ -273,8 +273,8 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 
 		queryParams := make(map[string]string)
 
-		if options.username != nil {
-			queryParams["filter"] = fmt.Sprintf("userName eq %s", *options.username)
+		if options.Username != nil {
+			queryParams["filter"] = fmt.Sprintf("userName eq %s", *options.Username)
 		}
 
 		for {
@@ -323,8 +323,8 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 	return outputChannel
 }
 
-func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *databricksGroupsFilter)) <-chan interface{} { //nolint:dupl
-	options := databricksGroupsFilter{}
+func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *DatabricksGroupsFilter)) <-chan interface{} { //nolint:dupl
+	options := DatabricksGroupsFilter{}
 	for _, fn := range optFn {
 		fn(&options)
 	}
@@ -347,8 +347,8 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 
 		queryParams := make(map[string]string)
 
-		if options.groupname != nil {
-			queryParams["filter"] = fmt.Sprintf("displayName eq %s", *options.groupname)
+		if options.Groupname != nil {
+			queryParams["filter"] = fmt.Sprintf("displayName eq %s", *options.Groupname)
 		}
 
 		for {
@@ -461,7 +461,7 @@ type WorkspaceRepository struct {
 	restClient repositoryRequestFactory
 }
 
-func NewWorkspaceRepository(host string, accountId string, credentials RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(host string, accountId string, credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
 		Username:     credentials.Username,
 		Password:     credentials.Password,
@@ -516,80 +516,6 @@ func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string
 	}
 
 	return response, nil
-}
-
-// FunctionInfo Temporarily defined until bug in SDK is fixed
-type FunctionInfo struct {
-	// Name of parent catalog.
-	CatalogName string `json:"catalog_name,omitempty"`
-	// User-provided free-form text description.
-	Comment string `json:"comment,omitempty"`
-	// Time at which this function was created, in epoch milliseconds.
-	CreatedAt int64 `json:"created_at,omitempty"`
-	// Username of function creator.
-	CreatedBy string `json:"created_by,omitempty"`
-	// Scalar function return data type.
-	DataType catalog.ColumnTypeName `json:"data_type,omitempty"`
-	// External function language.
-	ExternalLanguage string `json:"external_language,omitempty"`
-	// External function name.
-	ExternalName string `json:"external_name,omitempty"`
-	// Pretty printed function data type.
-	FullDataType string `json:"full_data_type,omitempty"`
-	// Full name of function, in form of
-	// __catalog_name__.__schema_name__.__function__name__
-	FullName string `json:"full_name,omitempty"`
-	// Id of Function, relative to parent schema.
-	FunctionId string `json:"function_id,omitempty"`
-	// The array of __FunctionParameterInfo__ definitions of the function's
-	// parameters.
-	InputParams []catalog.FunctionParameterInfo `json:"input_params,omitempty"`
-	// Whether the function is deterministic.
-	IsDeterministic bool `json:"is_deterministic,omitempty"`
-	// Function null call.
-	IsNullCall bool `json:"is_null_call,omitempty"`
-	// Unique identifier of parent metastore.
-	MetastoreId string `json:"metastore_id,omitempty"`
-	// Name of function, relative to parent schema.
-	Name string `json:"name,omitempty"`
-	// Username of current owner of function.
-	Owner string `json:"owner,omitempty"`
-	// Function parameter style. **S** is the value for SQL.
-	ParameterStyle catalog.FunctionInfoParameterStyle `json:"parameter_style,omitempty"`
-	// A map of key-value properties attached to the securable.
-	// INVALID Properties map[string]string `json:"properties,omitempty"`
-	// Table function return parameters.
-	ReturnParams []catalog.FunctionParameterInfo `json:"return_params,omitempty"`
-	// Function language. When **EXTERNAL** is used, the language of the routine
-	// function should be specified in the __external_language__ field, and the
-	// __return_params__ of the function cannot be used (as **TABLE** return
-	// type is not supported), and the __sql_data_access__ field must be
-	// **NO_SQL**.
-	RoutineBody catalog.FunctionInfoRoutineBody `json:"routine_body,omitempty"`
-	// Function body.
-	RoutineDefinition string `json:"routine_definition,omitempty"`
-	// Function dependencies.
-	RoutineDependencies []catalog.Dependency `json:"routine_dependencies,omitempty"`
-	// Name of parent schema relative to its parent catalog.
-	SchemaName string `json:"schema_name,omitempty"`
-	// Function security type.
-	SecurityType catalog.FunctionInfoSecurityType `json:"security_type,omitempty"`
-	// Specific name of the function; Reserved for future use.
-	SpecificName string `json:"specific_name,omitempty"`
-	// Function SQL data access.
-	SqlDataAccess catalog.FunctionInfoSqlDataAccess `json:"sql_data_access,omitempty"`
-	// List of schemes whose objects can be referenced without qualification.
-	SqlPath string `json:"sql_path,omitempty"`
-	// Time at which this function was created, in epoch milliseconds.
-	UpdatedAt int64 `json:"updated_at,omitempty"`
-	// Username of user who last modified function.
-	UpdatedBy string `json:"updated_by,omitempty"`
-
-	ForceSendFields []string `json:"-"`
-}
-
-type FunctionsInfo struct {
-	Functions []FunctionInfo `json:"functions,omitempty"`
 }
 
 func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error) {
@@ -665,6 +591,10 @@ func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.
 	}
 
 	return nil
+}
+
+func (r *WorkspaceRepository) SqlWarehouseRepository(warehouseId string) WarehouseRepository {
+	return NewSqlWarehouseRepository(r.client, warehouseId)
 }
 
 func (r *WorkspaceRepository) Ping(ctx context.Context) error {
