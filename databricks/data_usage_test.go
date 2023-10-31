@@ -88,8 +88,8 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 	startTime := time.Now().Add(time.Hour)
 	endTime := time.Now()
 
-	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything).Return([]sql.QueryInfo{
-		{
+	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, _ *time.Time, f func(context.Context, *sql.QueryInfo) error) error {
+		return f(ctx, &sql.QueryInfo{
 			QueryText: "SELECT * FROM `catalog1`.`schema1`.`table1`",
 			Metrics: &sql.QueryMetrics{
 				RowsProducedCount: 1,
@@ -101,8 +101,8 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 			UserName:         "ruben@raito.io",
 			QueryId:          "queryId1",
 			StatementType:    sql.QueryStatementTypeSelect,
-		},
-	}, nil).Once()
+		})
+	}).Once()
 
 	// When
 	err := duSyncer.SyncDataUsage(context.Background(), fileCreatorMock, configMap)
@@ -286,10 +286,17 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			StatementType:    sql.QueryStatementTypeDelete,
 		},
 	}
+	
+	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, t *time.Time, f func(context.Context, *sql.QueryInfo) error) error {
+		for i := range queryHistory {
+			err := f(ctx, &queryHistory[i])
+			if err != nil {
+				return err
+			}
+		}
 
-	reverse(queryHistory)
-
-	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything).Return(queryHistory, nil).Once()
+		return nil
+	}).Once()
 
 	// When
 	err := duSyncer.syncWorkspace(context.Background(), &repo.Workspace{WorkspaceId: 42, DeploymentName: deployment, WorkspaceName: "workspaceName", WorkspaceStatus: "RUNNING"}, &catalog.MetastoreInfo{Name: "Metastore1", MetastoreId: metastoreId}, fileCreatorMock, configMap)
