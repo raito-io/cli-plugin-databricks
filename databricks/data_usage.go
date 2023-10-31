@@ -104,10 +104,10 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *Workspac
 		return err
 	}
 
-	numberOfDays := configParams.GetIntWithDefault(DatabricksDataUsageWindow, 29)
-	if numberOfDays > 29 {
-		logger.Info(fmt.Sprintf("Capping data usage window to 90 days (from %d days)", numberOfDays))
-		numberOfDays = 29
+	numberOfDays := configParams.GetIntWithDefault(DatabricksDataUsageWindow, 30)
+	if numberOfDays > 30 {
+		logger.Info(fmt.Sprintf("Capping data usage window to 30 days (from %d days)", numberOfDays))
+		numberOfDays = 30
 	}
 
 	if numberOfDays <= 0 {
