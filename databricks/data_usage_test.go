@@ -286,7 +286,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			StatementType:    sql.QueryStatementTypeDelete,
 		},
 	}
-	
+
 	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, t *time.Time, f func(context.Context, *sql.QueryInfo) error) error {
 		for i := range queryHistory {
 			err := f(ctx, &queryHistory[i])

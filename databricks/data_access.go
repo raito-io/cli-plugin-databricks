@@ -83,11 +83,11 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return err
 	}
 
-	traverser := NewDataObjectTraverser(func() (accountRepository, error) {
+	traverser := NewDataObjectTraverser(nil, func() (accountRepository, error) {
 		return a.accountRepoFactory(accountId, &repoCredentials), nil
 	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
 		return selectWorkspaceRepo(ctx, &repoCredentials, accountId, metastoreWorkspaces, a.workspaceRepoFactory)
-	})
+	}, createFullName)
 
 	masks := make(map[string][]string)
 

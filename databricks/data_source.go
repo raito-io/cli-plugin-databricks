@@ -49,7 +49,9 @@ func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context, _ *config.Co
 	return &databricks_metadata, nil
 }
 
-func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configParams *config.ConfigMap) (err error) {
+func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, config *ds.DataSourceSyncConfig) (err error) {
+	configParams := config.ConfigMap
+
 	defer func() {
 		if err != nil {
 			logger.Error(fmt.Sprintf("SyncDataSource failed: %s", err.Error()))
@@ -64,11 +66,11 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	dataSourceHandler.SetDataSourceFullname(accountId)
 	dataSourceHandler.SetDataSourceName(accountId)
 
-	traverser := NewDataObjectTraverser(func() (accountRepository, error) {
+	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(accountId, &repoCredentials), nil
 	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
 		return selectWorkspaceRepo(ctx, &repoCredentials, accountId, metastoreWorkspaces, d.workspaceRepoFactory)
-	})
+	}, createFullName)
 
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *string) error {
 		switch securableType {
@@ -98,6 +100,38 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	}
 
 	return nil
+}
+
+func createFullName(securableType string, parent interface{}, object interface{}) string {
+	switch securableType {
+	case metastoreType:
+		return object.(*catalog.MetastoreInfo).MetastoreId
+	case workspaceType:
+		return strconv.Itoa(object.(*repo.Workspace).WorkspaceId)
+	case catalogType:
+		c := object.(*catalog.CatalogInfo)
+
+		return createUniqueId(c.MetastoreId, c.Name)
+	case ds.Schema:
+		schema := object.(*catalog.SchemaInfo)
+
+		return createUniqueId(schema.MetastoreId, schema.FullName)
+	case ds.Table:
+		table := object.(*catalog.TableInfo)
+
+		return createUniqueId(table.MetastoreId, table.FullName)
+	case ds.Column:
+		column := object.(*catalog.ColumnInfo)
+		table := parent.(*catalog.TableInfo)
+
+		return createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
+	case functionType:
+		function := object.(*repo.FunctionInfo)
+
+		return createUniqueId(function.MetastoreId, function.FullName)
+	}
+
+	return ""
 }
 
 func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
