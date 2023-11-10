@@ -2,6 +2,7 @@ package databricks
 
 import (
 	"context"
+	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	ds "github.com/raito-io/cli/base/data_source"
@@ -33,17 +34,23 @@ type AccountRepoFactory func() (accountRepository, error)
 
 type WorkspaceRepoFactory func(metastoreWorkspaces []string) (workspaceRepository, string, error)
 
+type CreateFullName func(securableType string, parent interface{}, object interface{}) string
+
 type DataObjectTraverser struct {
 	accountRepoFactory   AccountRepoFactory
 	workspaceRepoFactory WorkspaceRepoFactory
+	createFullName       CreateFullName
+	config               *ds.DataSourceSyncConfig
 }
 
 type TraverseObjectFnc func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, workspaceId *string) error
 
-func NewDataObjectTraverser(accountFactory AccountRepoFactory, workspaceFactory WorkspaceRepoFactory) *DataObjectTraverser {
+func NewDataObjectTraverser(config *ds.DataSourceSyncConfig, accountFactory AccountRepoFactory, workspaceFactory WorkspaceRepoFactory, createFullName CreateFullName) *DataObjectTraverser {
 	return &DataObjectTraverser{
+		config:               config,
 		accountRepoFactory:   accountFactory,
 		workspaceRepoFactory: workspaceFactory,
+		createFullName:       createFullName,
 	}
 }
 
@@ -88,18 +95,22 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 				}
 
 				for j := range catalogs {
-					if options.SecurableTypesToReturn.Contains(catalogType) {
-						err = f(ctx, catalogType, metastore, &catalogs[j], &selectedWorkspace)
+					fullName := t.createFullName(catalogType, metastore, &catalogs[j])
+
+					if t.shouldGoInto(fullName) {
+						if options.SecurableTypesToReturn.Contains(catalogType) && t.shouldHandle(fullName) {
+							err = f(ctx, catalogType, metastore, &catalogs[j], &selectedWorkspace)
+							if err != nil {
+								return err
+							}
+						}
+
+						err = t.traverseSchemas(ctx, options, workspaceClient, &catalogs[j], func(ctx context.Context, securableType string, parentObject interface{}, object interface{}) error {
+							return f(ctx, securableType, parentObject, object, &selectedWorkspace)
+						})
 						if err != nil {
 							return err
 						}
-					}
-
-					err = t.traverseSchemas(ctx, options, workspaceClient, &catalogs[j], func(ctx context.Context, securableType string, parentObject interface{}, object interface{}) error {
-						return f(ctx, securableType, parentObject, object, &selectedWorkspace)
-					})
-					if err != nil {
-						return err
 					}
 				}
 			}
@@ -117,27 +128,31 @@ func (t *DataObjectTraverser) traverseSchemas(ctx context.Context, options DataO
 		}
 
 		for i := range schemas {
-			if options.SecurableTypesToReturn.Contains(ds.Schema) {
-				err := f(ctx, ds.Schema, cat, &schemas[i])
-				if err != nil {
-					return err
-				}
-			}
+			fullName := t.createFullName(ds.Schema, cat, &schemas[i])
 
-			if options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
-				tables, err := workspaceClient.ListTables(ctx, schemas[i].CatalogName, schemas[i].Name)
-				if err != nil {
-					return err
+			if t.shouldGoInto(fullName) {
+				if options.SecurableTypesToReturn.Contains(ds.Schema) && t.shouldHandle(fullName) {
+					err := f(ctx, ds.Schema, cat, &schemas[i])
+					if err != nil {
+						return err
+					}
 				}
 
-				err = t.traverseTablesAndColumns(ctx, tables, options, &schemas[i], f)
-				if err != nil {
-					return err
-				}
+				if options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
+					tables, err := workspaceClient.ListTables(ctx, schemas[i].CatalogName, schemas[i].Name)
+					if err != nil {
+						return err
+					}
 
-				err = t.traverseFunctions(ctx, options, workspaceClient, &schemas[i], f)
-				if err != nil {
-					return err
+					err = t.traverseTablesAndColumns(ctx, tables, options, &schemas[i], f)
+					if err != nil {
+						return err
+					}
+
+					err = t.traverseFunctions(ctx, options, workspaceClient, &schemas[i], f)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -148,18 +163,24 @@ func (t *DataObjectTraverser) traverseSchemas(ctx context.Context, options DataO
 
 func (t *DataObjectTraverser) traverseTablesAndColumns(ctx context.Context, tables []catalog.TableInfo, options DataObjectTraverserOptions, schema *catalog.SchemaInfo, f func(ctx context.Context, securableType string, parentObject interface{}, object interface{}) error) error {
 	for i := range tables {
-		if options.SecurableTypesToReturn.Contains(ds.Table) {
-			err := f(ctx, ds.Table, schema, &tables[i])
-			if err != nil {
-				return err
-			}
-		}
+		fullName := t.createFullName(ds.Table, schema, &tables[i])
 
-		if options.SecurableTypesToReturn.Contains(ds.Column) {
-			for j := range tables[i].Columns {
-				err := f(ctx, ds.Column, &tables[i], &tables[i].Columns[j])
+		if t.shouldGoInto(fullName) {
+			if options.SecurableTypesToReturn.Contains(ds.Table) && t.shouldHandle(fullName) {
+				err := f(ctx, ds.Table, schema, &tables[i])
 				if err != nil {
 					return err
+				}
+			}
+
+			if options.SecurableTypesToReturn.Contains(ds.Column) {
+				for j := range tables[i].Columns {
+					if t.shouldHandle(t.createFullName(ds.Column, &tables[i], &tables[i].Columns[j])) {
+						err := f(ctx, ds.Column, &tables[i], &tables[i].Columns[j])
+						if err != nil {
+							return err
+						}
+					}
 				}
 			}
 		}
@@ -176,7 +197,7 @@ func (t *DataObjectTraverser) traverseFunctions(ctx context.Context, options Dat
 		}
 
 		for l := range functions {
-			if options.SecurableTypesToReturn.Contains(functionType) {
+			if options.SecurableTypesToReturn.Contains(functionType) && t.shouldHandle(t.createFullName(functionType, schema, &functions[l])) {
 				err = f(ctx, functionType, schema, &functions[l])
 				if err != nil {
 					return err
@@ -194,6 +215,10 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 		return nil, nil, err
 	}
 
+	metastores = filterObjects(metastores, func(m catalog.MetastoreInfo) bool {
+		return t.shouldGoInto(t.createFullName(metastoreType, nil, &m))
+	})
+
 	workspaces, err := accountRepo.GetWorkspaces(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -201,9 +226,11 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 	if options.SecurableTypesToReturn.Contains(workspaceType) {
 		for i := range workspaces {
-			err = f(ctx, workspaceType, nil, &workspaces[i], nil)
-			if err != nil {
-				return nil, nil, err
+			if t.shouldHandle(t.createFullName(workspaceType, nil, &workspaces[i])) {
+				err = f(ctx, workspaceType, nil, &workspaces[i], nil)
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
@@ -226,12 +253,58 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 				}
 			}
 
-			err = f(ctx, metastoreType, nil, &metastores[i], &selectedWorkspace)
-			if err != nil {
-				return nil, nil, err
+			if t.shouldHandle(t.createFullName(metastoreType, nil, metastore)) {
+				err = f(ctx, metastoreType, nil, &metastores[i], &selectedWorkspace)
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
 
 	return metastores, workspaces, nil
+}
+
+func filterObjects[T any](input []T, filter func(o T) bool) []T {
+	filtered := make([]T, 0)
+
+	for i := range input {
+		if filter(input[i]) {
+			filtered = append(filtered, input[i])
+		}
+	}
+
+	return filtered
+}
+
+// shouldHandle determines if this data object needs to be handled by the syncer or not. It does this by looking at the configuration options to only sync a part.
+func (t *DataObjectTraverser) shouldHandle(fullName string) bool {
+	// No partial sync specified, so do everything
+	if t.config == nil || t.config.DataObjectParent == "" {
+		return true
+	}
+
+	// Check if the data object is under the data object to start from
+	if !strings.HasPrefix(fullName, t.config.DataObjectParent) || t.config.DataObjectParent == fullName {
+		return false
+	}
+
+	// Check if we hit any excludes
+	for _, exclude := range t.config.DataObjectExcludes {
+		if strings.HasPrefix(fullName, t.config.DataObjectParent+"."+exclude) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// shouldGoInto checks if we need to go deeper into this data object or not.
+func (t *DataObjectTraverser) shouldGoInto(fullName string) bool {
+	// No partial sync specified, so do everything
+	if t.config == nil || t.config.DataObjectParent == "" || strings.HasPrefix(t.config.DataObjectParent, fullName) || strings.HasPrefix(fullName, t.config.DataObjectParent) {
+		return true
+	}
+
+	return false
 }
