@@ -4,13 +4,20 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var _maskFactory *MaskFactory
 
+const (
+	DefaultMaskId = "DEFAULT_MASK"
+	SHA256MaskId  = "SHA256_MASK"
+)
+
 func init() {
 	_maskFactory = NewMaskFactory()
-	_maskFactory.RegisterMaskGenerator("DEFAULT_MASK", DefaultMask())
+	_maskFactory.RegisterMaskGenerator(DefaultMaskId, DefaultMask())
+	_maskFactory.RegisterMaskGenerator(SHA256MaskId, HashSha256Mask())
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=MaskGenerator --with-expecter --inpackage
@@ -55,6 +62,16 @@ func (f *MaskFactory) RegisterMaskGenerator(maskType string, maskGenerator MaskG
 
 func (f *MaskFactory) CreateMask(maskName string, columnType string, maskType *string, beneficiaries *MaskingBeneficiaries) (string, MaskingPolicy, error) {
 	policyName := fmt.Sprintf("%s_%s", maskName, columnType)
+
+	allowedPolicyNameArray := make([]rune, 0, len(policyName))
+
+	for _, r := range policyName {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+			allowedPolicyNameArray = append(allowedPolicyNameArray, r)
+		}
+	}
+
+	policyName = string(allowedPolicyNameArray)
 
 	maskGen := DefaultMask()
 
