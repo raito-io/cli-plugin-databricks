@@ -695,8 +695,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 			Type: "string",
 		},
 	}, nil).Once()
-	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_workspace-ap_string(val string)\nRETURN CASE\n\tWHEN current_user() IN ('ruben@raito.io') THEN val\n\tWHEN is_account_group_member('group1') THEN val\n\tELSE *****\nEND;").Return(nil, nil).Once()
-	mockWarehouseRepo.EXPECT().SetMask(mock.Anything, "catalog-1", "schema-1", "table-1", "column-1", "raito_workspace-ap_string").Return(nil).Once()
+	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_workspaceap_string(val string)\nRETURN CASE\n\tWHEN current_user() IN ('ruben@raito.io') THEN val\n\tWHEN is_account_group_member('group1') THEN val\n\tELSE *****\nEND;").Return(nil, nil).Once()
+	mockWarehouseRepo.EXPECT().SetMask(mock.Anything, "catalog-1", "schema-1", "table-1", "column-1", "raito_workspaceap_string").Return(nil).Once()
 
 	// When
 	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
