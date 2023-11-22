@@ -301,6 +301,10 @@ var databricks_metadata = ds.MetaData{
 				DisplayName: "Hash (sha256)",
 				ExternalId:  masks.SHA256MaskId,
 				Description: "Replace the data with a hash of the data.",
+				DataTypes: []string{
+					masks.DataTypeString.String(),
+					masks.DataTypeBinary.String(),
+				},
 			},
 		},
 		DefaultMaskExternalName: masks.DefaultMaskId,

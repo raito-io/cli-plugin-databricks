@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
@@ -255,6 +256,7 @@ func (d *DataSourceSyncer) parseColumn(_ context.Context, dataSourceHandler wrap
 		Description:      column.Comment,
 		FullName:         uniqueId,
 		Type:             ds.Column,
+		DataType:         ptr.String(column.TypeName.String()),
 	})
 }
 
