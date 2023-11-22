@@ -3,12 +3,14 @@ package databricks
 import (
 	"github.com/raito-io/cli/base/access_provider"
 	ds "github.com/raito-io/cli/base/data_source"
+
+	"cli-plugin-databricks/databricks/masks"
 )
 
 var databricks_metadata = ds.MetaData{
 	Type:                  "databricks",
 	SupportsApInheritance: false,
-	//SupportedFeatures: []string{ds.RowFiltering, ds.ColumnMasking}, //TODO include this in future versions
+	SupportedFeatures:     []string{ds.ColumnMasking}, //TODO add ds.RowFiltering
 	DataObjectTypes: []*ds.DataObjectType{
 		{
 			// Account
@@ -287,5 +289,20 @@ var databricks_metadata = ds.MetaData{
 			CanAssumeMultiple:             false,
 			AllowedWhoAccessProviderTypes: []string{access_provider.AclSet},
 		},
+	},
+	MaskingMetadata: &ds.MaskingMetadata{
+		MaskTypes: []*ds.MaskingType{
+			{
+				DisplayName: "Default mask",
+				ExternalId:  masks.DefaultMaskId,
+				Description: "Replace the data with a default value.",
+			},
+			{
+				DisplayName: "Hash (sha256)",
+				ExternalId:  masks.SHA256MaskId,
+				Description: "Replace the data with a hash of the data.",
+			},
+		},
+		DefaultMaskExternalName: masks.DefaultMaskId,
 	},
 }
