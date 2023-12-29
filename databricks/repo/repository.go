@@ -521,12 +521,12 @@ func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string
 func (r *WorkspaceRepository) GetTable(ctx context.Context, catalogName string, schemaName string, tableName string) (*catalog.TableInfo, error) {
 	response, err := r.client.Tables.Get(ctx, catalog.GetTableRequest{
 		FullName: fmt.Sprintf("%s.%s.%s", catalogName, schemaName, tableName),
-    })
-    if err!= nil {
-        return nil, err
-    }
+	})
+	if err != nil {
+		return nil, err
+	}
 
-    return response, nil
+	return response, nil
 }
 
 func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error) {
