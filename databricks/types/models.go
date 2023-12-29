@@ -109,3 +109,23 @@ type WarehouseDetails struct {
 	Workspace string `json:"workspace"`
 	Warehouse string `json:"warehouse"`
 }
+
+type StoredFunctions struct {
+	Masks   map[string][]string
+	Filters map[string][]string
+}
+
+func NewStoredFunctions() StoredFunctions {
+	return StoredFunctions{
+		Masks:   make(map[string][]string),
+		Filters: make(map[string][]string),
+	}
+}
+
+func (s *StoredFunctions) AddMask(functionId string, columnId string) {
+	s.Masks[functionId] = append(s.Masks[functionId], columnId)
+}
+
+func (s *StoredFunctions) AddFilter(functionId string, tableId string) {
+	s.Filters[functionId] = append(s.Filters[functionId], tableId)
+}

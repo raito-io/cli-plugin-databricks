@@ -21,7 +21,7 @@ func (m *defaultMaskMethod) MaskMethod(_ string, columnType SqlDataType) string 
 	case DataTypeBoolean:
 		return "false"
 	case DataTypeString:
-		return "*****"
+		return "'*****'"
 	case DataTypeArray:
 		return "ARRAY()"
 	case DataTypeMap:
