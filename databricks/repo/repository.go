@@ -518,6 +518,17 @@ func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string
 	return response, nil
 }
 
+func (r *WorkspaceRepository) GetTable(ctx context.Context, catalogName string, schemaName string, tableName string) (*catalog.TableInfo, error) {
+	response, err := r.client.Tables.Get(ctx, catalog.GetTableRequest{
+		FullName: fmt.Sprintf("%s.%s.%s", catalogName, schemaName, tableName),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]FunctionInfo, error) {
 	request, err := r.restClient.NewRequest(ctx)
 	if err != nil {
@@ -561,6 +572,49 @@ func (r *WorkspaceRepository) SetPermissionsOnResource(ctx context.Context, secu
 	}
 
 	return nil
+}
+
+func (r *WorkspaceRepository) GetOwner(ctx context.Context, securableType catalog.SecurableType, fullName string) (string, error) {
+	switch securableType { //nolint:exhaustive
+	case catalog.SecurableTypeCatalog:
+		result, err := r.client.Catalogs.Get(ctx, catalog.GetCatalogRequest{
+			Name: fullName,
+		})
+		if err != nil {
+			return "", fmt.Errorf("get catalog %s: %w", fullName, err)
+		}
+
+		return result.Owner, nil
+	case catalog.SecurableTypeSchema:
+		result, err := r.client.Schemas.Get(ctx, catalog.GetSchemaRequest{
+			FullName: fullName,
+		})
+		if err != nil {
+			return "", fmt.Errorf("get schema %s: %w", fullName, err)
+		}
+
+		return result.Owner, nil
+	case catalog.SecurableTypeTable:
+		result, err := r.client.Tables.Get(ctx, catalog.GetTableRequest{
+			FullName: fullName,
+		})
+		if err != nil {
+			return "", fmt.Errorf("get table %s: %w", fullName, err)
+		}
+
+		return result.Owner, nil
+	case catalog.SecurableTypeFunction:
+		result, err := r.client.Functions.Get(ctx, catalog.GetFunctionRequest{
+			Name: fullName,
+		})
+		if err != nil {
+			return "", fmt.Errorf("get function %s: %w", fullName, err)
+		}
+
+		return result.Owner, nil
+	}
+
+	return "", fmt.Errorf("unsupported securable type: %s", securableType)
 }
 
 func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.Time, f func(context.Context, *sql.QueryInfo) error) error {

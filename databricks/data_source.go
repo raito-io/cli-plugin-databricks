@@ -28,7 +28,9 @@ type DataSourceSyncer struct {
 	accountRepoFactory   func(user string, repoCredentials *repo.RepositoryCredentials) accountRepository
 	workspaceRepoFactory func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
-	functionUsedAsMask set.Set[string]
+	functionUsedAsMaskOrFilter set.Set[string]
+
+	config *ds.DataSourceSyncConfig
 }
 
 func NewDataSourceSyncer() *DataSourceSyncer {
@@ -40,7 +42,7 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 			return repo.NewWorkspaceRepository(host, accountId, repoCredentials)
 		},
 
-		functionUsedAsMask: set.NewSet[string](),
+		functionUsedAsMaskOrFilter: set.NewSet[string](),
 	}
 }
 
@@ -51,6 +53,7 @@ func (d *DataSourceSyncer) GetDataSourceMetaData(_ context.Context, _ *config.Co
 }
 
 func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, config *ds.DataSourceSyncConfig) (err error) {
+	d.config = config
 	configParams := config.ConfigMap
 
 	defer func() {
@@ -213,6 +216,16 @@ func (d *DataSourceSyncer) parseTable(_ context.Context, dataSourceHandler wrapp
 		return fmt.Errorf("unable to parse TableInfo object. Expected *catalog.TableInfo but got %T", object)
 	}
 
+	if table.RowFilter != nil {
+		if table.RowFilter.Name == "" {
+			// Currently all row filters are unknown due to a bug in Databricks
+			logger.Warn(fmt.Sprintf("Unknown row filter applied to table %q", table.FullName))
+		} else {
+			logger.Debug(fmt.Sprintf("Row filter function %q found on table %q", table.RowFilter.Name, table.FullName))
+			d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, table.RowFilter.Name))
+		}
+	}
+
 	schema, ok := parent.(*catalog.SchemaInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse parent SchemaInfo object. Expected *catalog.SchemaInfo but got %T", parent)
@@ -246,7 +259,8 @@ func (d *DataSourceSyncer) parseColumn(_ context.Context, dataSourceHandler wrap
 	parentId := createUniqueId(table.MetastoreId, table.FullName)
 
 	if column.Mask != nil {
-		d.functionUsedAsMask.Add(createUniqueId(table.MetastoreId, column.Mask.FunctionName))
+		logger.Debug(fmt.Sprintf("Ignoring mask function: '%s'", column.Mask.FunctionName))
+		d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, column.Mask.FunctionName))
 	}
 
 	return dataSourceHandler.AddDataObjects(&ds.DataObject{
@@ -268,7 +282,7 @@ func (d *DataSourceSyncer) parseFunctions(_ context.Context, dataSourceHandler w
 
 	uniqueId := createUniqueId(function.MetastoreId, function.FullName)
 
-	if d.functionUsedAsMask.Contains(uniqueId) {
+	if d.functionUsedAsMaskOrFilter.Contains(uniqueId) {
 		logger.Debug(fmt.Sprintf("Function %s used as mask. Will ignore function", uniqueId))
 
 		return nil

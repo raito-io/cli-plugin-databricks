@@ -56,7 +56,7 @@ linters-settings:
       - 'math.*' # Magic number generation, should be fixed and removed?
 
   cyclop:
-    max-complexity: 20
+    max-complexity: 25
     skip-tests: true
     package-average: 0.0
 

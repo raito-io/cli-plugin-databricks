@@ -23,8 +23,10 @@ type WarehouseRepository interface {
 	ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error)
 	GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*ColumnInformation, error)
 	DropMask(ctx context.Context, catalog, schema, table, column string) error
+	DropRowFilter(ctx context.Context, catalog, schema, table string) error
 	DropFunction(ctx context.Context, catalog, schema, functionName string) error
 	SetMask(ctx context.Context, catalog, schema, table, column, function string) error
+	SetRowFilter(ctx context.Context, catalog, schema, table, functionName string, arguments []string) error
 }
 
 type SqlWarehouseRepository struct {
@@ -118,6 +120,12 @@ func (r *SqlWarehouseRepository) DropMask(ctx context.Context, catalog, schema, 
 	return err
 }
 
+func (r *SqlWarehouseRepository) DropRowFilter(ctx context.Context, catalog, schema, table string) error {
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s DROP ROW FILTER", table))
+
+	return err
+}
+
 func (r *SqlWarehouseRepository) DropFunction(ctx context.Context, catalog, schema, functionName string) error {
 	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("DROP FUNCTION %s", functionName))
 
@@ -126,6 +134,12 @@ func (r *SqlWarehouseRepository) DropFunction(ctx context.Context, catalog, sche
 
 func (r *SqlWarehouseRepository) SetMask(ctx context.Context, catalog, schema, table, column, function string) error {
 	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET MASK %s", table, column, function))
+
+	return err
+}
+
+func (r *SqlWarehouseRepository) SetRowFilter(ctx context.Context, catalog, schema, table, functionName string, arguments []string) error {
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s SET ROW FILTER %s ON (%s);", table, functionName, strings.Join(arguments, ", ")))
 
 	return err
 }

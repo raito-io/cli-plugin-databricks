@@ -10,7 +10,7 @@ import (
 var databricks_metadata = ds.MetaData{
 	Type:                  "databricks",
 	SupportsApInheritance: false,
-	SupportedFeatures:     []string{ds.ColumnMasking}, //TODO add ds.RowFiltering
+	SupportedFeatures:     []string{ds.ColumnMasking, ds.RowFiltering},
 	DataObjectTypes: []*ds.DataObjectType{
 		{
 			// Account
