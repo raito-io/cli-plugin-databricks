@@ -41,7 +41,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 					LeftOperand: datacomparison.Operand{
 						Reference: &datacomparison.Reference{
 							EntityType: datacomparison.EntityTypeDataObject,
-							EntityID:   `{"fullName":"RAITO_DEMO.ORDERING.LINEITEM.QUANTITY","id":"JJGSpyjrssv94KPk9dNuI","type":"column"}`,
+							EntityID:   `{"fullName":"metastoreid.RAITO_DEMO.ORDERING.LINEITEM.QUANTITY","id":"JJGSpyjrssv94KPk9dNuI","type":"column"}`,
 						},
 					},
 					RightOperand: datacomparison.Operand{
@@ -76,7 +76,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 											LeftOperand: datacomparison.Operand{
 												Reference: &datacomparison.Reference{
 													EntityType: datacomparison.EntityTypeDataObject,
-													EntityID:   `{"fullName":"RAITO_DEMO.ORDERING.LINEITEM.STATE","id":"JJGSpyjrssv94KPk9dNuS","type":"column"}`,
+													EntityID:   `{"fullName":"metastoreid.RAITO_DEMO.ORDERING.LINEITEM.STATE","id":"JJGSpyjrssv94KPk9dNuS","type":"column"}`,
 												},
 											},
 											RightOperand: datacomparison.Operand{
@@ -95,7 +95,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 													LeftOperand: datacomparison.Operand{
 														Reference: &datacomparison.Reference{
 															EntityType: datacomparison.EntityTypeDataObject,
-															EntityID:   `{"fullName":"RAITO_DEMO.ORDERING.LINEITEM.QUANTITY","id":"JJGSpyjrssv94KPk9dNuJ","type":"column"}`,
+															EntityID:   `{"fullName":"metastoreid.RAITO_DEMO.ORDERING.LINEITEM.QUANTITY","id":"JJGSpyjrssv94KPk9dNuJ","type":"column"}`,
 														},
 													},
 													RightOperand: datacomparison.Operand{

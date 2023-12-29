@@ -148,27 +148,6 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name:        "table-2",
-			MetastoreId: metastore1.MetastoreId,
-			CatalogName: "catalog-1",
-			SchemaName:  "schema-1",
-			Comment:     "comment on table-1",
-			FullName:    "catalog-1.schema-1.table-2",
-			TableType:   catalog.TableTypeManaged,
-			Columns: []catalog.ColumnInfo{
-				{
-					Name: "column-1",
-				},
-				{
-					Name: "column-2",
-				},
-			},
-			RowFilter: &catalog.TableRowFilter{
-				Name:             "catalog-1.schema-1.function-1",
-				InputColumnNames: []string{"column-1"},
-			},
-		},
 	}, nil)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").
 		Return(&catalog.PermissionsList{
@@ -720,7 +699,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 			Type: "string",
 		},
 	}, nil).Once()
-	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_workspaceap_string(val string)\nRETURN CASE\n\tWHEN current_user() IN ('ruben@raito.io') THEN val\n\tWHEN is_account_group_member('group1') THEN val\n\tELSE *****\nEND;").Return(nil, nil).Once()
+	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_workspaceap_string(val string)\nRETURN CASE\n\tWHEN current_user() IN ('ruben@raito.io') THEN val\n\tWHEN is_account_group_member('group1') THEN val\n\tELSE '*****'\nEND;").Return(nil, nil).Once()
 	mockWarehouseRepo.EXPECT().SetMask(mock.Anything, "catalog-1", "schema-1", "table-1", "column-1", "raito_workspaceap_string").Return(nil).Once()
 
 	// When
