@@ -752,8 +752,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 					Comparison: &datacomparison.DataComparison{
 						LeftOperand: datacomparison.Operand{
 							Reference: &datacomparison.Reference{
-								EntityType: datacomparison.EntityTypeDataObject,
-								EntityID:   `{"fullName":"metastore-id1.catalog-1.schema-1.table-1.column1","id":"LXDVAhFywOe9hfIRC4ubm","type":"column"}`,
+								EntityType: datacomparison.EntityTypeColumnReferenceByName,
+								EntityID:   `column1`,
 							},
 						},
 						Operator: datacomparison.ComparisonOperatorGreaterThanOrEqual,
