@@ -367,10 +367,6 @@ func (a *AccessSyncer) syncAccessDataObjectFromTarget(ctx context.Context, acces
 	return a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
 }
 
-func (a *AccessSyncer) SyncAccessAsCodeToTarget(_ context.Context, _ *sync_to_target.AccessProviderImport, _ string, _ *config.ConfigMap) error {
-	panic("Databricks plugin does not support syncing access as code to target")
-}
-
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *sync_to_target.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) (err error) {
 	defer func() {
 		if err != nil {
