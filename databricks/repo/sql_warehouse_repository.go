@@ -32,8 +32,8 @@ type WarehouseRepository interface {
 type SqlWarehouseRepository struct {
 	warehouseId string
 
-	executionClient *sql.StatementExecutionAPI
-	warehouseClient *sql.WarehousesAPI
+	executionClient sql.StatementExecutionInterface
+	warehouseClient sql.WarehousesInterface
 }
 
 func NewSqlWarehouseRepository(client *databricks.WorkspaceClient, warehouseId string) *SqlWarehouseRepository {
