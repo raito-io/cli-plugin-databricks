@@ -15,12 +15,7 @@ const (
 )
 
 func (p DatabricksPlatform) Host() (string, error) {
-	url, err := p.fmtUrl()
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(url, "accounts"), nil
+	return p.WorkspaceAddress("accounts")
 }
 
 func (p DatabricksPlatform) WorkspaceAddress(deploymentId string) (string, error) {
