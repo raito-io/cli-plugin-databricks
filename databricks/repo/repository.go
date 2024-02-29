@@ -12,11 +12,12 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/imroc/req/v3"
+
+	"cli-plugin-databricks/databricks/platform"
 )
 
 const (
 	databricksAccountConsoleApiVersionKeyStr = "X-Databricks-Account-Console-API-Version"
-	accountHost                              = "https://accounts.cloud.databricks.com/"
 	queryHistoryLimit                        = 10000
 )
 
@@ -56,7 +57,7 @@ type OAuthRepositoryRequestFactory struct {
 	tokenExpiry time.Time
 }
 
-func NewOAuthAccountRepositoryRequestFactory(host string, clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
+func NewOAuthAccountRepositoryRequestFactory(accountHost string, host string, clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
 	logger.Debug("Creating oauth request factory")
 
 	return &OAuthRepositoryRequestFactory{
@@ -113,11 +114,16 @@ type AccountRepository struct {
 	accountId string
 }
 
-func NewAccountRepository(credentials *RepositoryCredentials, accountId string) *AccountRepository {
+func NewAccountRepository(pltfrm platform.DatabricksPlatform, credentials *RepositoryCredentials, accountId string) (*AccountRepository, error) {
 	var factory repositoryRequestFactory
 
+	accountHost, err := pltfrm.Host()
+	if err != nil {
+		return nil, fmt.Errorf("get host for platform %s: %w", pltfrm, err)
+	}
+
 	if credentials.ClientId != "" && credentials.ClientSecret != "" {
-		factory = NewOAuthAccountRepositoryRequestFactory(accountHost, credentials.ClientId, credentials.ClientSecret, accountId)
+		factory = NewOAuthAccountRepositoryRequestFactory(accountHost, accountHost, credentials.ClientId, credentials.ClientSecret, accountId)
 	} else {
 		factory = NewBasicAuthAccountRepositoryRequestFactory(accountHost, credentials.Username, credentials.Password)
 	}
@@ -125,7 +131,7 @@ func NewAccountRepository(credentials *RepositoryCredentials, accountId string) 
 	return &AccountRepository{
 		clientFactory: factory,
 		accountId:     accountId,
-	}
+	}, nil
 }
 
 func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error) {
@@ -461,7 +467,7 @@ type WorkspaceRepository struct {
 	restClient repositoryRequestFactory
 }
 
-func NewWorkspaceRepository(host string, accountId string, credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(pltfrm platform.DatabricksPlatform, host string, accountId string, credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
 		Username:     credentials.Username,
 		Password:     credentials.Password,
@@ -474,8 +480,14 @@ func NewWorkspaceRepository(host string, accountId string, credentials *Reposito
 	}
 
 	var restClient repositoryRequestFactory
+
 	if credentials.ClientId != "" {
-		restClient = NewOAuthAccountRepositoryRequestFactory(host, credentials.ClientId, credentials.ClientSecret, accountId)
+		accountHost, err2 := pltfrm.Host()
+		if err2 != nil {
+			return nil, fmt.Errorf("get host for platform %s: %w", pltfrm, err2)
+		}
+
+		restClient = NewOAuthAccountRepositoryRequestFactory(accountHost, host, credentials.ClientId, credentials.ClientSecret, accountId)
 	} else {
 		restClient = NewBasicAuthAccountRepositoryRequestFactory(host, credentials.Username, credentials.Password)
 	}

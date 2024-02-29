@@ -36,6 +36,7 @@ func main() {
 					{Name: databricks.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: false},
 					{Name: databricks.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: false},
 					{Name: databricks.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 90. Maximum is 90 days.", Mandatory: false},
+					{Name: databricks.DatabricksPlatform, Description: "The Databricks platform to connect to (AWS/GCP/Azure).", Mandatory: true},
 				},
 			},
 		},

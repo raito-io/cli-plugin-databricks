@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/databricks/types"
 	"cli-plugin-databricks/utils/array"
@@ -40,6 +41,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -497,6 +499,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -670,6 +673,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 			DatabricksUser:          "User",
 			DatabricksPassword:      "Password",
 			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -792,6 +796,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 			DatabricksUser:          "User",
 			DatabricksPassword:      "Password",
 			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -933,6 +938,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 			DatabricksUser:          "User",
 			DatabricksPassword:      "Password",
 			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -1070,6 +1076,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 			DatabricksUser:          "User",
 			DatabricksPassword:      "Password",
 			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -1196,6 +1203,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -1324,7 +1332,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			AccessProvider: "multiple-do-ap-id",
 			ActualName:     "multiple-do-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
-			Errors:         []string{"boom"},
+			Errors:         []string{"set permissions on schema \"catalog-1.schema-1\": boom"},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -1339,10 +1347,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 	}
 
 	return &AccessSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataAccessAccountRepository {
-			return accountRepo
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessAccountRepository, error) {
+			return accountRepo, nil
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

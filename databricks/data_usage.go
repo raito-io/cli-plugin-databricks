@@ -16,6 +16,7 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
 
@@ -44,17 +45,17 @@ type dataUsageWorkspaceRepository interface {
 var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
-	accountRepoFactory   func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository
-	workspaceRepoFactory func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error)
+	workspaceRepoFactory func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
 	return &DataUsageSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository {
-			return repo.NewAccountRepository(repoCredentials, accountId)
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
+			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(host, accountId, repoCredentials)
+		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(pltfrm, host, accountId, repoCredentials)
 		},
 	}
 }
@@ -96,12 +97,12 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
-	accountId, repoCredentials, err := getAndValidateParameters(configParams)
+	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
 
-	repo, err := d.workspaceRepoFactory(GetWorkspaceAddress(workspace.DeploymentName), accountId, &repoCredentials)
+	repo, err := d.workspaceRepoFactory(pltfrm, GetWorkspaceAddress(workspace.DeploymentName), accountId, &repoCredentials)
 	if err != nil {
 		return err
 	}
@@ -511,12 +512,15 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 }
 
 func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []repo.Workspace, map[string]string, error) {
-	accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	accountClient := d.accountRepoFactory(accountId, &repoCredentials)
+	accountClient, err := d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("account repository factory: %w", err)
+	}
 
 	metastores, err := accountClient.ListMetastores(ctx)
 	if err != nil {

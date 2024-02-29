@@ -3,9 +3,10 @@ package databricks
 import (
 	"context"
 	"errors"
-	ds "github.com/raito-io/cli/base/data_source"
 	"regexp"
 	"testing"
+
+	ds "github.com/raito-io/cli/base/data_source"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/raito-io/cli/base/util/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
 
@@ -29,6 +31,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -128,6 +131,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -239,10 +243,10 @@ func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyn
 	}
 
 	return &DataSourceSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) accountRepository {
-			return mockAccountRepo
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
+			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

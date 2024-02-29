@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/platform"
 	repo2 "cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils/array"
 )
@@ -86,6 +87,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -133,7 +135,7 @@ func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *mockIdentit
 
 	repo := newMockIdentityStoreAccountRepository(t)
 
-	return &IdentityStoreSyncer{accountRepoFactory: func(accountId string, repoCredentials *repo2.RepositoryCredentials) identityStoreAccountRepository {
-		return repo
+	return &IdentityStoreSyncer{accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo2.RepositoryCredentials) (identityStoreAccountRepository, error) {
+		return repo, nil
 	}}, repo
 }
