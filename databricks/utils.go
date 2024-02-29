@@ -11,6 +11,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
 
@@ -28,11 +29,11 @@ func cleanDoubleQuotes(input string) string { //nolint:unused
 	return input
 }
 
-func getAndValidateParameters(configParams *config.ConfigMap) (accountId string, repoCredentials repo.RepositoryCredentials, err error) {
+func getAndValidateParameters(configParams *config.ConfigMap) (pltfrm platform.DatabricksPlatform, accountId string, repoCredentials repo.RepositoryCredentials, err error) {
 	accountId = configParams.GetString(DatabricksAccountId)
 
 	if accountId == "" {
-		return "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
+		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
 	}
 
 	username := configParams.GetString(DatabricksUser)
@@ -40,7 +41,12 @@ func getAndValidateParameters(configParams *config.ConfigMap) (accountId string,
 	clientId := configParams.GetString(DatabricksClientId)
 	clientSecret := configParams.GetString(DatabricksClientSecret)
 
-	return accountId, repo.RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
+	pltfrm, err = platform.DatabricksPlatformString(strings.ToLower(configParams.GetString(DatabricksPlatform)))
+	if err != nil {
+		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("invalid platform: %w", err)
+	}
+
+	return pltfrm, accountId, repo.RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
 }
 
 func addToSetInMap[K comparable, V comparable](m map[K]set.Set[V], k K, v ...V) {
@@ -55,11 +61,17 @@ type workspaceRepo interface {
 	Ping(ctx context.Context) error
 }
 
-func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *repo.RepositoryCredentials, accountId string, workspaces []string, repoFn func(string, string, *repo.RepositoryCredentials) (R, error)) (R, string, error) {
+func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, accountId string, workspaces []string, repoFn func(platform.DatabricksPlatform, string, string, *repo.RepositoryCredentials) (R, error)) (R, string, error) {
 	var err error
 
 	for _, workspaceName := range workspaces {
-		repo, werr := repoFn(GetWorkspaceAddress(workspaceName), accountId, repoCredentials)
+		host, werr := pltfrm.WorkspaceAddress(workspaceName)
+		if werr != nil {
+			err = multierror.Append(err, werr)
+			continue
+		}
+
+		repo, werr := repoFn(pltfrm, host, accountId, repoCredentials)
 		if werr != nil {
 			err = multierror.Append(err, werr)
 			continue
@@ -81,14 +93,4 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 	}
 
 	return r, "", err
-}
-
-func GetWorkspaceAddress(deploymentId string) string {
-	return fmt.Sprintf("https://%s.cloud.databricks.com", deploymentId)
-}
-
-func reverse[S ~[]E, E any](s S) { //nolint:unused
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
 }

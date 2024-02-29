@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils/array"
 )
@@ -32,6 +33,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -144,6 +146,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			DatabricksAccountId: "AccountId",
 			DatabricksUser:      "User",
 			DatabricksPassword:  "Password",
+			DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -893,10 +896,10 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 	}
 
 	return &DataUsageSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) dataUsageAccountRepository {
-			return mockAccountRepo
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
+			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(host string, account string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, account string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(host, "${1}")

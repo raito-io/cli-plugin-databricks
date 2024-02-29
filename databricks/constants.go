@@ -7,6 +7,7 @@ const (
 	DatabricksClientId      = "databricks-client-id"
 	DatabricksClientSecret  = "databricks-client-secret"
 	DatabricksSqlWarehouses = "databricks-sql-warehouses"
+	DatabricksPlatform      = "databricks-platform"
 
 	DatabricksDataUsageWindow = "databricks-data-usage-window"
 

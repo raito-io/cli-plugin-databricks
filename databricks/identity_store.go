@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 
+	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils"
 )
@@ -23,13 +24,13 @@ type identityStoreAccountRepository interface {
 }
 
 type IdentityStoreSyncer struct {
-	accountRepoFactory func(accountId string, repoCredentials *repo.RepositoryCredentials) identityStoreAccountRepository
+	accountRepoFactory func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (identityStoreAccountRepository, error)
 }
 
 func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{
-		accountRepoFactory: func(accountId string, repoCredentials *repo.RepositoryCredentials) identityStoreAccountRepository {
-			return repo.NewAccountRepository(repoCredentials, accountId)
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (identityStoreAccountRepository, error) {
+			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
 	}
 }
@@ -43,12 +44,15 @@ func (i *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *con
 }
 
 func (i *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
 
-	accountRepo := i.accountRepoFactory(accountId, &repoCredentials)
+	accountRepo, err := i.accountRepoFactory(pltfrm, accountId, &repoCredentials)
+	if err != nil {
+		return fmt.Errorf("account repository factory: %w", err)
+	}
 
 	userMemberMap, err := i.getGroups(ctx, identityHandler, accountRepo)
 	if err != nil {

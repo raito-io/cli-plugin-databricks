@@ -106,6 +106,7 @@ func (d *DependencyTree[T]) AddDependency(id T, dependsOn ...T) error {
 		dependsOnSet := set.NewSet(dependsOn...)
 
 		hasCycle := false
+
 		d.depthFirstTraversal(func(n node, depth int) bool {
 			nt := n.(*treeNode[T])
 			if dependsOnSet.Contains(nt.Value) {

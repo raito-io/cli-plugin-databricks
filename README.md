@@ -54,6 +54,7 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
    databricks-client-secret: <<Databricks client secret>>
    databricks-user: <<Databricks user email address>>
    databricks-password: <<Databricks user password>>
+   databricks-platform: <<Databricks platform>>
 ```
 
 Next, replace the values of the indicated fields with your specific values:
@@ -64,6 +65,7 @@ Next, replace the values of the indicated fields with your specific values:
 - `<<Databricks client secret>>`: if using oauth, the Databricks client secret of the account specified in `databricks-client-id`
 - `<<Databricks user email address>>`: if using basic auth, the email address of an admin user in your databricks account with admin access to all workspaces
 - `<<Databricks user password>>`: if using basic auth, the email password of the `databricks-user` user
+- `<<Databricks platform>>`: The databricks platform that is used. (supported platforms: AWS/GCP/Azure)
 
 
 You will also need to configure the Raito CLI further to connect to your Raito Cloud account, if that's not set up yet.
