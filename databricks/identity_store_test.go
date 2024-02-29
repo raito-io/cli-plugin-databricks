@@ -37,6 +37,11 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 					Display: "group-1",
 					Ref:     "Groups/gid1",
 				},
+				{
+					Value:   "ServicePrincipalId1",
+					Display: "servicePrincipal-1",
+					Ref:     "ServicePrincipal/ServicePrincipalId1",
+				},
 			},
 		},
 		iam.Group{
@@ -82,6 +87,21 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 	})).Once()
 
+	mockRepo.EXPECT().ListServicePrincipals(mock.Anything).Return(array.ArrayToChannel([]interface{}{
+		iam.ServicePrincipal{
+			Active:        true,
+			ApplicationId: "someApplicationId1",
+			DisplayName:   "Service Principal 1",
+			Id:            "ServicePrincipalId1",
+		},
+		iam.ServicePrincipal{
+			Active:        true,
+			ApplicationId: "someApplicationId2",
+			DisplayName:   "Service Principal 2",
+			Id:            "ServicePrincipalId2",
+		},
+	}))
+
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
 			DatabricksAccountId: "AccountId",
@@ -111,6 +131,21 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			ExternalId:       "idUser2",
 			UserName:         "username2",
 			GroupExternalIds: []string{"gid2"},
+		},
+		{
+			Name:       "Service Principal 1",
+			Email:      "someApplicationId1",
+			ExternalId: "ServicePrincipalId1",
+			UserName:   "someApplicationId1",
+			GroupExternalIds: []string{
+				"gid2",
+			},
+		},
+		{
+			Name:       "Service Principal 2",
+			Email:      "someApplicationId2",
+			ExternalId: "ServicePrincipalId2",
+			UserName:   "someApplicationId2",
 		},
 	})
 

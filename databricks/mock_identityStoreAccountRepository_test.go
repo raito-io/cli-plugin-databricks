@@ -85,6 +85,69 @@ func (_c *mockIdentityStoreAccountRepository_ListGroups_Call) RunAndReturn(run f
 	return _c
 }
 
+// ListServicePrincipals provides a mock function with given fields: ctx, optFn
+func (_m *mockIdentityStoreAccountRepository) ListServicePrincipals(ctx context.Context, optFn ...func(*repo.DatabricksServicePrincipalFilter)) <-chan interface{} {
+	_va := make([]interface{}, len(optFn))
+	for _i := range optFn {
+		_va[_i] = optFn[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListServicePrincipals")
+	}
+
+	var r0 <-chan interface{}
+	if rf, ok := ret.Get(0).(func(context.Context, ...func(*repo.DatabricksServicePrincipalFilter)) <-chan interface{}); ok {
+		r0 = rf(ctx, optFn...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan interface{})
+		}
+	}
+
+	return r0
+}
+
+// mockIdentityStoreAccountRepository_ListServicePrincipals_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListServicePrincipals'
+type mockIdentityStoreAccountRepository_ListServicePrincipals_Call struct {
+	*mock.Call
+}
+
+// ListServicePrincipals is a helper method to define mock.On call
+//   - ctx context.Context
+//   - optFn ...func(*repo.DatabricksServicePrincipalFilter)
+func (_e *mockIdentityStoreAccountRepository_Expecter) ListServicePrincipals(ctx interface{}, optFn ...interface{}) *mockIdentityStoreAccountRepository_ListServicePrincipals_Call {
+	return &mockIdentityStoreAccountRepository_ListServicePrincipals_Call{Call: _e.mock.On("ListServicePrincipals",
+		append([]interface{}{ctx}, optFn...)...)}
+}
+
+func (_c *mockIdentityStoreAccountRepository_ListServicePrincipals_Call) Run(run func(ctx context.Context, optFn ...func(*repo.DatabricksServicePrincipalFilter))) *mockIdentityStoreAccountRepository_ListServicePrincipals_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*repo.DatabricksServicePrincipalFilter), len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*repo.DatabricksServicePrincipalFilter))
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *mockIdentityStoreAccountRepository_ListServicePrincipals_Call) Return(_a0 <-chan interface{}) *mockIdentityStoreAccountRepository_ListServicePrincipals_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockIdentityStoreAccountRepository_ListServicePrincipals_Call) RunAndReturn(run func(context.Context, ...func(*repo.DatabricksServicePrincipalFilter)) <-chan interface{}) *mockIdentityStoreAccountRepository_ListServicePrincipals_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListUsers provides a mock function with given fields: ctx, optFn
 func (_m *mockIdentityStoreAccountRepository) ListUsers(ctx context.Context, optFn ...func(*repo.DatabricksUsersFilter)) <-chan interface{} {
 	_va := make([]interface{}, len(optFn))
