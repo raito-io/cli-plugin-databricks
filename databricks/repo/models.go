@@ -25,6 +25,10 @@ type DatabricksUsersFilter struct {
 	Username *string
 }
 
+type DatabricksServicePrincipalFilter struct {
+	ServicePrincipalName *string
+}
+
 type DatabricksGroupsFilter struct {
 	Groupname *string
 }

@@ -329,6 +329,80 @@ func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options
 	return outputChannel
 }
 
+func (r *AccountRepository) ListServicePrincipals(ctx context.Context, optFn ...func(options *DatabricksServicePrincipalFilter)) <-chan interface{} { //nolint:dupl
+	options := DatabricksServicePrincipalFilter{}
+	for _, fn := range optFn {
+		fn(&options)
+	}
+
+	outputChannel := make(chan interface{})
+
+	go func() {
+		defer close(outputChannel)
+
+		send := func(item interface{}) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case outputChannel <- item:
+				return true
+			}
+		}
+
+		startIndex := "1"
+
+		queryParams := make(map[string]string)
+
+		if options.ServicePrincipalName != nil {
+			queryParams["filter"] = fmt.Sprintf("displayName eq %s", *options.ServicePrincipalName)
+		}
+
+		for {
+			queryParams["startIndex"] = startIndex
+
+			var result iam.ListServicePrincipalResponse
+
+			request, err := r.clientFactory.NewRequest(ctx)
+			if err != nil {
+				send(err)
+				return
+			}
+
+			response, err := request.SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
+				SetSuccessResult(&result).
+				SetPathParam("account_id", r.accountId).
+				SetQueryParams(queryParams).
+				Get("/api/2.0/accounts/{account_id}/scim/v2/ServicePrincipals")
+
+			if err != nil {
+				send(err)
+				return
+			}
+
+			if response.IsErrorState() {
+				send(response.Err)
+				return
+			}
+
+			for i := range result.Resources {
+				if !send(result.Resources[i]) {
+					return
+				}
+			}
+
+			lastItemIndex := result.StartIndex + result.ItemsPerPage
+
+			if result.TotalResults > lastItemIndex-1 {
+				startIndex = strconv.FormatInt(lastItemIndex, 10)
+			} else {
+				return
+			}
+		}
+	}()
+
+	return outputChannel
+}
+
 func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *DatabricksGroupsFilter)) <-chan interface{} { //nolint:dupl
 	options := DatabricksGroupsFilter{}
 	for _, fn := range optFn {

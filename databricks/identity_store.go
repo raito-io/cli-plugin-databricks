@@ -21,6 +21,7 @@ var _ wrappers.IdentityStoreSyncer = (*IdentityStoreSyncer)(nil)
 type identityStoreAccountRepository interface {
 	ListUsers(ctx context.Context, optFn ...func(options *repo.DatabricksUsersFilter)) <-chan interface{}
 	ListGroups(ctx context.Context, optFn ...func(options *repo.DatabricksGroupsFilter)) <-chan interface{}
+	ListServicePrincipals(ctx context.Context, optFn ...func(options *repo.DatabricksServicePrincipalFilter)) <-chan interface{}
 }
 
 type IdentityStoreSyncer struct {
@@ -56,12 +57,20 @@ func (i *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 
 	userMemberMap, err := i.getGroups(ctx, identityHandler, accountRepo)
 	if err != nil {
-		return err
+		return fmt.Errorf("load groups: %w", err)
 	}
 
 	err = i.getUsers(ctx, identityHandler, userMemberMap, accountRepo)
+	if err != nil {
+		return fmt.Errorf("load users: %w", err)
+	}
 
-	return err
+	err = i.getServicePrincipals(ctx, identityHandler, userMemberMap, accountRepo)
+	if err != nil {
+		return fmt.Errorf("load service principals: %w", err)
+	}
+
+	return nil
 }
 
 func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, repo identityStoreAccountRepository) (map[string][]string, error) {
@@ -86,7 +95,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 				if strings.HasPrefix(member.Ref, "Groups/") {
 					membergroups = append(membergroups, member.Value)
 					groupParents[member.Value] = append(groupParents[member.Value], item.Id)
-				} else if strings.HasPrefix(member.Ref, "Users/") {
+				} else {
 					userParents[member.Value] = append(userParents[member.Value], item.Id)
 				}
 			}
@@ -152,6 +161,34 @@ func (i *IdentityStoreSyncer) getUsers(ctx context.Context, identityHandler wrap
 				Email:            primaryEmail,
 				ExternalId:       item.Id,
 				UserName:         item.UserName,
+				GroupExternalIds: userParentMap[item.Id],
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (i *IdentityStoreSyncer) getServicePrincipals(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, userParentMap map[string][]string, repo identityStoreAccountRepository) error {
+	channelCtx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
+
+	servicePrincipalsChannel := repo.ListServicePrincipals(channelCtx)
+
+	for servicePrincipalItem := range servicePrincipalsChannel {
+		switch item := servicePrincipalItem.(type) {
+		case error:
+			return item
+		case iam.ServicePrincipal:
+			err := identityHandler.AddUsers(&is.User{
+				Name:             item.DisplayName,
+				Email:            item.ApplicationId,
+				ExternalId:       item.Id,
+				UserName:         item.ApplicationId,
 				GroupExternalIds: userParentMap[item.Id],
 			})
 

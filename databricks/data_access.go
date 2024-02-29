@@ -177,8 +177,7 @@ func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platf
 		} else if assignment.Principal.GroupName != "" {
 			principalId = assignment.Principal.GroupName
 		} else if assignment.Principal.ServicePrincipalName != "" {
-			logger.Warn(fmt.Sprintf("Service principles assignments are not supported at this moment. Skipping assignment for service principal %s", assignment.Principal.ServicePrincipalName))
-			continue
+			principalId = assignment.Principal.ServicePrincipalName
 		} else {
 			logger.Error(fmt.Sprintf("Unknown principal assignment type %+v", assignment.Principal))
 
