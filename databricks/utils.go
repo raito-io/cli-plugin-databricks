@@ -65,7 +65,13 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 	var err error
 
 	for _, workspaceName := range workspaces {
-		repo, werr := repoFn(pltfrm, GetWorkspaceAddress(workspaceName), accountId, repoCredentials)
+		host, werr := pltfrm.WorkspaceAddress(workspaceName)
+		if werr!= nil {
+            err = multierror.Append(err, werr)
+            continue
+        }
+
+		repo, werr := repoFn(pltfrm, host, accountId, repoCredentials)
 		if werr != nil {
 			err = multierror.Append(err, werr)
 			continue
@@ -87,8 +93,4 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 	}
 
 	return r, "", err
-}
-
-func GetWorkspaceAddress(deploymentId string) string {
-	return fmt.Sprintf("https://%s.cloud.databricks.com", deploymentId)
 }

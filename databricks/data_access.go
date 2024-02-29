@@ -97,7 +97,12 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, metastore *string) error {
 		metastoreSync := func(f func(repo dataAccessWorkspaceRepository) error) error {
-			client, err2 := a.workspaceRepoFactory(pltfrm, GetWorkspaceAddress(*metastore), accountId, &repoCredentials)
+			host, err2 := pltfrm.WorkspaceAddress(*metastore)
+			if err2 != nil {
+				return fmt.Errorf("workspace address: %w", err2)
+			}
+
+			client, err2 := a.workspaceRepoFactory(pltfrm, host, accountId, &repoCredentials)
 			if err2 != nil {
 				return err2
 			}
@@ -563,7 +568,12 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 		return filterName, externalId, err
 	}
 
-	repository, err := a.workspaceRepoFactory(pltfrm, GetWorkspaceAddress(warehouseId.Workspace), accountId, &repoCredentials)
+	worspaceAddress, err := pltfrm.WorkspaceAddress(warehouseId.Workspace)
+	if err != nil {
+		return filterName, externalId, fmt.Errorf("workspace address: %w", err)
+	}
+
+	repository, err := a.workspaceRepoFactory(pltfrm, worspaceAddress, accountId, &repoCredentials)
 	if err != nil {
 		return filterName, externalId, err
 	}
@@ -917,7 +927,12 @@ func (a *AccessSyncer) syncMaskInSchema(ctx context.Context, pltfrm platform.Dat
 		return fmt.Errorf("no warehouse found for metastore %q", metastore)
 	}
 
-	repository, err := a.workspaceRepoFactory(pltfrm, GetWorkspaceAddress(warehouseId.Workspace), accountId, &repoCredentials)
+	workspaceAddress, err := pltfrm.WorkspaceAddress(warehouseId.Workspace)
+	if err != nil {
+		return fmt.Errorf("workspace address: %w", err)
+	}
+
+	repository, err := a.workspaceRepoFactory(pltfrm, workspaceAddress, accountId, &repoCredentials)
 	if err != nil {
 		return err
 	}

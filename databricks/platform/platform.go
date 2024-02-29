@@ -1,6 +1,9 @@
 package platform
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 //go:generate go run github.com/raito-io/enumer -type=DatabricksPlatform -trimprefix=DatabricksPlatform -transform=lower
 type DatabricksPlatform int
@@ -12,13 +15,31 @@ const (
 )
 
 func (p DatabricksPlatform) Host() (string, error) {
+	url, err := p.fmtUrl()
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(url, "accounts"), nil
+}
+
+func (p DatabricksPlatform) WorkspaceAddress(deploymentId string) (string, error) {
+	url, err := p.fmtUrl()
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(url, deploymentId), nil
+}
+
+func (p DatabricksPlatform) fmtUrl() (string, error) {
 	switch p {
 	case DatabricksPlatformAzure:
-		return "https://accounts.azuredatabricks.net", nil
+		return "https://%s.azuredatabricks.net", nil
 	case DatabricksPlatformGCP:
-		return "https://accounts.gcp.databricks.com", nil
+		return "https://%s.gcp.databricks.com", nil
 	case DatabricksPlatformAWS:
-		return "https://accounts.cloud.databricks.com", nil
+		return "https://%s.cloud.databricks.com", nil
 	default:
 		return "", errors.New("unsupported platform")
 	}

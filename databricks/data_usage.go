@@ -102,7 +102,12 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 		return err
 	}
 
-	repo, err := d.workspaceRepoFactory(pltfrm, GetWorkspaceAddress(workspace.DeploymentName), accountId, &repoCredentials)
+	workspaceAddress, err := pltfrm.WorkspaceAddress(workspace.DeploymentName)
+	if err != nil {
+		return fmt.Errorf("workspace address: %w", err)
+	}
+
+	repo, err := d.workspaceRepoFactory(pltfrm, workspaceAddress, accountId, &repoCredentials)
 	if err != nil {
 		return err
 	}
