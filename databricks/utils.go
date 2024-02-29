@@ -66,10 +66,10 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 
 	for _, workspaceName := range workspaces {
 		host, werr := pltfrm.WorkspaceAddress(workspaceName)
-		if werr!= nil {
-            err = multierror.Append(err, werr)
-            continue
-        }
+		if werr != nil {
+			err = multierror.Append(err, werr)
+			continue
+		}
 
 		repo, werr := repoFn(pltfrm, host, accountId, repoCredentials)
 		if werr != nil {

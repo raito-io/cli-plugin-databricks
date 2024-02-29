@@ -448,6 +448,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 						logger.Debug(fmt.Sprintf("Found possible catalog by assuming use catalog %q", possibleCatalog))
 						data_object_names.Add(fmt.Sprintf("%s.%s.%s", metastore.MetastoreId, possibleCatalog, tableName))
 						catalogFound = true
+
 						break
 					}
 				}
@@ -484,6 +485,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 						logger.Debug(fmt.Sprintf("Found possible catalog by assuming use catalog and schema %q", possibleCatalogSchemaName))
 						data_object_names.Add(fmt.Sprintf("%s.%s.%s", metastore.MetastoreId, possibleCatalogSchemaName, tableName))
 						catalogSchemaFound = true
+
 						break
 					}
 				}
