@@ -282,7 +282,7 @@ var databricks_metadata = ds.MetaData{
 	AccessProviderTypes: []*ds.AccessProviderType{
 		{
 			Type:                          access_provider.AclSet,
-			Label:                         "Permission assignments",
+			Label:                         "Permission Assignment",
 			IsNamedEntity:                 false,
 			CanBeCreated:                  true,
 			CanBeAssumed:                  false,
