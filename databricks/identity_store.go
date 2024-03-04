@@ -156,8 +156,19 @@ func (i *IdentityStoreSyncer) getUsers(ctx context.Context, identityHandler wrap
 				return fmt.Errorf("user %s has no primary email", item.Name)
 			}
 
+			name := item.DisplayName
+			if name == "" {
+				if item.UserName != "" {
+					logger.Warn(fmt.Sprintf("user %s has no display name. Will use username instead.", item.Id))
+					name = item.UserName
+				} else {
+					logger.Warn(fmt.Sprintf("user %s has no display name. Will use id instead.", item.Id))
+					name = item.Id
+				}
+			}
+
 			err := identityHandler.AddUsers(&is.User{
-				Name:             item.DisplayName,
+				Name:             name,
 				Email:            primaryEmail,
 				ExternalId:       item.Id,
 				UserName:         item.UserName,
@@ -184,8 +195,15 @@ func (i *IdentityStoreSyncer) getServicePrincipals(ctx context.Context, identity
 		case error:
 			return item
 		case iam.ServicePrincipal:
+			name := item.DisplayName
+
+			if name == "" {
+				logger.Warn(fmt.Sprintf("Service Principal %s has no display name. Will use id instead.", item.Id))
+				name = item.Id
+			}
+
 			err := identityHandler.AddUsers(&is.User{
-				Name:             item.DisplayName,
+				Name:             name,
 				Email:            item.ApplicationId,
 				ExternalId:       item.Id,
 				UserName:         item.ApplicationId,
