@@ -95,6 +95,8 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 
 	storedFunctions := types.NewStoredFunctions()
 
+	metaStoreIdMap := map[string]string{}
+
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, metastore *string) error {
 		metastoreSync := func(f func(repo dataAccessWorkspaceRepository) error) error {
 			host, err2 := pltfrm.WorkspaceAddress(*metastore)
@@ -114,26 +116,30 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		case workspaceType:
 			return a.syncFromTargetWorkspace(ctx, pltfrm, accessProviderHandler, accountId, &repoCredentials, object)
 		case metastoreType:
+			if ms, ok := object.(*catalog.MetastoreInfo); ok {
+				metaStoreIdMap[ms.MetastoreId] = ms.Name
+			}
+
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
 				return a.syncFromTargetMetastore(ctx, accessProviderHandler, repo, object)
 			})
 		case catalogType:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetCatalog(ctx, accessProviderHandler, repo, object)
+				return a.syncFromTargetCatalog(ctx, accessProviderHandler, repo, object, metaStoreIdMap)
 			})
 		case data_source.Schema:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetSchema(ctx, accessProviderHandler, repo, object)
+				return a.syncFromTargetSchema(ctx, accessProviderHandler, repo, object, metaStoreIdMap)
 			})
 		case data_source.Table:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetTable(ctx, &storedFunctions, accessProviderHandler, repo, object)
+				return a.syncFromTargetTable(ctx, &storedFunctions, accessProviderHandler, repo, object, metaStoreIdMap)
 			})
 		case data_source.Column:
 			return a.syncFromTargetColumn(ctx, &storedFunctions, parentObject, object)
 		case functionType:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetFunction(ctx, accessProviderHandler, repo, &storedFunctions, object)
+				return a.syncFromTargetFunction(ctx, accessProviderHandler, repo, &storedFunctions, object, metaStoreIdMap)
 			})
 		}
 
@@ -248,7 +254,7 @@ func (a *AccessSyncer) syncFromTargetMetastore(ctx context.Context, accessProvid
 
 	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
 
-	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: metastore.Name, Type: metastoreType}, permissionsList)
+	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: metastoreType}, permissionsList)
 	if err != nil {
 		return err
 	}
@@ -256,28 +262,46 @@ func (a *AccessSyncer) syncFromTargetMetastore(ctx context.Context, accessProvid
 	return nil
 }
 
-func (a *AccessSyncer) syncFromTargetCatalog(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}) error {
+func (a *AccessSyncer) syncFromTargetCatalog(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
 	c, ok := object.(*catalog.CatalogInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Catalog. Expected *catalog.CatalogInfo but got %T", object)
 	}
 
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, c.MetastoreId, c.FullName, catalogType, catalog.SecurableTypeCatalog)
+	metastoreName, ok := metastoreIdMap[c.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", c.MetastoreId))
+		metastoreName = c.MetastoreId
+	}
+
+	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, c.MetastoreId, c.FullName, catalogType, catalog.SecurableTypeCatalog)
 }
 
-func (a *AccessSyncer) syncFromTargetSchema(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}) error {
+func (a *AccessSyncer) syncFromTargetSchema(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
 	schema, ok := object.(*catalog.SchemaInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Schema. Expected *catalog.SchemaInfo but got %T", object)
 	}
 
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, schema.MetastoreId, schema.FullName, data_source.Schema, catalog.SecurableTypeSchema)
+	metastoreName, ok := metastoreIdMap[schema.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", schema.MetastoreId))
+		metastoreName = schema.MetastoreId
+	}
+
+	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, schema.MetastoreId, schema.FullName, data_source.Schema, catalog.SecurableTypeSchema)
 }
 
-func (a *AccessSyncer) syncFromTargetTable(ctx context.Context, storedFunctions *types.StoredFunctions, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}) error {
+func (a *AccessSyncer) syncFromTargetTable(ctx context.Context, storedFunctions *types.StoredFunctions, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
 	table, ok := object.(*catalog.TableInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Table. Expected *catalog.TableInfo but got %T", object)
+	}
+
+	metastoreName, ok := metastoreIdMap[table.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", table.MetastoreId))
+		metastoreName = table.MetastoreId
 	}
 
 	if table.RowFilter != nil {
@@ -285,7 +309,7 @@ func (a *AccessSyncer) syncFromTargetTable(ctx context.Context, storedFunctions 
 		storedFunctions.AddFilter(functionId, createUniqueId(table.MetastoreId, table.FullName))
 	}
 
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, table.MetastoreId, table.FullName, data_source.Table, catalog.SecurableTypeTable)
+	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, table.MetastoreId, table.FullName, data_source.Table, catalog.SecurableTypeTable)
 }
 
 func (a *AccessSyncer) syncFromTargetColumn(_ context.Context, storedFunctions *types.StoredFunctions, parent interface{}, object interface{}) error {
@@ -307,7 +331,7 @@ func (a *AccessSyncer) syncFromTargetColumn(_ context.Context, storedFunctions *
 	return nil
 }
 
-func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, storedFunction *types.StoredFunctions, object interface{}) error {
+func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, storedFunction *types.StoredFunctions, object interface{}, metastoreIdMap map[string]string) error {
 	function, ok := object.(*repo.FunctionInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
@@ -360,19 +384,25 @@ func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProvide
 			}
 		}
 	} else {
-		return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, function.MetastoreId, function.FullName, functionType, catalog.SecurableTypeFunction)
+		metastoreName, ok := metastoreIdMap[function.MetastoreId]
+		if !ok {
+			logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", function.MetastoreId))
+			metastoreName = function.MetastoreId
+		}
+
+		return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, function.MetastoreId, function.FullName, functionType, catalog.SecurableTypeFunction)
 	}
 
 	return nil
 }
 
-func (a *AccessSyncer) syncAccessDataObjectFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, metastoreId, fullName string, doType string, securableType catalog.SecurableType) error {
+func (a *AccessSyncer) syncAccessDataObjectFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, metastoreName, metastoreId, fullName string, doType string, securableType catalog.SecurableType) error {
 	permissionsList, err := workspaceClient.GetPermissionsOnResource(ctx, securableType, fullName)
 	if err != nil {
 		return err
 	}
 
-	return a.addPermissionIfNotSetByRaito(accessProviderHandler, &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
+	return a.addPermissionIfNotSetByRaito(accessProviderHandler, createUniqueId(metastoreName, fullName), &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *sync_to_target.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) (err error) {
@@ -1186,7 +1216,7 @@ func (a *AccessSyncer) syncGrantToTarget(_ context.Context, ap *sync_to_target.A
 	return nil
 }
 
-func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
+func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, apNamePrefix string, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
 	if assignments == nil {
 		return nil
 	}
@@ -1207,7 +1237,8 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 	}
 
 	for privilege, principleList := range privilegeToPrincipleMap {
-		apName := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
+		externalId := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
+		apName := fmt.Sprintf("%s_%s", apNamePrefix, privilege.String())
 
 		whoItems := sync_from_target.WhoItem{}
 
@@ -1222,7 +1253,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 
 		err := accessProviderHandler.AddAccessProviders(
 			&sync_from_target.AccessProvider{
-				ExternalId: apName,
+				ExternalId: externalId,
 				Action:     sync_from_target.Grant,
 				Name:       apName,
 				NamingHint: apName,
