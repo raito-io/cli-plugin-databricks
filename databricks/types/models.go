@@ -46,7 +46,7 @@ func (c *PrivilegesChangeCollection) RemovePrivilege(securableItem SecurableItem
 	}
 
 	if _, ok := c.M[securableItem][principal]; !ok {
-		c.M[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](), Remove: set.NewSet(privilege...)}
+		c.M[securableItem][principal] = &PrivilegesChanges{Add: set.NewSet[string](), Remove: set.NewSet(privilege...), AssociatedAPs: set.NewSet[string]()}
 	} else {
 		c.M[securableItem][principal].Remove.Add(privilege...)
 	}
