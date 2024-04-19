@@ -1,17 +1,3 @@
-variable "demo_dataset" {
-  type        = bool
-  sensitive   = false
-  description = "Infrastructure for demo purposes"
-  default     = true
-}
-
-variable "testing_dataset" {
-  type        = bool
-  sensitive   = false
-  description = "Infrastructure for testing purposes"
-  default     = false
-}
-
 variable "databricks_username" {
   type        = string
   description = "Username of the Databricks account"

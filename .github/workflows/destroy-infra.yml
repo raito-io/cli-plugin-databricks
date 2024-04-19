@@ -34,6 +34,8 @@ on:
         required: true
       DB_WORKSPACE_NAME:
         required: true
+      DB_OWNER_GROUP_NAME:
+        required: true
   workflow_dispatch:
     inputs:
       targetEnvironment:
@@ -117,5 +119,6 @@ jobs:
           TF_VAR_databricks_metastore_id: ${{ secrets.DB_METASTORE_ID }}
           TF_VAR_databricks_sql_warehouse_id: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
           TF_VAR_databricks_workspace_name: ${{ secrets.DB_WORKSPACE_NAME }}
+          TF_VAR_owner_group_name: ${{ secrets.DB_OWNER_GROUP_NAME }}
           TESTING_INFRA: ${{ inputs.TESTING_INFRA }}
           DEMO_INFRA: ${{ inputs.DEMO_INFRA }}
