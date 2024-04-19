@@ -37,6 +37,10 @@ jobs:
       - setup-infra
 
   build:
+    needs:
+      - setup-infra
+      - generate-usage
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
