@@ -39,7 +39,6 @@ jobs:
   build:
     needs:
       - setup-infra
-      - generate-usage
 
     runs-on: ubuntu-latest
     steps:
