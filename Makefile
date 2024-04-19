@@ -30,4 +30,4 @@ destroy-grants:
 	cd .infra/infra; go run destroy.go --dbUsername "${dbUsername}" --dbPassword "${dbPassword}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
 
 gen-test-usage:
-	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost ${dbHost} --dbWarehouseId ${dbWarehouseId} --dbUsers ${dbUsers}
+	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}" --dbUsers "${dbUsers}"
