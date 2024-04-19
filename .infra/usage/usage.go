@@ -34,6 +34,8 @@ func CreateUsage(infraInput *InfrastructureInput, users []UserInput, host string
 	ctx := context.Background()
 
 	for _, user := range users {
+		logger.Info(fmt.Sprintf("Executing queries for user %q", user.Username))
+
 		err := ExecuteQueriesForUser(ctx, infraInput, user.Username, user.Password, host, warehouseId)
 		if err != nil {
 			return fmt.Errorf("execute queries for user %s: %w", user, err)
@@ -117,7 +119,6 @@ func main() {
 	userInput := make([]UserInput, 0, len(userArray))
 
 	for _, user := range userArray {
-		logger.Info(fmt.Sprintf("Parsing user %s", user))
 		userPassword := strings.SplitN(user, ",", 2)
 		userInput = append(userInput, UserInput{Username: userPassword[0], Password: userPassword[1]})
 	}
