@@ -9,9 +9,10 @@ permissions:
   contents: read
 jobs:
   remove-old-infra:
-    uses: ./.github/workflows/destroy-roles.yml
+    uses: ./.github/workflows/destroy-grants.yml
     with:
       targetEnvironment: integration_testing
+      catalogs: "raito_testing"
     secrets: inherit
 
   setup-infra:

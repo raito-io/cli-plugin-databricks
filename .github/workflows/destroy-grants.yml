@@ -1,4 +1,4 @@
-name: Manual - Destroy roles
+name: Manual - Destroy grants
 on:
   workflow_call:
     inputs:
