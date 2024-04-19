@@ -47,7 +47,7 @@ jobs:
         run: go mod tidy
 
       - name: Destroy infrastructure
-        run: make destroy-roles
+        run: make destroy-grants
         env:
           dbUsername: ${{ secrets.DB_USERNAME }}
           dbPassword: ${{ secrets.DB_PASSWORD }}

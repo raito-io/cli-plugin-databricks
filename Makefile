@@ -25,7 +25,7 @@ gen-test-infra:
 destroy-test-infra:
 	cd .infra/infra; terraform apply -destroy -auto-approve ${${${DEMO_INFRA}==true}:+-target=module.demo} ${${${TESTING_INFRA}==true}:+-target=module.testing}
 
-destroy-roles:
+destroy-grants:
 	cd .infra/infra; go run destroy.go --dbUsername ${dbUsername} --dbPassword ${dbPassword} --dbHost ${dbHost} --catalogs=${dbCatalogs} --drop
 
 gen-test-usage:
