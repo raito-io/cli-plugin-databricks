@@ -52,4 +52,4 @@ jobs:
           dbUsername: ${{ secrets.DB_USERNAME }}
           dbPassword: ${{ secrets.DB_PASSWORD }}
           dbHost: ${{ secrets.DB_HOST }}
-          dbCatalogs: ${{ inputs.DB_CATALOGS }}
+          dbCatalogs: ${{ inputs.catalogs }}
