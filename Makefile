@@ -20,10 +20,11 @@ test:
 	go tool cover -html=coverage.txt -o coverage.html
 
 gen-test-infra:
-	terraform apply -auto-approve ${TARGET:+-target=}$TARGET
+	if [ -z $TARGET ]; then cd .infra/infra; terraform apply -auto-approve -target=${TARGET}; else cd .infra/infra; terraform apply -auto-approve; fi
+
 
 destroy-test-infra:
-	terraform apply -auto-approve ${TARGET:+-target=}$TARGET
+	if [ -z $TARGET ]; then cd .infra/infra; terraform apply -destroy -auto-approve -target=${TARGET}; else cd .infra/infra; terraform apply -destroy -auto-approve; fi
 
 destroy-grants:
 	cd .infra/infra; go run destroy.go --dbUsername "${dbUsername}" --dbPassword "${dbPassword}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
