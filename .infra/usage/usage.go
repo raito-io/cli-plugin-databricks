@@ -17,9 +17,12 @@ import (
 var logger hclog.Logger
 
 type InfrastructureInput struct {
-	Tables struct {
+	TestingTables struct {
 		Value []string `json:"value"`
-	} `json:"tables"`
+	} `json:"testing_tables,omitempty"`
+	DemoTables struct {
+		Value []string `json:"value"`
+	} `json:"demo_tables,omitempty"`
 }
 
 type UserInput struct {
@@ -52,7 +55,11 @@ func ExecuteQueriesForUser(ctx context.Context, infraInput *InfrastructureInput,
 		return fmt.Errorf("create workspace client: %w", err)
 	}
 
-	for _, table := range infraInput.Tables.Value {
+	allTables := make([]string, 0, len(infraInput.TestingTables.Value)+len(infraInput.DemoTables.Value))
+	allTables = append(allTables, infraInput.TestingTables.Value...)
+	allTables = append(allTables, infraInput.DemoTables.Value...)
+
+	for _, table := range allTables {
 		r := rand.Intn(5)
 
 		for range r {
