@@ -20,13 +20,13 @@ test:
 	go tool cover -html=coverage.txt -o coverage.html
 
 gen-test-infra:
-	if [ "${DEMO_INFRA}" -eq "true" ]; then cd .infra/infra; terraform apply -auto-approve -target=module.demo; fi
-	if [ "${TESTING_INFRA}" -eq "true" ]; then cd .infra/infra; terraform apply -auto-approve -target=module.testing; fi
+	if [ "${DEMO_INFRA}" = "true" ]; then cd .infra/infra; terraform apply -auto-approve -target=module.demo; fi
+	if [ "${TESTING_INFRA}" = "true" ]; then cd .infra/infra; terraform apply -auto-approve -target=module.testing; fi
 
 destroy-test-infra:
-	if [ "${DEMO_INFRA}" -eq "true" ]; then cd .infra/infra; terraform apply -destroy -auto-approve -target=module.demo; fi
-	if [ "${TESTING_INFRA}" -eq "true" ]; then cd .infra/infra; terraform apply -destroy -auto-approve -target=module.testing; fi
-	if [ "${DEMO_INFRA}" -eq "true" &&  ${TESTING_INFRA} -eq true ] then cd .infra/infra; terraform apply -destroy -auto-approve; fi
+	if [ "${DEMO_INFRA}" = "true" ]; then cd .infra/infra; terraform apply -destroy -auto-approve -target=module.demo; fi
+	if [ "${TESTING_INFRA}" = "true" ]; then cd .infra/infra; terraform apply -destroy -auto-approve -target=module.testing; fi
+	if [ "${DEMO_INFRA}" = "true" &&  ${TESTING_INFRA} -eq true ] then cd .infra/infra; terraform apply -destroy -auto-approve; fi
 
 destroy-grants:
 	cd .infra/infra; go run destroy.go --dbUsername "${dbUsername}" --dbPassword "${dbPassword}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
