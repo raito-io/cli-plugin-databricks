@@ -1,7 +1,7 @@
 // Catalog - MASTER DATA
 resource "databricks_catalog" "master_catalog" {
-  name          = "master_catalog_tf_5"
-  comment       = "Testing out catalog for TF"
+  name          = "master_catalog"
+  comment       = "Raito master catalog"
   owner         = var.master_owner_group_name
   force_destroy = true
 }
