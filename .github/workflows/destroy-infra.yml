@@ -5,12 +5,10 @@ on:
       targetEnvironment:
         required: true
         type: string
-      demo-infra:
-        required: true
-        type: boolean
-      testing-infra:
-        required: true
-        type: boolean
+      target:
+        required: false
+        type: string
+        default: ""
     secrets:
       AWS_OIDC_DEPLOY_ROLE:
         required: true
@@ -46,16 +44,15 @@ on:
         options:
           - integration_testing
           - testing
-      demo-infra:
-        type: boolean
-        description: Indicate if demo infrastructure should be generated
-        required: false
-        default: true
-      testing-infra:
-        type: boolean
-        description: Indicate if testing infrastructure should be generated
-        required: false
-        default: false
+      target:
+        type: choice
+        description: Select a target
+        required: true
+        default: "module.testing"
+        options:
+          - "module.testing"
+          - "module.demo"
+          - ""
 permissions:
   id-token: write
   contents: read
@@ -120,5 +117,4 @@ jobs:
           TF_VAR_databricks_sql_warehouse_id: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
           TF_VAR_databricks_workspace_name: ${{ secrets.DB_WORKSPACE_NAME }}
           TF_VAR_owner_group_name: ${{ secrets.DB_OWNER_GROUP_NAME }}
-          TESTING_INFRA: ${{ inputs.TESTING_INFRA }}
-          DEMO_INFRA: ${{ inputs.DEMO_INFRA }}
+          TARGET: ${{ inputs.target }}
