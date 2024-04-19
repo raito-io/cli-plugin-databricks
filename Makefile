@@ -26,7 +26,7 @@ destroy-test-infra:
 	cd .infra/infra; terraform apply -destroy -auto-approve ${${${DEMO_INFRA}==true}:+-target=module.demo} ${${${TESTING_INFRA}==true}:+-target=module.testing}
 
 destroy-grants:
-	cd .infra/infra; go run destroy.go --dbUsername ${dbUsername} --dbPassword ${dbPassword} --dbHost ${dbHost} --catalogs=${dbCatalogs} --drop
+	cd .infra/infra; go run destroy.go --dbUsername "${dbUsername}" --dbPassword "${dbPassword}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
 
 gen-test-usage:
 	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost ${dbHost} --dbWarehouseId ${dbWarehouseId} --dbUsers ${dbUsers}
