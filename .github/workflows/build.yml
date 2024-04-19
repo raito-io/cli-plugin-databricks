@@ -35,10 +35,13 @@ jobs:
 
     needs:
       - setup-infra
+    if: needs.setup-infra.result == 'success'
 
   build:
     needs:
       - setup-infra
+      - generate-usage
+    if: needs.generate-usage.result == 'success'
 
     runs-on: ubuntu-latest
     steps:
