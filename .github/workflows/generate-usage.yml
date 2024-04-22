@@ -82,6 +82,7 @@ jobs:
         env:
           AWS_S3_TERRAFORM_BUCKET: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
           AWS_S3_TERRAFORM_KEY: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          AWS_DYNAMODB_TERRAFORM_TABLE: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Generate usage
         run: make gen-test-usage
