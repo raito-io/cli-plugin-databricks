@@ -403,7 +403,7 @@ func (r *AccountRepository) ListServicePrincipals(ctx context.Context, optFn ...
 	return outputChannel
 }
 
-func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *DatabricksGroupsFilter)) <-chan interface{} { //nolint:dupl
+func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *DatabricksGroupsFilter)) <-chan interface{} {
 	options := DatabricksGroupsFilter{}
 	for _, fn := range optFn {
 		fn(&options)
@@ -454,7 +454,7 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 			}
 
 			if response.IsErrorState() {
-				send(fmt.Errorf("error state %d %q: %w", response.StatusCode, response.Err))
+				send(fmt.Errorf("error state %d: %w", response.StatusCode, response.Err))
 
 				logger.Debug(fmt.Sprintf("body of error state %q", response.String()))
 

@@ -102,7 +102,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 
 			err := dependencyTree.AddDependency(item.Id, membergroups...)
 			if err != nil {
-				return nil, fmt.Errorf("add member groups to dependancy tree: %w", err)
+				return nil, fmt.Errorf("add member groups to dependency tree: %w", err)
 			}
 
 			groupMap[item.Id] = item
@@ -111,7 +111,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 
 	err := dependencyTree.DependencyCleanup()
 	if err != nil {
-		return nil, fmt.Errorf("dependancy cleanup: %w", err)
+		return nil, fmt.Errorf("dependency cleanup: %w", err)
 	}
 
 	err = dependencyTree.BreadthFirstTraversal(func(groupId string) error {
