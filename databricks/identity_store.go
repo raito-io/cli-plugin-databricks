@@ -87,7 +87,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 	for groupItem := range groupsChannel {
 		switch item := groupItem.(type) {
 		case error:
-			return nil, item
+			return nil, fmt.Errorf("list group item: %w", item)
 		case iam.Group:
 			membergroups := make([]string, 0, len(item.Members))
 
@@ -102,7 +102,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 
 			err := dependencyTree.AddDependency(item.Id, membergroups...)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("add member groups to dependancy tree: %w", err)
 			}
 
 			groupMap[item.Id] = item
@@ -111,7 +111,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 
 	err := dependencyTree.DependencyCleanup()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dependancy cleanup: %w", err)
 	}
 
 	err = dependencyTree.BreadthFirstTraversal(func(groupId string) error {
@@ -126,7 +126,7 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("breadth first traversal: %w", err)
 	}
 
 	return userParents, nil

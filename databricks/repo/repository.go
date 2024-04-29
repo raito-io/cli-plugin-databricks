@@ -26,7 +26,7 @@ type repositoryRequestFactory interface {
 }
 
 func getDefaultClient(host string) *req.Client {
-	return req.NewClient().SetBaseURL(host).SetCommonHeader("user-agent", "Raito")
+	return req.NewClient().SetBaseURL(host).SetCommonHeader("user-agent", "Raito").SetCommonContentType("application/json")
 }
 
 type BasicAuthAccountRepositoryRequestFactory struct {
@@ -438,7 +438,7 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 
 			request, err := r.clientFactory.NewRequest(ctx)
 			if err != nil {
-				send(err)
+				send(fmt.Errorf("new request: %w", err))
 				return
 			}
 
@@ -449,12 +449,15 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 				Get("/api/2.0/accounts/{account_id}/scim/v2/Groups")
 
 			if err != nil {
-				send(err)
+				send(fmt.Errorf("get request: %w", err))
 				return
 			}
 
 			if response.IsErrorState() {
-				send(response.Err)
+				send(fmt.Errorf("error state %d %q: %w", response.StatusCode, response.Err))
+
+				logger.Debug(fmt.Sprintf("body of error state %q", response.String()))
+
 				return
 			}
 

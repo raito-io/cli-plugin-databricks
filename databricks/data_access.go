@@ -834,10 +834,10 @@ func (a *AccessSyncer) getGroupIdFromName(ctx context.Context, groupname string,
 	defer cancelFn()
 
 	groups := accountRepo.ListGroups(cancelCtx, func(options *repo.DatabricksGroupsFilter) { options.Groupname = &groupname })
-	for user := range groups {
-		switch v := user.(type) {
+	for group := range groups {
+		switch v := group.(type) {
 		case error:
-			return nil, v
+			return nil, fmt.Errorf("list group item: %w", v)
 		case iam.Group:
 			return &v, nil
 		}
