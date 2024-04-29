@@ -11,6 +11,7 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+	"github.com/hashicorp/go-hclog"
 	"github.com/imroc/req/v3"
 
 	"cli-plugin-databricks/databricks/platform"
@@ -445,7 +446,11 @@ func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(option
 			response, err := request.
 				SetHeader(databricksAccountConsoleApiVersionKeyStr, "2.0").
 				SetSuccessResult(&result).SetPathParam("account_id", r.accountId).
-				SetQueryParams(queryParams).
+				SetQueryParams(queryParams).EnableDumpTo(logger.StandardWriter(&hclog.StandardLoggerOptions{
+				InferLevels:              false,
+				InferLevelsWithTimestamp: false,
+				ForceLevel:               hclog.Debug,
+			})).EnableDumpWithoutHeader().
 				Get("/api/2.0/accounts/{account_id}/scim/v2/Groups")
 
 			if err != nil {
