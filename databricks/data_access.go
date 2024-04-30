@@ -306,7 +306,7 @@ func (a *AccessSyncer) syncFromTargetTable(ctx context.Context, storedFunctions 
 	}
 
 	if table.RowFilter != nil {
-		functionId := createUniqueId(table.MetastoreId, table.RowFilter.Name)
+		functionId := createUniqueId(table.MetastoreId, table.RowFilter.FunctionName)
 		storedFunctions.AddFilter(functionId, createUniqueId(table.MetastoreId, table.FullName))
 	}
 

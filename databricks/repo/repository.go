@@ -612,7 +612,9 @@ func NewWorkspaceRepository(pltfrm platform.DatabricksPlatform, host string, acc
 }
 
 func (r *WorkspaceRepository) ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error) {
-	response, err := r.client.Catalogs.ListAll(ctx)
+	response, err := r.client.Catalogs.ListAll(ctx, catalog.ListCatalogsRequest{
+		IncludeBrowse: true,
+	})
 	if err != nil {
 		return nil, err
 	}

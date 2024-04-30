@@ -6,7 +6,7 @@ toolchain go1.22.0
 
 require (
 	github.com/aws/smithy-go v1.20.2
-	github.com/databricks/databricks-sdk-go v0.33.0
+	github.com/databricks/databricks-sdk-go v0.39.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imroc/req/v3 v3.43.3
@@ -19,7 +19,7 @@ require (
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 )
 
-replace github.com/databricks/databricks-sdk-go v0.33.0 => github.com/raito-io/databricks-sdk-go v0.0.1 // https://github.com/databricks/databricks-sdk-go/issues/779
+replace github.com/databricks/databricks-sdk-go v0.39.0 => github.com/raito-io/databricks-sdk-go v0.0.2 // https://github.com/databricks/databricks-sdk-go/issues/779
 
 require (
 	cloud.google.com/go/auth v0.2.0 // indirect

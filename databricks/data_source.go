@@ -219,12 +219,12 @@ func (d *DataSourceSyncer) parseTable(_ context.Context, dataSourceHandler wrapp
 	}
 
 	if table.RowFilter != nil {
-		if table.RowFilter.Name == "" {
+		if table.RowFilter.FunctionName == "" {
 			// Currently all row filters are unknown due to a bug in Databricks
 			logger.Warn(fmt.Sprintf("Unknown row filter applied to table %q", table.FullName))
 		} else {
-			logger.Debug(fmt.Sprintf("Row filter function %q found on table %q", table.RowFilter.Name, table.FullName))
-			d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, table.RowFilter.Name))
+			logger.Debug(fmt.Sprintf("Row filter function %q found on table %q", table.RowFilter.FunctionName, table.FullName))
+			d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, table.RowFilter.FunctionName))
 		}
 	}
 

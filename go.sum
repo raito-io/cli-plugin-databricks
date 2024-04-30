@@ -188,8 +188,8 @@ github.com/raito-io/bexpression v0.1.2 h1:DHBTG2kNGSfwM3BwH97WP1vFjB2N8Ub41RRNUD
 github.com/raito-io/bexpression v0.1.2/go.mod h1:z0in8o1zo5cPNeCUa3Mh5ZP7h6v/LX0JH5/NbV3VtzI=
 github.com/raito-io/cli v0.64.1 h1:wwRMM0zOZgenqShMkJon6QRmF4wr9D4Q9VA7g0iA1Lk=
 github.com/raito-io/cli v0.64.1/go.mod h1:xtoP7siGDklxuC1RgSzIqFpTu7DK8/P7xvLKMX1OGfI=
-github.com/raito-io/databricks-sdk-go v0.0.1 h1:A6irUKjygvib20g1ze/WFTRBZi3C10JYBmg/mh9O5d0=
-github.com/raito-io/databricks-sdk-go v0.0.1/go.mod h1:MGNWVPqxYCW1vj/xD7DeLT8uChi4lgTFum+iIwDxd/Q=
+github.com/raito-io/databricks-sdk-go v0.0.2 h1:uYpIYKJ0aktgxdrRpclaLuysgkDuspHFXpffRRHwFOs=
+github.com/raito-io/databricks-sdk-go v0.0.2/go.mod h1:Yjy1gREDLK65g4axpVbVNKYAHYE2Sqzj0AB9QWHCBVM=
 github.com/raito-io/enumer v0.1.4 h1:r2QqGMjfKwn+yMHo4ybOAWvYON4pLBy+ucVP5niyHK4=
 github.com/raito-io/enumer v0.1.4/go.mod h1:+tSaVlYRuVnf2vA7ETf8t7/Mzq/sgvWT/dHeMVOjBu8=
 github.com/raito-io/golang-set v0.0.4 h1:7zk8r1TCE/F9JOOgseIXYx7oZJdC9/j5uivkCYjnCg0=
