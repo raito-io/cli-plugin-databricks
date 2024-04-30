@@ -29,7 +29,7 @@ data "databricks_user" "current_user" {
 }
 
 data "databricks_service_principal" "raitoServicePrincipal" {
-  provider = databricks.accounts
+  provider     = databricks.accounts
   display_name = "RaitoSync"
 }
 
