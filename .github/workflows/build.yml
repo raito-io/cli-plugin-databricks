@@ -43,6 +43,8 @@ jobs:
     if: needs.generate-usage.result == 'success'
 
     runs-on: ubuntu-latest
+    environment: integration_testing
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -60,12 +62,20 @@ jobs:
         run: make build
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v5
         with:
           version: v1.56.2
 
       - name: Test
         run: make test
+        env:
+          DB_ACCOUNT_ID: ${{ secrets.DB_ACCOUNT_ID }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PLATFORM: ${{ secrets.DB_PLATFORM }}
+          DB_TESTING_DEPLOYMENT: ${{ secrets.DB_DEPLOYMENT_ID }}
+          DB_TESTING_METASTORE: ${{ secrets.DB_METASTORE_ID }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+
 
       - uses: codecov/codecov-action@v4
         with:
