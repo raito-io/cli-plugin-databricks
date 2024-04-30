@@ -28,6 +28,11 @@ data "databricks_user" "current_user" {
   user_name = var.databricks_username
 }
 
+data "databricks_service_principal" "raitoServicePrincipal" {
+  provider     = databricks.accounts
+  display_name = "RaitoSync"
+}
+
 module "group_finance" {
   providers = {
     databricks = databricks.accounts
