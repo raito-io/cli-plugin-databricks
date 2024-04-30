@@ -9,6 +9,7 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/repo"
 )
 
@@ -75,7 +76,7 @@ func (t *DataObjectTraverser) Traverse(ctx context.Context, f TraverseObjectFnc,
 }
 
 func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObjectFnc, options DataObjectTraverserOptions, accountRepo accountRepository, metastores []catalog.MetastoreInfo, workspaces []repo.Workspace) error {
-	if options.SecurableTypesToReturn.Contains(catalogType) || options.SecurableTypesToReturn.Contains(ds.Schema) || options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
+	if options.SecurableTypesToReturn.Contains(constants.CatalogType) || options.SecurableTypesToReturn.Contains(ds.Schema) || options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
 		metastoreWorkspaceMap, _, err := accountRepo.GetWorkspaceMap(ctx, metastores, workspaces)
 		if err != nil {
 			return fmt.Errorf("get workspaces: %w", err)
@@ -100,11 +101,11 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 				}
 
 				for j := range catalogs {
-					fullName := t.createFullName(catalogType, metastore, &catalogs[j])
+					fullName := t.createFullName(constants.CatalogType, metastore, &catalogs[j])
 
 					if t.shouldGoInto(fullName) {
-						if options.SecurableTypesToReturn.Contains(catalogType) && t.shouldHandle(fullName) {
-							err = f(ctx, catalogType, metastore, &catalogs[j], &selectedWorkspace)
+						if options.SecurableTypesToReturn.Contains(constants.CatalogType) && t.shouldHandle(fullName) {
+							err = f(ctx, constants.CatalogType, metastore, &catalogs[j], &selectedWorkspace)
 							if err != nil {
 								return fmt.Errorf("handle %s: %w", fullName, err)
 							}
@@ -201,15 +202,15 @@ func (t *DataObjectTraverser) traverseTablesAndColumns(ctx context.Context, tabl
 }
 
 func (t *DataObjectTraverser) traverseFunctions(ctx context.Context, options DataObjectTraverserOptions, workspaceClient workspaceRepository, schema *catalog.SchemaInfo, f func(ctx context.Context, securableType string, parentObject interface{}, object interface{}) error) error {
-	if options.SecurableTypesToReturn.Contains(functionType) {
+	if options.SecurableTypesToReturn.Contains(constants.FunctionType) {
 		functions, err := workspaceClient.ListFunctions(ctx, schema.CatalogName, schema.Name)
 		if err != nil {
 			return fmt.Errorf("list functions of schema %s: %w", schema.FullName, err)
 		}
 
 		for l := range functions {
-			if options.SecurableTypesToReturn.Contains(functionType) && t.shouldHandle(t.createFullName(functionType, schema, &functions[l])) {
-				err = f(ctx, functionType, schema, &functions[l])
+			if options.SecurableTypesToReturn.Contains(constants.FunctionType) && t.shouldHandle(t.createFullName(constants.FunctionType, schema, &functions[l])) {
+				err = f(ctx, constants.FunctionType, schema, &functions[l])
 				if err != nil {
 					return fmt.Errorf("handle function %s: %w", functions[l].FullName, err)
 				}
@@ -227,7 +228,7 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 	}
 
 	metastores = filterObjects(metastores, func(m catalog.MetastoreInfo) bool {
-		return t.shouldGoInto(t.createFullName(metastoreType, nil, &m))
+		return t.shouldGoInto(t.createFullName(constants.MetastoreType, nil, &m))
 	})
 
 	workspaces, err := accountRepo.GetWorkspaces(ctx)
@@ -235,10 +236,10 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 		return nil, nil, err
 	}
 
-	if options.SecurableTypesToReturn.Contains(workspaceType) {
+	if options.SecurableTypesToReturn.Contains(constants.WorkspaceType) {
 		for i := range workspaces {
-			if t.shouldHandle(t.createFullName(workspaceType, nil, &workspaces[i])) {
-				err = f(ctx, workspaceType, nil, &workspaces[i], nil)
+			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
+				err = f(ctx, constants.WorkspaceType, nil, &workspaces[i], nil)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -251,7 +252,7 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 		return nil, nil, err
 	}
 
-	if options.SecurableTypesToReturn.Contains(metastoreType) {
+	if options.SecurableTypesToReturn.Contains(constants.MetastoreType) {
 		for i := range metastores {
 			metastore := &metastores[i]
 
@@ -264,8 +265,8 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 				}
 			}
 
-			if t.shouldHandle(t.createFullName(metastoreType, nil, metastore)) {
-				err = f(ctx, metastoreType, nil, &metastores[i], &selectedWorkspace)
+			if t.shouldHandle(t.createFullName(constants.MetastoreType, nil, metastore)) {
+				err = f(ctx, constants.MetastoreType, nil, &metastores[i], &selectedWorkspace)
 				if err != nil {
 					return nil, nil, err
 				}

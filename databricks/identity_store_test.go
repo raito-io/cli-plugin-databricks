@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	repo2 "cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/utils/array"
@@ -104,10 +105,10 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 

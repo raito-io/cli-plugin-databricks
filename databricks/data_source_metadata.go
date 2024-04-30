@@ -4,6 +4,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	ds "github.com/raito-io/cli/base/data_source"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/masks"
 )
 
@@ -17,11 +18,11 @@ var databricks_metadata = ds.MetaData{
 			Name:        ds.Datasource,
 			Type:        ds.Datasource,
 			Permissions: []*ds.DataObjectTypePermission{},
-			Children:    []string{metastoreType, workspaceType},
+			Children:    []string{constants.MetastoreType, constants.WorkspaceType},
 		},
 		{
-			Name: workspaceType,
-			Type: workspaceType,
+			Name: constants.WorkspaceType,
+			Type: constants.WorkspaceType,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
 					// Defined by Raito
@@ -36,8 +37,8 @@ var databricks_metadata = ds.MetaData{
 			},
 		},
 		{
-			Name: metastoreType,
-			Type: metastoreType,
+			Name: constants.MetastoreType,
+			Type: constants.MetastoreType,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
 					Permission:        "CREATE CATALOG",
@@ -84,8 +85,8 @@ var databricks_metadata = ds.MetaData{
 			Children: []string{"catalog"},
 		},
 		{
-			Name: catalogType,
-			Type: catalogType,
+			Name: constants.CatalogType,
+			Type: constants.CatalogType,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
 					Permission:        "USE CATALOG",
@@ -186,11 +187,11 @@ var databricks_metadata = ds.MetaData{
 					GlobalPermissions: ds.WriteGlobalPermission().StringValues(),
 				},
 			},
-			Children: []string{ds.Table, functionType},
+			Children: []string{ds.Table, constants.FunctionType},
 		},
 		{
-			Name: functionType,
-			Type: functionType,
+			Name: constants.FunctionType,
+			Type: constants.FunctionType,
 			Permissions: []*ds.DataObjectTypePermission{
 				{
 					Permission:  "EXECUTE",

@@ -11,6 +11,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
@@ -30,18 +31,18 @@ func cleanDoubleQuotes(input string) string { //nolint:unused
 }
 
 func getAndValidateParameters(configParams *config.ConfigMap) (pltfrm platform.DatabricksPlatform, accountId string, repoCredentials repo.RepositoryCredentials, err error) {
-	accountId = configParams.GetString(DatabricksAccountId)
+	accountId = configParams.GetString(constants.DatabricksAccountId)
 
 	if accountId == "" {
-		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", DatabricksAccountId)
+		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", constants.DatabricksAccountId)
 	}
 
-	username := configParams.GetString(DatabricksUser)
-	password := configParams.GetString(DatabricksPassword)
-	clientId := configParams.GetString(DatabricksClientId)
-	clientSecret := configParams.GetString(DatabricksClientSecret)
+	username := configParams.GetString(constants.DatabricksUser)
+	password := configParams.GetString(constants.DatabricksPassword)
+	clientId := configParams.GetString(constants.DatabricksClientId)
+	clientSecret := configParams.GetString(constants.DatabricksClientSecret)
 
-	pltfrm, err = platform.DatabricksPlatformString(strings.ToLower(configParams.GetString(DatabricksPlatform)))
+	pltfrm, err = platform.DatabricksPlatformString(strings.ToLower(configParams.GetString(constants.DatabricksPlatform)))
 	if err != nil {
 		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("invalid platform: %w", err)
 	}

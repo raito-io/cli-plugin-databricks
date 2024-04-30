@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
 
-	"cli-plugin-databricks/databricks"
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
@@ -33,19 +33,19 @@ func TestAccountRepositoryTestSuite(t *testing.T) {
 	testSuite := AccountRepositoryTestSuite{}
 	config := testSuite.GetConfig()
 
-	platform, err := platform2.DatabricksPlatformString(config.GetString(databricks.DatabricksPlatform))
+	platform, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	if err != nil {
 		t.Fatalf("failed to parse platform: %s", err.Error())
 	}
 
 	credentials := repo.RepositoryCredentials{
-		Username:     config.GetString(databricks.DatabricksUser),
-		Password:     config.GetString(databricks.DatabricksPassword),
-		ClientId:     config.GetString(databricks.DatabricksClientId),
-		ClientSecret: config.GetString(databricks.DatabricksClientSecret),
+		Username:     config.GetString(constants.DatabricksUser),
+		Password:     config.GetString(constants.DatabricksPassword),
+		ClientId:     config.GetString(constants.DatabricksClientId),
+		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	testSuite.repo, err = repo.NewAccountRepository(platform, &credentials, config.GetString(databricks.DatabricksAccountId))
+	testSuite.repo, err = repo.NewAccountRepository(platform, &credentials, config.GetString(constants.DatabricksAccountId))
 	if err != nil {
 		t.Fatalf("failed to create account repository: %s", err.Error())
 	}
@@ -261,20 +261,20 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 	testSuite := WorkspaceRepositoryTestSuite{}
 	config := testSuite.GetConfig()
 
-	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(databricks.DatabricksPlatform))
+	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
 	host, err := pltfrm.WorkspaceAddress(os.Getenv("DB_TESTING_DEPLOYMENT"))
 	require.NoError(t, err)
 
 	credentials := repo.RepositoryCredentials{
-		Username:     config.GetString(databricks.DatabricksUser),
-		Password:     config.GetString(databricks.DatabricksPassword),
-		ClientId:     config.GetString(databricks.DatabricksClientId),
-		ClientSecret: config.GetString(databricks.DatabricksClientSecret),
+		Username:     config.GetString(constants.DatabricksUser),
+		Password:     config.GetString(constants.DatabricksPassword),
+		ClientId:     config.GetString(constants.DatabricksClientId),
+		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(databricks.DatabricksAccountId), &credentials)
+	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(constants.DatabricksAccountId), &credentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

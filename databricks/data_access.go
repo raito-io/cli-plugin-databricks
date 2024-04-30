@@ -20,6 +20,7 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/masks"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
@@ -113,9 +114,9 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		}
 
 		switch securableType {
-		case workspaceType:
+		case constants.WorkspaceType:
 			return a.syncFromTargetWorkspace(ctx, pltfrm, accessProviderHandler, accountId, &repoCredentials, object)
-		case metastoreType:
+		case constants.MetastoreType:
 			if ms, ok := object.(*catalog.MetastoreInfo); ok {
 				metaStoreIdMap[ms.MetastoreId] = ms.Name
 			}
@@ -123,7 +124,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
 				return a.syncFromTargetMetastore(ctx, accessProviderHandler, repo, object)
 			})
-		case catalogType:
+		case constants.CatalogType:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
 				return a.syncFromTargetCatalog(ctx, accessProviderHandler, repo, object, metaStoreIdMap)
 			})
@@ -137,7 +138,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 			})
 		case data_source.Column:
 			return a.syncFromTargetColumn(ctx, &storedFunctions, parentObject, object)
-		case functionType:
+		case constants.FunctionType:
 			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
 				return a.syncFromTargetFunction(ctx, accessProviderHandler, repo, &storedFunctions, object, metaStoreIdMap)
 			})
@@ -145,7 +146,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 
 		return fmt.Errorf("unsupported type %s", securableType)
 	}, func(traverserOptions *DataObjectTraverserOptions) {
-		traverserOptions.SecurableTypesToReturn = set.NewSet[string](workspaceType, metastoreType, catalogType, data_source.Schema, data_source.Table, data_source.Column, functionType)
+		traverserOptions.SecurableTypesToReturn = set.NewSet[string](constants.WorkspaceType, constants.MetastoreType, constants.CatalogType, data_source.Schema, data_source.Table, data_source.Column, constants.FunctionType)
 	})
 
 	if err != nil {
@@ -190,7 +191,7 @@ func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platf
 			continue
 		}
 
-		do := data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: workspaceType}
+		do := data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: constants.WorkspaceType}
 
 		for _, permission := range assignment.Permissions {
 			p := string(permission)
@@ -224,7 +225,7 @@ func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platf
 				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
-						DataObject:  &data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: workspaceType},
+						DataObject:  &data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: constants.WorkspaceType},
 						Permissions: []string{privilege},
 					},
 				},
@@ -254,7 +255,7 @@ func (a *AccessSyncer) syncFromTargetMetastore(ctx context.Context, accessProvid
 
 	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
 
-	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: metastoreType}, permissionsList)
+	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: constants.MetastoreType}, permissionsList)
 	if err != nil {
 		return err
 	}
@@ -274,7 +275,7 @@ func (a *AccessSyncer) syncFromTargetCatalog(ctx context.Context, accessProvider
 		metastoreName = c.MetastoreId
 	}
 
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, c.MetastoreId, c.FullName, catalogType, catalog.SecurableTypeCatalog)
+	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, c.MetastoreId, c.FullName, constants.CatalogType, catalog.SecurableTypeCatalog)
 }
 
 func (a *AccessSyncer) syncFromTargetSchema(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
@@ -390,7 +391,7 @@ func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProvide
 			metastoreName = function.MetastoreId
 		}
 
-		return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, function.MetastoreId, function.FullName, functionType, catalog.SecurableTypeFunction)
+		return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, function.MetastoreId, function.FullName, constants.FunctionType, catalog.SecurableTypeFunction)
 	}
 
 	return nil
@@ -484,7 +485,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	}()
 
 	for item, principlePrivilegesMap := range permissionsChanges.M {
-		if item.Type == workspaceType {
+		if item.Type == constants.WorkspaceType {
 			a.storePrivilegesInComputePlane(ctx, item, principlePrivilegesMap, accountRepo)
 		} else {
 			a.storePrivilegesInDataplane(ctx, item, getMetastoreClient, principlePrivilegesMap)
@@ -581,7 +582,7 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 
 	warehouseIdMap := make(map[string]types.WarehouseDetails)
 
-	if found, err := configMap.Unmarshal(DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
+	if found, err := configMap.Unmarshal(constants.DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
 		return filterName, externalId, err
 	} else if !found {
 		return filterName, externalId, fmt.Errorf("no warehouses found in configmap")
@@ -858,7 +859,7 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item type
 		}
 	}()
 
-	if item.Type == metastoreType {
+	if item.Type == constants.MetastoreType {
 		metastore = item.FullName
 		fullname = item.FullName
 	} else {
@@ -913,7 +914,7 @@ func (a *AccessSyncer) syncMaskToTarget(ctx context.Context, ap *sync_to_target.
 
 	warehouseIdMap := make(map[string]types.WarehouseDetails)
 
-	if found, err := configMap.Unmarshal(DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
+	if found, err := configMap.Unmarshal(constants.DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
 		return maskName, err
 	} else if !found {
 		return maskName, fmt.Errorf("no warehouses found in configmap")
@@ -1311,15 +1312,15 @@ func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.Con
 
 func typeToSecurableType(t string) (catalog.SecurableType, error) {
 	switch t {
-	case metastoreType:
+	case constants.MetastoreType:
 		return catalog.SecurableTypeMetastore, nil
-	case catalogType:
+	case constants.CatalogType:
 		return catalog.SecurableTypeCatalog, nil
 	case data_source.Schema:
 		return catalog.SecurableTypeSchema, nil
 	case data_source.Table:
 		return catalog.SecurableTypeTable, nil
-	case functionType:
+	case constants.FunctionType:
 		return catalog.SecurableTypeFunction, nil
 	default:
 		return "", fmt.Errorf("unknown type %q", t)
@@ -1351,9 +1352,9 @@ func permissionToDatabricksPrivilege(p string) string {
 
 func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.Set[string], object data_source.DataObjectReference) error {
 	switch object.Type {
-	case metastoreType, workspaceType:
+	case constants.MetastoreType, constants.WorkspaceType:
 		return nil
-	case catalogType:
+	case constants.CatalogType:
 		addToSetInMap(result, object, string(catalog.PrivilegeUseCatalog))
 
 		fullname, err := cutLastPartFullName(object.FullName)
@@ -1361,7 +1362,7 @@ func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.S
 			return err
 		}
 
-		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: metastoreType})
+		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: constants.MetastoreType})
 	case data_source.Schema:
 		addToSetInMap(result, object, string(catalog.PrivilegeUseSchema))
 
@@ -1370,8 +1371,8 @@ func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.S
 			return err
 		}
 
-		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: catalogType})
-	case data_source.Table, data_source.View, functionType:
+		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: constants.CatalogType})
+	case data_source.Table, data_source.View, constants.FunctionType:
 		fullname, err := cutLastPartFullName(object.FullName)
 		if err != nil {
 			return err

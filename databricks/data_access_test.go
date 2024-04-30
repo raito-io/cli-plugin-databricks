@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/databricks/types"
@@ -38,10 +39,10 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	accessProviderHandlerMock := mocks.NewSimpleAccessProviderHandler(t, 1)
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -211,7 +212,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "42",
-						Type:     workspaceType,
+						Type:     constants.WorkspaceType,
 					},
 					Permissions: []string{"USER"},
 				},
@@ -231,7 +232,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "42",
-						Type:     workspaceType,
+						Type:     constants.WorkspaceType,
 					},
 					Permissions: []string{"ADMIN"},
 				},
@@ -251,7 +252,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "metastore-id1.catalog-1",
-						Type:     catalogType,
+						Type:     constants.CatalogType,
 					},
 					Permissions: []string{"SELECT"},
 				},
@@ -272,7 +273,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "metastore-id1.catalog-1",
-						Type:     catalogType,
+						Type:     constants.CatalogType,
 					},
 					Permissions: []string{"USE CATALOG"},
 				},
@@ -292,7 +293,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				{
 					DataObject: &data_source.DataObjectReference{
 						FullName: "metastore-id1.catalog-1",
-						Type:     catalogType,
+						Type:     constants.CatalogType,
 					},
 					Permissions: []string{"EXECUTE"},
 				},
@@ -390,7 +391,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			What: []sync_from_target.WhatItem{{
 				DataObject: &data_source.DataObjectReference{
 					FullName: "metastore-id1.catalog-1.schema-1.function-1",
-					Type:     functionType,
+					Type:     constants.FunctionType,
 				},
 				Permissions: []string{"EXECUTE"},
 			}},
@@ -433,7 +434,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "42",
-							Type:     workspaceType,
+							Type:     constants.WorkspaceType,
 						},
 						Permissions: []string{"USER"},
 					},
@@ -454,7 +455,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "metastore-id1.catalog-1",
-							Type:     catalogType,
+							Type:     constants.CatalogType,
 						},
 						Permissions: []string{"SELECT"},
 					},
@@ -481,7 +482,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "metastore-id1.catalog-2",
-							Type:     catalogType,
+							Type:     constants.CatalogType,
 						},
 						Permissions: []string{"CREATE TABLE"},
 					},
@@ -496,10 +497,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -669,11 +670,11 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId:     "AccountId",
-			DatabricksUser:          "User",
-			DatabricksPassword:      "Password",
-			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
-			DatabricksPlatform:      "AWS",
+			constants.DatabricksAccountId:     "AccountId",
+			constants.DatabricksUser:          "User",
+			constants.DatabricksPassword:      "Password",
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -792,11 +793,11 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId:     "AccountId",
-			DatabricksUser:          "User",
-			DatabricksPassword:      "Password",
-			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
-			DatabricksPlatform:      "AWS",
+			constants.DatabricksAccountId:     "AccountId",
+			constants.DatabricksUser:          "User",
+			constants.DatabricksPassword:      "Password",
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -934,11 +935,11 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId:     "AccountId",
-			DatabricksUser:          "User",
-			DatabricksPassword:      "Password",
-			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
-			DatabricksPlatform:      "AWS",
+			constants.DatabricksAccountId:     "AccountId",
+			constants.DatabricksUser:          "User",
+			constants.DatabricksPassword:      "Password",
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -1072,11 +1073,11 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId:     "AccountId",
-			DatabricksUser:          "User",
-			DatabricksPassword:      "Password",
-			DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
-			DatabricksPlatform:      "AWS",
+			constants.DatabricksAccountId:     "AccountId",
+			constants.DatabricksUser:          "User",
+			constants.DatabricksPassword:      "Password",
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksPlatform:      "AWS",
 		},
 	}
 
@@ -1137,7 +1138,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "42",
-							Type:     workspaceType,
+							Type:     constants.WorkspaceType,
 						},
 						Permissions: []string{"USER"},
 					},
@@ -1158,7 +1159,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "metastore-id1.catalog-1",
-							Type:     catalogType,
+							Type:     constants.CatalogType,
 						},
 						Permissions: []string{"SELECT"},
 					},
@@ -1185,7 +1186,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 					{
 						DataObject: &data_source.DataObjectReference{
 							FullName: "metastore-id1.catalog-2",
-							Type:     catalogType,
+							Type:     constants.CatalogType,
 						},
 						Permissions: []string{"CREATE TABLE"},
 					},
@@ -1200,10 +1201,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 

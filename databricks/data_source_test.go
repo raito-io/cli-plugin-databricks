@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
@@ -28,10 +29,10 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	dataSourceHandlerMock := mocks.NewSimpleDataSourceObjectHandler(t, 1)
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 
@@ -128,10 +129,10 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 	dataSourceHandlerMock := mocks.NewSimpleDataSourceObjectHandler(t, 1)
 	configMap := &config.ConfigMap{
 		Parameters: map[string]string{
-			DatabricksAccountId: "AccountId",
-			DatabricksUser:      "User",
-			DatabricksPassword:  "Password",
-			DatabricksPlatform:  "AWS",
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
 		},
 	}
 
