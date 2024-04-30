@@ -88,7 +88,7 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 		err = d.syncWorkspace(ctx, &worspaces[wi], &metastore, fileCreator, configParams)
 		if err != nil {
-			return err
+			logger.Warn(fmt.Sprintf("Sync data usage for metastore %s failed: %s", metastore.Name, err.Error()))
 		}
 	}
 
@@ -100,7 +100,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 
 	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
-		return err
+		return fmt.Errorf("get credentials: %w", err)
 	}
 
 	workspaceAddress, err := pltfrm.WorkspaceAddress(workspace.DeploymentName)
@@ -110,7 +110,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 
 	repo, err := d.workspaceRepoFactory(pltfrm, workspaceAddress, accountId, &repoCredentials)
 	if err != nil {
-		return err
+		return fmt.Errorf("get workspace repository: %w", err)
 	}
 
 	numberOfDays := configParams.GetIntWithDefault(constants.DatabricksDataUsageWindow, 30)
@@ -130,7 +130,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 
 	tableInfoMap, err := d.getTableInfoMap(ctx, repo)
 	if err != nil {
-		return err
+		return fmt.Errorf("get table info map: %w", err)
 	}
 
 	err = repo.QueryHistory(ctx, &startDate, func(ctx context.Context, queryInfo *sql.QueryInfo) error {
@@ -160,7 +160,9 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 		}
 
 		if err != nil {
-			return err
+			logger.Warn(fmt.Sprintf("Failed to parse query: %s", err.Error()))
+
+			return nil
 		}
 
 		if len(whatItems) > 0 {
@@ -180,7 +182,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 			})
 
 			if err != nil {
-				return err
+				return fmt.Errorf("add query history statement: %w", err)
 			}
 		} else {
 			err = fileCreator.AddStatements([]data_usage.Statement{
@@ -197,6 +199,9 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 					Rows:                rows,
 				},
 			})
+			if err != nil {
+				return fmt.Errorf("add query history statement: %w", err)
+			}
 		}
 
 		return nil
