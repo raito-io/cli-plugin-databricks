@@ -2,6 +2,7 @@ package databricks
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
@@ -77,7 +78,7 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 	if options.SecurableTypesToReturn.Contains(catalogType) || options.SecurableTypesToReturn.Contains(ds.Schema) || options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
 		metastoreWorkspaceMap, _, err := accountRepo.GetWorkspaceMap(ctx, metastores, workspaces)
 		if err != nil {
-			return err
+			return fmt.Errorf("get workspaces: %w", err)
 		}
 
 		for i := range metastores {
@@ -86,12 +87,16 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 			if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
 				workspaceClient, selectedWorkspace, err2 := t.workspaceRepoFactory(metastoreWorkspaces)
 				if err2 != nil {
-					return err2
+					logger.Warn(fmt.Sprintf("Failed to login for metastore %s: %s. Will skip all dataobjects in catalog.", metastore.MetastoreId, err2.Error()))
+
+					continue
 				}
 
 				catalogs, err2 := workspaceClient.ListCatalogs(ctx)
 				if err2 != nil {
-					return err2
+					logger.Warn(fmt.Sprintf("Unable to list catalogs for metastore %s: %s. Will skip all dataobjects in catalog.", metastore.MetastoreId, err2.Error()))
+
+					continue
 				}
 
 				for j := range catalogs {
@@ -101,7 +106,7 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 						if options.SecurableTypesToReturn.Contains(catalogType) && t.shouldHandle(fullName) {
 							err = f(ctx, catalogType, metastore, &catalogs[j], &selectedWorkspace)
 							if err != nil {
-								return err
+								return fmt.Errorf("handle %s: %w", fullName, err)
 							}
 						}
 
@@ -109,7 +114,9 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObj
 							return f(ctx, securableType, parentObject, object, &selectedWorkspace)
 						})
 						if err != nil {
-							return err
+							logger.Warn(fmt.Sprintf("Unable to list schemas for catalog %s: %s. Will skip all dataobjects in catalog.", fullName, err.Error()))
+
+							continue
 						}
 					}
 				}
@@ -124,7 +131,7 @@ func (t *DataObjectTraverser) traverseSchemas(ctx context.Context, options DataO
 	if options.SecurableTypesToReturn.Contains(ds.Schema) || options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
 		schemas, schemaErr := workspaceClient.ListSchemas(ctx, cat.Name)
 		if schemaErr != nil {
-			return schemaErr
+			return fmt.Errorf("list schemas of catalog %q: %w", cat.Name, schemaErr)
 		}
 
 		for i := range schemas {
@@ -134,24 +141,26 @@ func (t *DataObjectTraverser) traverseSchemas(ctx context.Context, options DataO
 				if options.SecurableTypesToReturn.Contains(ds.Schema) && t.shouldHandle(fullName) {
 					err := f(ctx, ds.Schema, cat, &schemas[i])
 					if err != nil {
-						return err
+						return fmt.Errorf("handle schema %s: %w", fullName, err)
 					}
 				}
 
 				if options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
 					tables, err := workspaceClient.ListTables(ctx, schemas[i].CatalogName, schemas[i].Name)
 					if err != nil {
-						return err
+						logger.Warn(fmt.Sprintf("Unable to list tables for schema %s: %s. Will skip all tables and functions in schema", fullName, err.Error()))
+
+						continue
 					}
 
 					err = t.traverseTablesAndColumns(ctx, tables, options, &schemas[i], f)
 					if err != nil {
-						return err
+						logger.Warn(fmt.Sprintf("Unable to traverse tables and columns for schema %s: %s", fullName, err.Error()))
 					}
 
-					err = t.traverseFunctions(ctx, options, workspaceClient, &schemas[i], f)
+					err = t.traverseFunctions(ctx, options, workspaceClient, &schemas[i], f) // should be executed after list tables and traverse tables and columns to check filters and masks
 					if err != nil {
-						return err
+						logger.Warn(fmt.Sprintf("Unable to traverse functions for schema %s: %s", fullName, err.Error()))
 					}
 				}
 			}
@@ -169,16 +178,18 @@ func (t *DataObjectTraverser) traverseTablesAndColumns(ctx context.Context, tabl
 			if options.SecurableTypesToReturn.Contains(ds.Table) && t.shouldHandle(fullName) {
 				err := f(ctx, ds.Table, schema, &tables[i])
 				if err != nil {
-					return err
+					return fmt.Errorf("handle table %s: %w", fullName, err)
 				}
 			}
 
 			if options.SecurableTypesToReturn.Contains(ds.Column) {
 				for j := range tables[i].Columns {
-					if t.shouldHandle(t.createFullName(ds.Column, &tables[i], &tables[i].Columns[j])) {
+					columnFullName := t.createFullName(ds.Column, &tables[i], &tables[i].Columns[j])
+
+					if t.shouldHandle(columnFullName) {
 						err := f(ctx, ds.Column, &tables[i], &tables[i].Columns[j])
 						if err != nil {
-							return err
+							return fmt.Errorf("handle column %s: %w", columnFullName, err)
 						}
 					}
 				}
@@ -193,14 +204,14 @@ func (t *DataObjectTraverser) traverseFunctions(ctx context.Context, options Dat
 	if options.SecurableTypesToReturn.Contains(functionType) {
 		functions, err := workspaceClient.ListFunctions(ctx, schema.CatalogName, schema.Name)
 		if err != nil {
-			return err
+			return fmt.Errorf("list functions of schema %s: %w", schema.FullName, err)
 		}
 
 		for l := range functions {
 			if options.SecurableTypesToReturn.Contains(functionType) && t.shouldHandle(t.createFullName(functionType, schema, &functions[l])) {
 				err = f(ctx, functionType, schema, &functions[l])
 				if err != nil {
-					return err
+					return fmt.Errorf("handle function %s: %w", functions[l].FullName, err)
 				}
 			}
 		}
