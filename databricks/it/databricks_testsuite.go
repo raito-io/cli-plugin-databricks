@@ -9,7 +9,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/stretchr/testify/suite"
 
-	"cli-plugin-databricks/databricks"
+	"cli-plugin-databricks/databricks/constants"
 )
 
 var (
@@ -40,13 +40,13 @@ func readDatabaseConfig() *config.ConfigMap {
 
 	return &config.ConfigMap{
 		Parameters: map[string]string{
-			databricks.DatabricksAccountId:     dbAccountId,
-			databricks.DatabricksUser:          dbUsername,
-			databricks.DatabricksPassword:      dbPassword,
-			databricks.DatabricksClientId:      dbClientID,
-			databricks.DatabricksClientSecret:  dbClientSecret,
-			databricks.DatabricksSqlWarehouses: dbSqlWarehouses,
-			databricks.DatabricksPlatform:      dbPlatform,
+			constants.DatabricksAccountId:     dbAccountId,
+			constants.DatabricksUser:          dbUsername,
+			constants.DatabricksPassword:      dbPassword,
+			constants.DatabricksClientId:      dbClientID,
+			constants.DatabricksClientSecret:  dbClientSecret,
+			constants.DatabricksSqlWarehouses: dbSqlWarehouses,
+			constants.DatabricksPlatform:      dbPlatform,
 		},
 	}
 }

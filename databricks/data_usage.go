@@ -16,6 +16,7 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
@@ -112,7 +113,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 		return err
 	}
 
-	numberOfDays := configParams.GetIntWithDefault(DatabricksDataUsageWindow, 30)
+	numberOfDays := configParams.GetIntWithDefault(constants.DatabricksDataUsageWindow, 30)
 	if numberOfDays > 30 {
 		logger.Info(fmt.Sprintf("Capping data usage window to 30 days (from %d days)", numberOfDays))
 		numberOfDays = 30

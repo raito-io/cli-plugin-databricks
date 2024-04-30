@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"cli-plugin-databricks/databricks"
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
@@ -28,20 +28,20 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 
 	config := testSuite.GetConfig()
 
-	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(databricks.DatabricksPlatform))
+	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
 	host, err := pltfrm.WorkspaceAddress(os.Getenv("DB_TESTING_DEPLOYMENT"))
 	require.NoError(t, err)
 
 	credentials := repo.RepositoryCredentials{
-		Username:     config.GetString(databricks.DatabricksUser),
-		Password:     config.GetString(databricks.DatabricksPassword),
-		ClientId:     config.GetString(databricks.DatabricksClientId),
-		ClientSecret: config.GetString(databricks.DatabricksClientSecret),
+		Username:     config.GetString(constants.DatabricksUser),
+		Password:     config.GetString(constants.DatabricksPassword),
+		ClientId:     config.GetString(constants.DatabricksClientId),
+		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(databricks.DatabricksAccountId), &credentials)
+	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(constants.DatabricksAccountId), &credentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

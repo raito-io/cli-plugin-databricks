@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+	"github.com/hashicorp/go-hclog"
 	"github.com/imroc/req/v3"
 
+	databricks2 "cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 )
 
@@ -25,8 +28,37 @@ type repositoryRequestFactory interface {
 	NewRequest(ctx context.Context) (*req.Request, error)
 }
 
-func getDefaultClient(host string) *req.Client {
-	return req.NewClient().SetBaseURL(host).SetCommonHeader("user-agent", "Raito").SetCommonContentType("application/json")
+func getDefaultClient(host string, verbosity string) *req.Client {
+	client := req.NewClient().SetBaseURL(host).SetCommonHeader("user-agent", "Raito").SetCommonContentType("application/json")
+
+	writer := logger.StandardWriter(&hclog.StandardLoggerOptions{
+		InferLevels:              false,
+		InferLevelsWithTimestamp: false,
+		ForceLevel:               hclog.Debug,
+	})
+
+	switch verbosity {
+	case databricks2.RestCallVerbosityBody:
+		client.EnableDump(&req.DumpOptions{
+			Output:         writer,
+			RequestHeader:  false,
+			RequestBody:    true,
+			ResponseHeader: false,
+			ResponseBody:   true,
+			Async:          false,
+		})
+	case databricks2.RestCallVerbosityFull:
+		client.EnableDump(&req.DumpOptions{
+			Output:         writer,
+			RequestHeader:  true,
+			RequestBody:    true,
+			ResponseHeader: true,
+			ResponseBody:   true,
+			Async:          false,
+		})
+	}
+
+	return client
 }
 
 type BasicAuthAccountRepositoryRequestFactory struct {
@@ -36,8 +68,10 @@ type BasicAuthAccountRepositoryRequestFactory struct {
 func NewBasicAuthAccountRepositoryRequestFactory(host, user, password string) *BasicAuthAccountRepositoryRequestFactory {
 	logger.Debug("Creating basic auth request factory")
 
+	verbosity := os.Getenv(databricks2.DatabricksRestCallVerbosityEnvvar)
+
 	return &BasicAuthAccountRepositoryRequestFactory{
-		client: getDefaultClient(host).SetCommonBasicAuth(user, password),
+		client: getDefaultClient(host, verbosity).SetCommonBasicAuth(user, password),
 	}
 }
 
@@ -60,9 +94,11 @@ type OAuthRepositoryRequestFactory struct {
 func NewOAuthAccountRepositoryRequestFactory(accountHost string, host string, clientId string, clientSecret string, accountId string) *OAuthRepositoryRequestFactory {
 	logger.Debug("Creating oauth request factory")
 
+	verbosity := os.Getenv(databricks2.DatabricksRestCallVerbosityEnvvar)
+
 	return &OAuthRepositoryRequestFactory{
-		client:           getDefaultClient(host),
-		tokenRenewClient: getDefaultClient(accountHost),
+		client:           getDefaultClient(host, verbosity),
+		tokenRenewClient: getDefaultClient(accountHost, "off"),
 		clientId:         clientId,
 		clientSecret:     clientSecret,
 		accountId:        accountId,

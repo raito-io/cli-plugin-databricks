@@ -13,6 +13,7 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
 
+	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
 )
@@ -79,11 +80,11 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *string) error {
 		switch securableType {
-		case metastoreType:
+		case constants.MetastoreType:
 			return d.parseMetastore(ctx, dataSourceHandler, object)
-		case workspaceType:
+		case constants.WorkspaceType:
 			return d.parseWorkspace(ctx, dataSourceHandler, object)
-		case catalogType:
+		case constants.CatalogType:
 			return d.parseCatalog(ctx, dataSourceHandler, object)
 		case ds.Schema:
 			return d.parseSchema(ctx, dataSourceHandler, parentObject, object)
@@ -91,13 +92,13 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 			return d.parseTable(ctx, dataSourceHandler, parentObject, object)
 		case ds.Column:
 			return d.parseColumn(ctx, dataSourceHandler, parentObject, object)
-		case functionType:
+		case constants.FunctionType:
 			return d.parseFunctions(ctx, dataSourceHandler, parentObject, object)
 		}
 
 		return fmt.Errorf("unsupported type: %s", securableType)
 	}, func(traverserOptions *DataObjectTraverserOptions) {
-		traverserOptions.SecurableTypesToReturn = set.NewSet[string](metastoreType, workspaceType, catalogType, ds.Schema, ds.Table, ds.Column, functionType)
+		traverserOptions.SecurableTypesToReturn = set.NewSet[string](constants.MetastoreType, constants.WorkspaceType, constants.CatalogType, ds.Schema, ds.Table, ds.Column, constants.FunctionType)
 	})
 
 	if err != nil {
@@ -109,11 +110,11 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 
 func createFullName(securableType string, parent interface{}, object interface{}) string {
 	switch securableType {
-	case metastoreType:
+	case constants.MetastoreType:
 		return object.(*catalog.MetastoreInfo).MetastoreId
-	case workspaceType:
+	case constants.WorkspaceType:
 		return strconv.Itoa(object.(*repo.Workspace).WorkspaceId)
-	case catalogType:
+	case constants.CatalogType:
 		c := object.(*catalog.CatalogInfo)
 
 		return createUniqueId(c.MetastoreId, c.Name)
@@ -130,7 +131,7 @@ func createFullName(securableType string, parent interface{}, object interface{}
 		table := parent.(*catalog.TableInfo)
 
 		return createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
-	case functionType:
+	case constants.FunctionType:
 		function := object.(*repo.FunctionInfo)
 
 		return createUniqueId(function.MetastoreId, function.FullName)
@@ -147,7 +148,7 @@ func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler w
 
 	return dataSourceHandler.AddDataObjects(&ds.DataObject{
 		Name:       metastore.Name,
-		Type:       metastoreType,
+		Type:       constants.MetastoreType,
 		FullName:   metastore.MetastoreId,
 		ExternalId: metastore.MetastoreId,
 	})
@@ -164,7 +165,7 @@ func (d *DataSourceSyncer) parseWorkspace(_ context.Context, dataSourceHandler w
 	return dataSourceHandler.AddDataObjects(&ds.DataObject{
 		Name:       workspace.WorkspaceName,
 		FullName:   id,
-		Type:       workspaceType,
+		Type:       constants.WorkspaceType,
 		ExternalId: id,
 	})
 }
@@ -183,7 +184,7 @@ func (d *DataSourceSyncer) parseCatalog(_ context.Context, dataSourceHandler wra
 		ParentExternalId: c.MetastoreId,
 		Description:      c.Comment,
 		FullName:         uniqueId,
-		Type:             catalogType,
+		Type:             constants.CatalogType,
 	})
 }
 
@@ -302,7 +303,7 @@ func (d *DataSourceSyncer) parseFunctions(_ context.Context, dataSourceHandler w
 		ParentExternalId: parentId,
 		Description:      function.Comment,
 		FullName:         uniqueId,
-		Type:             functionType,
+		Type:             constants.FunctionType,
 	})
 }
 
