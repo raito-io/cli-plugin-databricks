@@ -51,6 +51,8 @@ github.com/cloudflare/circl v1.3.7/go.mod h1:sRTcRWXGLrKw6yIGJ+l7amYJFfAXbZG0kBS
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
+github.com/databricks/databricks-sdk-go v0.39.0 h1:nVnQYkk47SkEsRSXWkn6j7jBOxXgusjoo6xwbaHTGss=
+github.com/databricks/databricks-sdk-go v0.39.0/go.mod h1:Yjy1gREDLK65g4axpVbVNKYAHYE2Sqzj0AB9QWHCBVM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
@@ -188,8 +190,6 @@ github.com/raito-io/bexpression v0.1.2 h1:DHBTG2kNGSfwM3BwH97WP1vFjB2N8Ub41RRNUD
 github.com/raito-io/bexpression v0.1.2/go.mod h1:z0in8o1zo5cPNeCUa3Mh5ZP7h6v/LX0JH5/NbV3VtzI=
 github.com/raito-io/cli v0.64.1 h1:wwRMM0zOZgenqShMkJon6QRmF4wr9D4Q9VA7g0iA1Lk=
 github.com/raito-io/cli v0.64.1/go.mod h1:xtoP7siGDklxuC1RgSzIqFpTu7DK8/P7xvLKMX1OGfI=
-github.com/raito-io/databricks-sdk-go v0.0.2 h1:uYpIYKJ0aktgxdrRpclaLuysgkDuspHFXpffRRHwFOs=
-github.com/raito-io/databricks-sdk-go v0.0.2/go.mod h1:Yjy1gREDLK65g4axpVbVNKYAHYE2Sqzj0AB9QWHCBVM=
 github.com/raito-io/enumer v0.1.4 h1:r2QqGMjfKwn+yMHo4ybOAWvYON4pLBy+ucVP5niyHK4=
 github.com/raito-io/enumer v0.1.4/go.mod h1:+tSaVlYRuVnf2vA7ETf8t7/Mzq/sgvWT/dHeMVOjBu8=
 github.com/raito-io/golang-set v0.0.4 h1:7zk8r1TCE/F9JOOgseIXYx7oZJdC9/j5uivkCYjnCg0=

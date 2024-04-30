@@ -19,8 +19,6 @@ require (
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 )
 
-replace github.com/databricks/databricks-sdk-go v0.39.0 => github.com/raito-io/databricks-sdk-go v0.0.2 // https://github.com/databricks/databricks-sdk-go/issues/779
-
 require (
 	cloud.google.com/go/auth v0.2.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.0 // indirect
