@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
@@ -31,8 +32,8 @@ const (
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageAccountRepository
 type dataUsageAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
-	GetWorkspaces(ctx context.Context) ([]repo.Workspace, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []repo.Workspace) (map[string][]string, map[string]string, error)
+	GetWorkspaces(ctx context.Context) ([]provisioning.Workspace, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
@@ -47,7 +48,7 @@ var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error)
-	workspaceRepoFactory func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
@@ -55,8 +56,8 @@ func NewDataUsageSyncer() *DataUsageSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(pltfrm, host, accountId, repoCredentials)
+		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(host, repoCredentials)
 		},
 	}
 }
@@ -68,7 +69,7 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 		}
 	}()
 
-	metastores, worspaces, workspaceMetastoreMap, err := d.loadMetastores(ctx, configParams)
+	metastores, workspaces, workspaceMetastoreMap, err := d.loadMetastores(ctx, configParams)
 	if err != nil {
 		return err
 	}
@@ -78,15 +79,15 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 		metastoreMap[metastores[i].MetastoreId] = metastores[i]
 	}
 
-	for wi, workspace := range worspaces {
-		metastoreId := workspaceMetastoreMap[workspace.DeploymentName]
+	for wi := range workspaces {
+		metastoreId := workspaceMetastoreMap[workspaces[wi].DeploymentName]
 
 		metastore, ok := metastoreMap[metastoreId]
 		if !ok {
 			return fmt.Errorf("metastore %s not found", metastoreId)
 		}
 
-		err = d.syncWorkspace(ctx, &worspaces[wi], &metastore, fileCreator, configParams)
+		err = d.syncWorkspace(ctx, &workspaces[wi], &metastore, fileCreator, configParams)
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Sync data usage for metastore %s failed: %s", metastore.Name, err.Error()))
 		}
@@ -95,10 +96,10 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 	return nil
 }
 
-func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
+func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisioning.Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configParams)
+	pltfrm, _, repoCredentials, err := getAndValidateParameters(configParams)
 	if err != nil {
 		return fmt.Errorf("get credentials: %w", err)
 	}
@@ -108,7 +109,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *repo.Wor
 		return fmt.Errorf("workspace address: %w", err)
 	}
 
-	repo, err := d.workspaceRepoFactory(pltfrm, workspaceAddress, accountId, &repoCredentials)
+	repo, err := d.workspaceRepoFactory(workspaceAddress, &repoCredentials)
 	if err != nil {
 		return fmt.Errorf("get workspace repository: %w", err)
 	}
@@ -524,7 +525,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 	return result
 }
 
-func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []repo.Workspace, map[string]string, error) {
+func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []provisioning.Workspace, map[string]string, error) {
 	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err

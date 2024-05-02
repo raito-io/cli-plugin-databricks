@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -28,7 +29,7 @@ type dataSourceWorkspaceRepository interface {
 
 type DataSourceSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error)
-	workspaceRepoFactory func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
 	functionUsedAsMaskOrFilter set.Set[string]
 
@@ -40,8 +41,8 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(pltfrm, host, accountId, repoCredentials)
+		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(host, repoCredentials)
 		},
 
 		functionUsedAsMaskOrFilter: set.NewSet[string](),
@@ -75,7 +76,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
 	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
-		return selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, accountId, metastoreWorkspaces, d.workspaceRepoFactory)
+		return selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
 
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *string) error {
@@ -113,7 +114,7 @@ func createFullName(securableType string, parent interface{}, object interface{}
 	case constants.MetastoreType:
 		return object.(*catalog.MetastoreInfo).MetastoreId
 	case constants.WorkspaceType:
-		return strconv.Itoa(object.(*repo.Workspace).WorkspaceId)
+		return strconv.FormatInt(object.(*provisioning.Workspace).WorkspaceId, 10)
 	case constants.CatalogType:
 		c := object.(*catalog.CatalogInfo)
 
@@ -132,7 +133,7 @@ func createFullName(securableType string, parent interface{}, object interface{}
 
 		return createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
 	case constants.FunctionType:
-		function := object.(*repo.FunctionInfo)
+		function := object.(*catalog.FunctionInfo)
 
 		return createUniqueId(function.MetastoreId, function.FullName)
 	}
@@ -155,12 +156,12 @@ func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler w
 }
 
 func (d *DataSourceSyncer) parseWorkspace(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	workspace, ok := object.(*repo.Workspace)
+	workspace, ok := object.(*provisioning.Workspace)
 	if !ok {
 		return fmt.Errorf("unable to parse Workspace object. Expected *repo.Workspace but got %T", object)
 	}
 
-	id := strconv.Itoa(workspace.WorkspaceId)
+	id := strconv.FormatInt(workspace.WorkspaceId, 10)
 
 	return dataSourceHandler.AddDataObjects(&ds.DataObject{
 		Name:       workspace.WorkspaceName,
@@ -277,7 +278,7 @@ func (d *DataSourceSyncer) parseColumn(_ context.Context, dataSourceHandler wrap
 }
 
 func (d *DataSourceSyncer) parseFunctions(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parentObject interface{}, object interface{}) error {
-	function, ok := object.(*repo.FunctionInfo)
+	function, ok := object.(*catalog.FunctionInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/bexpression"
 	"github.com/raito-io/cli/base/access_provider"
@@ -39,8 +40,8 @@ const (
 type dataAccessAccountRepository interface {
 	ListUsers(ctx context.Context, optFn ...func(options *repo.DatabricksUsersFilter)) <-chan interface{}
 	ListGroups(ctx context.Context, optFn ...func(options *repo.DatabricksGroupsFilter)) <-chan interface{}
-	ListWorkspaceAssignments(ctx context.Context, workspaceId int) ([]iam.PermissionAssignment, error)
-	UpdateWorkspaceAssignment(ctx context.Context, workspaceId int, principalId int64, permission []iam.WorkspacePermission) error
+	ListWorkspaceAssignments(ctx context.Context, workspaceId int64) ([]iam.PermissionAssignment, error)
+	UpdateWorkspaceAssignment(ctx context.Context, workspaceId int64, principalId int64, permission []iam.WorkspacePermission) error
 	accountRepository
 }
 
@@ -56,7 +57,7 @@ type dataAccessWorkspaceRepository interface {
 
 type AccessSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessAccountRepository, error)
-	workspaceRepoFactory func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error)
+	workspaceRepoFactory func(host string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error)
 
 	privilegeCache types.PrivilegeCache
 
@@ -68,8 +69,8 @@ func NewAccessSyncer() *AccessSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(pltfrm, host, accountId, repoCredentials)
+		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(host, repoCredentials)
 		},
 
 		privilegeCache: types.NewPrivilegeCache(),
@@ -91,7 +92,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	traverser := NewDataObjectTraverser(nil, func() (accountRepository, error) {
 		return a.accountRepoFactory(pltfrm, accountId, &repoCredentials)
 	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
-		return selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, accountId, metastoreWorkspaces, a.workspaceRepoFactory)
+		return selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, metastoreWorkspaces, a.workspaceRepoFactory)
 	}, createFullName)
 
 	storedFunctions := types.NewStoredFunctions()
@@ -105,7 +106,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 				return fmt.Errorf("workspace address: %w", err2)
 			}
 
-			client, err2 := a.workspaceRepoFactory(pltfrm, host, accountId, &repoCredentials)
+			client, err2 := a.workspaceRepoFactory(host, &repoCredentials)
 			if err2 != nil {
 				return err2
 			}
@@ -157,7 +158,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 }
 
 func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platform.DatabricksPlatform, accessProviderHandler wrappers.AccessProviderHandler, accountId string, repoCredentials *repo.RepositoryCredentials, object interface{}) error {
-	workspace, ok := object.(*repo.Workspace)
+	workspace, ok := object.(*provisioning.Workspace)
 	if !ok {
 		return fmt.Errorf("unable to parse Workspace. Expected *catalog.WorkspaceInfo but got %T", object)
 	}
@@ -191,7 +192,7 @@ func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platf
 			continue
 		}
 
-		do := data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: constants.WorkspaceType}
+		do := data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType}
 
 		for _, permission := range assignment.Permissions {
 			p := string(permission)
@@ -225,7 +226,7 @@ func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platf
 				Type:       ptr.String(access_provider.AclSet),
 				What: []sync_from_target.WhatItem{
 					{
-						DataObject:  &data_source.DataObjectReference{FullName: strconv.Itoa(workspace.WorkspaceId), Type: constants.WorkspaceType},
+						DataObject:  &data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType},
 						Permissions: []string{privilege},
 					},
 				},
@@ -333,7 +334,7 @@ func (a *AccessSyncer) syncFromTargetColumn(_ context.Context, storedFunctions *
 }
 
 func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, storedFunction *types.StoredFunctions, object interface{}, metastoreIdMap map[string]string) error {
-	function, ok := object.(*repo.FunctionInfo)
+	function, ok := object.(*catalog.FunctionInfo)
 	if !ok {
 		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
 	}
@@ -431,7 +432,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			return repo, nil
 		}
 
-		repo, _, werr := selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, accountId, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
+		repo, _, werr := selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, metastoreWorkspaceMap[metastoreId], a.workspaceRepoFactory)
 		if werr != nil {
 			return nil, werr
 		}
@@ -593,7 +594,7 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 		return filterName, externalId, fmt.Errorf("no warehouse found for metastore %q", metastore)
 	}
 
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, _, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return filterName, externalId, err
 	}
@@ -603,7 +604,7 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 		return filterName, externalId, fmt.Errorf("workspace address: %w", err)
 	}
 
-	repository, err := a.workspaceRepoFactory(pltfrm, worspaceAddress, accountId, &repoCredentials)
+	repository, err := a.workspaceRepoFactory(worspaceAddress, &repoCredentials)
 	if err != nil {
 		return filterName, externalId, err
 	}
@@ -748,7 +749,7 @@ func (a *AccessSyncer) deleteRowFilter(ctx context.Context, sqlClient repo.Wareh
 }
 
 func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item types.SecurableItemKey, principlePrivilegesMap map[string]*types.PrivilegesChanges, repo dataAccessAccountRepository) {
-	workspaceId, err := strconv.Atoi(item.FullName)
+	workspaceId, err := strconv.ParseInt(item.FullName, 10, 64)
 	if err != nil {
 		for _, privilegesChanges := range principlePrivilegesMap {
 			a.handleAccessProviderError(privilegesChanges, err)
@@ -762,7 +763,7 @@ func (a *AccessSyncer) storePrivilegesInComputePlane(ctx context.Context, item t
 	}
 }
 
-func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Context, principal string, repo dataAccessAccountRepository, workspaceId int, privilegesChanges *types.PrivilegesChanges) {
+func (a *AccessSyncer) storePrivilegesInComputePlaneForPrincipal(ctx context.Context, principal string, repo dataAccessAccountRepository, workspaceId int64, privilegesChanges *types.PrivilegesChanges) {
 	var err error
 
 	defer func() {
@@ -920,7 +921,7 @@ func (a *AccessSyncer) syncMaskToTarget(ctx context.Context, ap *sync_to_target.
 		return maskName, fmt.Errorf("no warehouses found in configmap")
 	}
 
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, _, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return maskName, err
 	}
@@ -937,7 +938,7 @@ func (a *AccessSyncer) syncMaskToTarget(ctx context.Context, ap *sync_to_target.
 
 	// 1. Update masks per schema
 	for schema, dos := range schemas {
-		err = a.syncMaskInSchema(ctx, pltfrm, ap, schema, warehouseIdMap, maskName, accountId, repoCredentials, dos, beneficiaries)
+		err = a.syncMaskInSchema(ctx, pltfrm, ap, schema, warehouseIdMap, maskName, repoCredentials, dos, beneficiaries)
 		if err != nil {
 			return maskName, err
 		}
@@ -946,7 +947,7 @@ func (a *AccessSyncer) syncMaskToTarget(ctx context.Context, ap *sync_to_target.
 	return maskName, nil
 }
 
-func (a *AccessSyncer) syncMaskInSchema(ctx context.Context, pltfrm platform.DatabricksPlatform, ap *sync_to_target.AccessProvider, schema string, warehouseIdMap map[string]types.WarehouseDetails, maskName string, accountId string, repoCredentials repo.RepositoryCredentials, dos types.MaskDataObjectsOfSchema, beneficiaries *masks.MaskingBeneficiaries) error {
+func (a *AccessSyncer) syncMaskInSchema(ctx context.Context, pltfrm platform.DatabricksPlatform, ap *sync_to_target.AccessProvider, schema string, warehouseIdMap map[string]types.WarehouseDetails, maskName string, repoCredentials repo.RepositoryCredentials, dos types.MaskDataObjectsOfSchema, beneficiaries *masks.MaskingBeneficiaries) error {
 	schemaNameSplit := strings.Split(schema, ".")
 	metastore := schemaNameSplit[0]
 	catalogName := schemaNameSplit[1]
@@ -962,7 +963,7 @@ func (a *AccessSyncer) syncMaskInSchema(ctx context.Context, pltfrm platform.Dat
 		return fmt.Errorf("workspace address: %w", err)
 	}
 
-	repository, err := a.workspaceRepoFactory(pltfrm, workspaceAddress, accountId, &repoCredentials)
+	repository, err := a.workspaceRepoFactory(workspaceAddress, &repoCredentials)
 	if err != nil {
 		return err
 	}
@@ -1277,7 +1278,7 @@ func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappe
 	return nil
 }
 
-func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []repo.Workspace, map[string][]string, error) {
+func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []provisioning.Workspace, map[string][]string, error) {
 	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err

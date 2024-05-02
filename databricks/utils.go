@@ -37,17 +37,12 @@ func getAndValidateParameters(configParams *config.ConfigMap) (pltfrm platform.D
 		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("%s is not set", constants.DatabricksAccountId)
 	}
 
-	username := configParams.GetString(constants.DatabricksUser)
-	password := configParams.GetString(constants.DatabricksPassword)
-	clientId := configParams.GetString(constants.DatabricksClientId)
-	clientSecret := configParams.GetString(constants.DatabricksClientSecret)
-
 	pltfrm, err = platform.DatabricksPlatformString(strings.ToLower(configParams.GetString(constants.DatabricksPlatform)))
 	if err != nil {
 		return 0, "", repo.RepositoryCredentials{}, fmt.Errorf("invalid platform: %w", err)
 	}
 
-	return pltfrm, accountId, repo.RepositoryCredentials{Username: username, Password: password, ClientId: clientId, ClientSecret: clientSecret}, nil
+	return pltfrm, accountId, repo.GenerateConfig(configParams), nil
 }
 
 func addToSetInMap[K comparable, V comparable](m map[K]set.Set[V], k K, v ...V) {
@@ -62,7 +57,7 @@ type workspaceRepo interface {
 	Ping(ctx context.Context) error
 }
 
-func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, accountId string, workspaces []string, repoFn func(platform.DatabricksPlatform, string, string, *repo.RepositoryCredentials) (R, error)) (R, string, error) {
+func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspaces []string, repoFn func(string, *repo.RepositoryCredentials) (R, error)) (R, string, error) {
 	var err error
 
 	for _, workspaceName := range workspaces {
@@ -72,7 +67,7 @@ func selectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials *
 			continue
 		}
 
-		repo, werr := repoFn(pltfrm, host, accountId, repoCredentials)
+		repo, werr := repoFn(host, repoCredentials)
 		if werr != nil {
 			err = multierror.Append(err, werr)
 			continue

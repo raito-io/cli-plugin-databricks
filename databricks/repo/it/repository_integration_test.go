@@ -11,6 +11,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +91,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_GetWorkspaceMap() {
 	workspaces, err := s.repo.GetWorkspaces(context.Background())
 	require.NoError(s.T(), err)
 
-	var workspace *repo.Workspace
+	var workspace *provisioning.Workspace
 	for _, w := range workspaces {
 		for _, a := range metastoreAssignment.WorkspaceIds {
 			if a == w.WorkspaceId {
@@ -103,7 +104,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_GetWorkspaceMap() {
 	require.NotNil(s.T(), workspace)
 
 	// When
-	metatoreToWorkspaceMap, workspaceToMetastoreMap, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []repo.Workspace{*workspace})
+	metatoreToWorkspaceMap, workspaceToMetastoreMap, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []provisioning.Workspace{*workspace})
 	require.NoError(s.T(), err)
 
 	// Then
@@ -215,7 +216,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListWorkspaceAssignme
 	workspaces, err := s.repo.GetWorkspaces(context.Background())
 	require.NoError(s.T(), err)
 
-	var workspace *repo.Workspace
+	var workspace *provisioning.Workspace
 	for _, w := range workspaces {
 		for _, a := range metastoreAssignment.WorkspaceIds {
 			if a == w.WorkspaceId {
@@ -227,12 +228,12 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListWorkspaceAssignme
 
 	require.NotNil(s.T(), workspace)
 
-	metatoreToWorkspaceMap, _, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []repo.Workspace{*workspace})
+	metatoreToWorkspaceMap, _, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []provisioning.Workspace{*workspace})
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), metatoreToWorkspaceMap[metastore.MetastoreId])
 	workspaceDeploymentName := metatoreToWorkspaceMap[metastore.MetastoreId][0]
 
-	var workspaceId int
+	var workspaceId int64
 	for _, w := range workspaces {
 		if w.DeploymentName == workspaceDeploymentName {
 			workspaceId = w.WorkspaceId
@@ -274,7 +275,7 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(constants.DatabricksAccountId), &credentials)
+	repository, err := repo.NewWorkspaceRepository(host,  &credentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

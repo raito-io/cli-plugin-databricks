@@ -41,7 +41,7 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(constants.DatabricksAccountId), &credentials)
+	repository, err := repo.NewWorkspaceRepository(host, &credentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

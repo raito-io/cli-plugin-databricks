@@ -6,18 +6,18 @@ import (
 	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 
 	"cli-plugin-databricks/databricks/constants"
-	"cli-plugin-databricks/databricks/repo"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=accountRepository
 type accountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []repo.Workspace) (map[string][]string, map[string]string, error)
-	GetWorkspaces(ctx context.Context) ([]repo.Workspace, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error)
+	GetWorkspaces(ctx context.Context) ([]provisioning.Workspace, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=workspaceRepository
@@ -25,7 +25,7 @@ type workspaceRepository interface {
 	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
 	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
 	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
-	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]repo.FunctionInfo, error)
+	ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error)
 }
 
 type DataObjectTraverserOptions struct {
@@ -75,7 +75,7 @@ func (t *DataObjectTraverser) Traverse(ctx context.Context, f TraverseObjectFnc,
 	return t.traverseCatalog(ctx, f, options, accountRepo, metastores, workspaces)
 }
 
-func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObjectFnc, options DataObjectTraverserOptions, accountRepo accountRepository, metastores []catalog.MetastoreInfo, workspaces []repo.Workspace) error {
+func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, f TraverseObjectFnc, options DataObjectTraverserOptions, accountRepo accountRepository, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) error {
 	if options.SecurableTypesToReturn.Contains(constants.CatalogType) || options.SecurableTypesToReturn.Contains(ds.Schema) || options.SecurableTypesToReturn.Contains(ds.Table) || options.SecurableTypesToReturn.Contains(ds.Column) {
 		metastoreWorkspaceMap, _, err := accountRepo.GetWorkspaceMap(ctx, metastores, workspaces)
 		if err != nil {
@@ -221,7 +221,7 @@ func (t *DataObjectTraverser) traverseFunctions(ctx context.Context, options Dat
 	return nil
 }
 
-func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo accountRepository, f TraverseObjectFnc, options DataObjectTraverserOptions) ([]catalog.MetastoreInfo, []repo.Workspace, error) {
+func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo accountRepository, f TraverseObjectFnc, options DataObjectTraverserOptions) ([]catalog.MetastoreInfo, []provisioning.Workspace, error) {
 	metastores, err := accountRepo.ListMetastores(ctx)
 	if err != nil {
 		return nil, nil, err
