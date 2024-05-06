@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"cli-plugin-databricks/databricks"
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
@@ -31,9 +32,6 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
-	host, err := pltfrm.WorkspaceAddress(os.Getenv("DB_TESTING_DEPLOYMENT"))
-	require.NoError(t, err)
-
 	credentials := repo.RepositoryCredentials{
 		Username:     config.GetString(constants.DatabricksUser),
 		Password:     config.GetString(constants.DatabricksPassword),
@@ -41,7 +39,16 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(host, &credentials)
+	accountRepo, err := repo.NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
+	require.NoError(t, err)
+
+	workspace, err := accountRepo.GetWorkspaceByName(context.Background(), os.Getenv("DB_TESTING_WORKSPACE"))
+	require.NoError(t, err)
+
+	repoCredentials, err := databricks.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
+	require.NoError(t, err)
+
+	repository, err := repo.NewWorkspaceRepository(repoCredentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

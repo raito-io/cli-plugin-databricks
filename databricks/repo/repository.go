@@ -53,8 +53,8 @@ func (r *AccountRepository) GetWorkspacesForMetastore(ctx context.Context, metas
 	return r.dbClient.MetastoreAssignments.ListByMetastoreId(ctx, metastoreId)
 }
 
-func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error) {
-	workspacesMap := make(map[int64]string)
+func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error) {
+	workspacesMap := make(map[int64]*provisioning.Workspace)
 
 	for wi := range workspaces {
 		workspace := &workspaces[wi]
@@ -64,10 +64,10 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 		}
 
 		logger.Debug(fmt.Sprintf("Found running workspace %s with deployment name %s", workspace.WorkspaceName, workspace.DeploymentName))
-		workspacesMap[workspace.WorkspaceId] = workspace.DeploymentName
+		workspacesMap[workspace.WorkspaceId] = workspace
 	}
 
-	metastoreToWorkspaceMap := make(map[string][]string)
+	metastoreToWorkspaceMap := make(map[string][]*provisioning.Workspace)
 	workspaceToMetastoreMap := make(map[string]string)
 
 	for i := range metastores {
@@ -81,10 +81,10 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 		logger.Debug(fmt.Sprintf("Found %d possible workspaces for metastore %q", len(metastoreWorkspaces.WorkspaceIds), metastore.Name))
 
 		for _, workspaceId := range metastoreWorkspaces.WorkspaceIds {
-			if workspaceDeploymentName, ok := workspacesMap[workspaceId]; ok {
-				logger.Debug(fmt.Sprintf("Found workspace deployment %q for metastore %q", workspaceDeploymentName, metastore.Name))
-				metastoreToWorkspaceMap[metastore.MetastoreId] = append(metastoreToWorkspaceMap[metastore.MetastoreId], workspaceDeploymentName)
-				workspaceToMetastoreMap[workspaceDeploymentName] = metastore.MetastoreId
+			if workspace, ok := workspacesMap[workspaceId]; ok {
+				logger.Debug(fmt.Sprintf("Found workspace deployment %q for metastore %q", workspace.DeploymentName, metastore.Name))
+				metastoreToWorkspaceMap[metastore.MetastoreId] = append(metastoreToWorkspaceMap[metastore.MetastoreId], workspace)
+				workspaceToMetastoreMap[workspace.DeploymentName] = metastore.MetastoreId
 			}
 		}
 
@@ -102,6 +102,10 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 
 func (r *AccountRepository) GetWorkspaces(ctx context.Context) ([]provisioning.Workspace, error) {
 	return r.dbClient.Workspaces.List(ctx)
+}
+
+func (r *AccountRepository) GetWorkspaceByName(ctx context.Context, workspaceName string) (*provisioning.Workspace, error) {
+	return r.dbClient.Workspaces.GetByWorkspaceName(ctx, workspaceName)
 }
 
 func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *DatabricksUsersFilter)) <-chan interface{} { //nolint:dupl
@@ -260,9 +264,8 @@ type WorkspaceRepository struct {
 	client *databricks.WorkspaceClient
 }
 
-func NewWorkspaceRepository(host string, credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
 	config := credentials.DatabricksConfig()
-	config.Host = host
 
 	client, err := databricks.NewWorkspaceClient(config)
 	if err != nil {

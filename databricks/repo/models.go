@@ -24,6 +24,8 @@ type RepositoryCredentials struct {
 
 	GoogleCredentials    string
 	GoogleServiceAccount string
+
+	Host string
 }
 
 func (r *RepositoryCredentials) DatabricksConfig() *databricks.Config {
@@ -42,6 +44,7 @@ func (r *RepositoryCredentials) DatabricksConfig() *databricks.Config {
 		ClientSecret:         r.ClientSecret,
 		GoogleCredentials:    r.GoogleCredentials,
 		GoogleServiceAccount: r.GoogleServiceAccount,
+		Host:                 r.Host,
 	}
 }
 
@@ -52,7 +55,6 @@ func GenerateConfig(configParams *config2.ConfigMap) RepositoryCredentials {
 	clientSecret := configParams.GetString(constants.DatabricksClientSecret)
 	token := configParams.GetString(constants.DatabricksToken)
 
-	azureResourceId := configParams.GetString(constants.DatabricksAzureResourceId)
 	azureUseMSI := configParams.GetBool(constants.DatabricksAzureUseMSI)
 	azureClientId := configParams.GetString(constants.DatabricksAzureClientId)
 	azureClientSecret := configParams.GetString(constants.DatabricksAzureClientSecret)
@@ -68,7 +70,6 @@ func GenerateConfig(configParams *config2.ConfigMap) RepositoryCredentials {
 		ClientId:             clientId,
 		ClientSecret:         clientSecret,
 		Token:                token,
-		AzureResourceId:      azureResourceId,
 		AzureUseMSI:          azureUseMSI,
 		AzureClientId:        azureClientId,
 		AzureClientSecret:    azureClientSecret,

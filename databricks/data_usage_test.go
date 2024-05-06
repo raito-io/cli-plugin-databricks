@@ -901,10 +901,10 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
-			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
+			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
 
 			if workspaceMock, ok := workspaceMockRepos[deployment]; ok {
 				return workspaceMock, nil

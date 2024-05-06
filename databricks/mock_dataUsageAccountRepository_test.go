@@ -26,24 +26,24 @@ func (_m *mockDataUsageAccountRepository) EXPECT() *mockDataUsageAccountReposito
 }
 
 // GetWorkspaceMap provides a mock function with given fields: ctx, metastores, workspaces
-func (_m *mockDataUsageAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error) {
+func (_m *mockDataUsageAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error) {
 	ret := _m.Called(ctx, metastores, workspaces)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkspaceMap")
 	}
 
-	var r0 map[string][]string
+	var r0 map[string][]*provisioning.Workspace
 	var r1 map[string]string
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]string, map[string]string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error)); ok {
 		return rf(ctx, metastores, workspaces)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) map[string][]string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) map[string][]*provisioning.Workspace); ok {
 		r0 = rf(ctx, metastores, workspaces)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string][]string)
+			r0 = ret.Get(0).(map[string][]*provisioning.Workspace)
 		}
 	}
 
@@ -84,12 +84,12 @@ func (_c *mockDataUsageAccountRepository_GetWorkspaceMap_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *mockDataUsageAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]string, _a1 map[string]string, _a2 error) *mockDataUsageAccountRepository_GetWorkspaceMap_Call {
+func (_c *mockDataUsageAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]*provisioning.Workspace, _a1 map[string]string, _a2 error) *mockDataUsageAccountRepository_GetWorkspaceMap_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *mockDataUsageAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]string, map[string]string, error)) *mockDataUsageAccountRepository_GetWorkspaceMap_Call {
+func (_c *mockDataUsageAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error)) *mockDataUsageAccountRepository_GetWorkspaceMap_Call {
 	_c.Call.Return(run)
 	return _c
 }

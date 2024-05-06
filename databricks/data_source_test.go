@@ -65,7 +65,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			WorkspaceName:   workspace,
 			WorkspaceStatus: "RUNNING",
 		},
-	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil, nil).Twice()
+	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
 	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
@@ -165,7 +165,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			WorkspaceName:   workspace,
 			WorkspaceStatus: "RUNNING",
 		},
-	}).Return(map[string][]string{"metastore-Id1": {deployment}}, nil, nil).Twice()
+	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
 	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
@@ -248,10 +248,10 @@ func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyn
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
 			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
-			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
+			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
 
 			if workspaceMock, ok := workspaceMockRepos[deployment]; ok {
 				return workspaceMock, nil

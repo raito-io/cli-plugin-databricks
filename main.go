@@ -42,7 +42,6 @@ func main() {
 					{Name: constants.DatabricksToken, Description: "The Databricks personal access token (PAT) (AWS, Azure, and GCP) or Azure Active Directory (Azure AD) token (Azure).", Mandatory: false},
 
 					// Azure authentication
-					{Name: constants.DatabricksAzureResourceId, Description: "The Azure Resource Manager ID for the Azure Databricks workspace, which is exchanged for a Databricks host URL.", Mandatory: false},
 					{Name: constants.DatabricksAzureUseMSI, Description: "true to use Azure Managed Service Identity passwordless authentication flow for service principals. Requires AzureResourceID to be set.", Mandatory: false},
 					{Name: constants.DatabricksAzureClientId, Description: "The Azure AD service principal's client secret.", Mandatory: false},
 					{Name: constants.DatabricksAzureClientSecret, Description: "The Azure AD service principal's application ID.", Mandatory: false},

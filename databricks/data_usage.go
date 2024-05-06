@@ -33,7 +33,7 @@ const (
 type dataUsageAccountRepository interface {
 	ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error)
 	GetWorkspaces(ctx context.Context) ([]provisioning.Workspace, error)
-	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error)
+	GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
@@ -48,7 +48,7 @@ var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error)
-	workspaceRepoFactory func(host string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	workspaceRepoFactory func(*repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
@@ -56,8 +56,8 @@ func NewDataUsageSyncer() *DataUsageSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(host, repoCredentials)
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(repoCredentials)
 		},
 	}
 }
@@ -104,12 +104,12 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 		return fmt.Errorf("get credentials: %w", err)
 	}
 
-	workspaceAddress, err := pltfrm.WorkspaceAddress(workspace.DeploymentName)
+	credentials, err := InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
 	if err != nil {
-		return fmt.Errorf("workspace address: %w", err)
+		return fmt.Errorf("initialize workspace repo credentials: %w", err)
 	}
 
-	repo, err := d.workspaceRepoFactory(workspaceAddress, &repoCredentials)
+	repo, err := d.workspaceRepoFactory(credentials)
 	if err != nil {
 		return fmt.Errorf("get workspace repository: %w", err)
 	}

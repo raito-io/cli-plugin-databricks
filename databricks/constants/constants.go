@@ -11,7 +11,6 @@ const (
 	DatabricksToken        = "databricks-token"
 
 	// Azure authentication
-	DatabricksAzureResourceId   = "databricks-azure-resource-id"
 	DatabricksAzureUseMSI       = "databricks-azure-use-msi"
 	DatabricksAzureClientId     = "databricks-azure-client-id"
 	DatabricksAzureClientSecret = "databricks-azure-client-secret"

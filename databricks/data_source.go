@@ -29,7 +29,7 @@ type dataSourceWorkspaceRepository interface {
 
 type DataSourceSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error)
-	workspaceRepoFactory func(host string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	workspaceRepoFactory func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
 	functionUsedAsMaskOrFilter set.Set[string]
 
@@ -41,8 +41,8 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(host string, repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(host, repoCredentials)
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(repoCredentials)
 		},
 
 		functionUsedAsMaskOrFilter: set.NewSet[string](),
@@ -75,11 +75,11 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 
 	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
-	}, func(metastoreWorkspaces []string) (workspaceRepository, string, error) {
-		return selectWorkspaceRepo(ctx, &repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
+	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
+		return selectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
 
-	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *string) error {
+	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *provisioning.Workspace) error {
 		switch securableType {
 		case constants.MetastoreType:
 			return d.parseMetastore(ctx, dataSourceHandler, object)
@@ -103,7 +103,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("traversing: %w", err)
 	}
 
 	return nil
@@ -146,6 +146,8 @@ func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler w
 	if !ok {
 		return fmt.Errorf("unable to parse MetastoreInfo object. Expected *catalog.MetastoreInfo but got %T", object)
 	}
+
+	logger.Info(fmt.Sprintf("Found metastore %q: %+v", metastore.Name, metastore))
 
 	return dataSourceHandler.AddDataObjects(&ds.DataObject{
 		Name:       metastore.Name,

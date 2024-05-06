@@ -25,25 +25,84 @@ func (_m *mockAccountRepository) EXPECT() *mockAccountRepository_Expecter {
 	return &mockAccountRepository_Expecter{mock: &_m.Mock}
 }
 
+// GetWorkspaceByName provides a mock function with given fields: ctx, workspaceName
+func (_m *mockAccountRepository) GetWorkspaceByName(ctx context.Context, workspaceName string) (*provisioning.Workspace, error) {
+	ret := _m.Called(ctx, workspaceName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWorkspaceByName")
+	}
+
+	var r0 *provisioning.Workspace
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*provisioning.Workspace, error)); ok {
+		return rf(ctx, workspaceName)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *provisioning.Workspace); ok {
+		r0 = rf(ctx, workspaceName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*provisioning.Workspace)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, workspaceName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockAccountRepository_GetWorkspaceByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkspaceByName'
+type mockAccountRepository_GetWorkspaceByName_Call struct {
+	*mock.Call
+}
+
+// GetWorkspaceByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workspaceName string
+func (_e *mockAccountRepository_Expecter) GetWorkspaceByName(ctx interface{}, workspaceName interface{}) *mockAccountRepository_GetWorkspaceByName_Call {
+	return &mockAccountRepository_GetWorkspaceByName_Call{Call: _e.mock.On("GetWorkspaceByName", ctx, workspaceName)}
+}
+
+func (_c *mockAccountRepository_GetWorkspaceByName_Call) Run(run func(ctx context.Context, workspaceName string)) *mockAccountRepository_GetWorkspaceByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *mockAccountRepository_GetWorkspaceByName_Call) Return(_a0 *provisioning.Workspace, _a1 error) *mockAccountRepository_GetWorkspaceByName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockAccountRepository_GetWorkspaceByName_Call) RunAndReturn(run func(context.Context, string) (*provisioning.Workspace, error)) *mockAccountRepository_GetWorkspaceByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetWorkspaceMap provides a mock function with given fields: ctx, metastores, workspaces
-func (_m *mockAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]string, map[string]string, error) {
+func (_m *mockAccountRepository) GetWorkspaceMap(ctx context.Context, metastores []catalog.MetastoreInfo, workspaces []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error) {
 	ret := _m.Called(ctx, metastores, workspaces)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkspaceMap")
 	}
 
-	var r0 map[string][]string
+	var r0 map[string][]*provisioning.Workspace
 	var r1 map[string]string
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]string, map[string]string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error)); ok {
 		return rf(ctx, metastores, workspaces)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) map[string][]string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) map[string][]*provisioning.Workspace); ok {
 		r0 = rf(ctx, metastores, workspaces)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string][]string)
+			r0 = ret.Get(0).(map[string][]*provisioning.Workspace)
 		}
 	}
 
@@ -84,12 +143,12 @@ func (_c *mockAccountRepository_GetWorkspaceMap_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *mockAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]string, _a1 map[string]string, _a2 error) *mockAccountRepository_GetWorkspaceMap_Call {
+func (_c *mockAccountRepository_GetWorkspaceMap_Call) Return(_a0 map[string][]*provisioning.Workspace, _a1 map[string]string, _a2 error) *mockAccountRepository_GetWorkspaceMap_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *mockAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]string, map[string]string, error)) *mockAccountRepository_GetWorkspaceMap_Call {
+func (_c *mockAccountRepository_GetWorkspaceMap_Call) RunAndReturn(run func(context.Context, []catalog.MetastoreInfo, []provisioning.Workspace) (map[string][]*provisioning.Workspace, map[string]string, error)) *mockAccountRepository_GetWorkspaceMap_Call {
 	_c.Call.Return(run)
 	return _c
 }
