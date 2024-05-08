@@ -2,6 +2,7 @@ package databricks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -59,6 +60,9 @@ type workspaceRepo interface {
 }
 
 func InitializeWorkspaceRepoCredentials(repoCredentials repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspace *provisioning.Workspace) (*repo.RepositoryCredentials, error) {
+	if workspace == nil {
+		return nil, errors.New("Unable to find workspace")
+	}
 	if pltfrm == platform.DatabricksPlatformAzure && workspace.AzureWorkspaceInfo != nil {
 		repoCredentials.AzureResourceId = fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Databricks/workspaces/%s", workspace.AzureWorkspaceInfo.SubscriptionId, workspace.AzureWorkspaceInfo.ResourceGroup, workspace.WorkspaceName)
 	} else {

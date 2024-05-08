@@ -296,7 +296,9 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 				logger.Debug(fmt.Sprintf("Found workspace for metastore %q => %q", metastore.Name, selectedWorkspace.WorkspaceName))
 			}
 
-			if t.shouldHandle(t.createFullName(constants.MetastoreType, nil, metastore)) {
+			if selectedWorkspace == nil {
+				logger.Warn(fmt.Sprintf("Unable to find workspace for metastore %q. Will ignore metastore.", metastore.Name))
+			} else if t.shouldHandle(t.createFullName(constants.MetastoreType, nil, metastore)) {
 				err = f(ctx, constants.MetastoreType, nil, &metastores[i], selectedWorkspace)
 				if err != nil {
 					return nil, nil, err
