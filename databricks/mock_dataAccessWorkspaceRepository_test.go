@@ -143,189 +143,12 @@ func (_c *mockDataAccessWorkspaceRepository_GetPermissionsOnResource_Call) RunAn
 	return _c
 }
 
-// ListCatalogs provides a mock function with given fields: ctx
-func (_m *mockDataAccessWorkspaceRepository) ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListCatalogs")
-	}
-
-	var r0 []catalog.CatalogInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]catalog.CatalogInfo, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) []catalog.CatalogInfo); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.CatalogInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockDataAccessWorkspaceRepository_ListCatalogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCatalogs'
-type mockDataAccessWorkspaceRepository_ListCatalogs_Call struct {
-	*mock.Call
-}
-
-// ListCatalogs is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *mockDataAccessWorkspaceRepository_Expecter) ListCatalogs(ctx interface{}) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
-	return &mockDataAccessWorkspaceRepository_ListCatalogs_Call{Call: _e.mock.On("ListCatalogs", ctx)}
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) Run(run func(ctx context.Context)) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) Return(_a0 []catalog.CatalogInfo, _a1 error) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) RunAndReturn(run func(context.Context) ([]catalog.CatalogInfo, error)) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ListFunctions provides a mock function with given fields: ctx, catalogName, schemaName
-func (_m *mockDataAccessWorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error) {
+// ListAllTables provides a mock function with given fields: ctx, catalogName, schemaName
+func (_m *mockDataAccessWorkspaceRepository) ListAllTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error) {
 	ret := _m.Called(ctx, catalogName, schemaName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListFunctions")
-	}
-
-	var r0 []catalog.FunctionInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]catalog.FunctionInfo, error)); ok {
-		return rf(ctx, catalogName, schemaName)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []catalog.FunctionInfo); ok {
-		r0 = rf(ctx, catalogName, schemaName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.FunctionInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, catalogName, schemaName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockDataAccessWorkspaceRepository_ListFunctions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListFunctions'
-type mockDataAccessWorkspaceRepository_ListFunctions_Call struct {
-	*mock.Call
-}
-
-// ListFunctions is a helper method to define mock.On call
-//   - ctx context.Context
-//   - catalogName string
-//   - schemaName string
-func (_e *mockDataAccessWorkspaceRepository_Expecter) ListFunctions(ctx interface{}, catalogName interface{}, schemaName interface{}) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
-	return &mockDataAccessWorkspaceRepository_ListFunctions_Call{Call: _e.mock.On("ListFunctions", ctx, catalogName, schemaName)}
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) Run(run func(ctx context.Context, catalogName string, schemaName string)) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) Return(_a0 []catalog.FunctionInfo, _a1 error) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) RunAndReturn(run func(context.Context, string, string) ([]catalog.FunctionInfo, error)) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ListSchemas provides a mock function with given fields: ctx, catalogName
-func (_m *mockDataAccessWorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error) {
-	ret := _m.Called(ctx, catalogName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListSchemas")
-	}
-
-	var r0 []catalog.SchemaInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]catalog.SchemaInfo, error)); ok {
-		return rf(ctx, catalogName)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []catalog.SchemaInfo); ok {
-		r0 = rf(ctx, catalogName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.SchemaInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, catalogName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockDataAccessWorkspaceRepository_ListSchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSchemas'
-type mockDataAccessWorkspaceRepository_ListSchemas_Call struct {
-	*mock.Call
-}
-
-// ListSchemas is a helper method to define mock.On call
-//   - ctx context.Context
-//   - catalogName string
-func (_e *mockDataAccessWorkspaceRepository_Expecter) ListSchemas(ctx interface{}, catalogName interface{}) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
-	return &mockDataAccessWorkspaceRepository_ListSchemas_Call{Call: _e.mock.On("ListSchemas", ctx, catalogName)}
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) Run(run func(ctx context.Context, catalogName string)) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) Return(_a0 []catalog.SchemaInfo, _a1 error) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) RunAndReturn(run func(context.Context, string) ([]catalog.SchemaInfo, error)) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ListTables provides a mock function with given fields: ctx, catalogName, schemaName
-func (_m *mockDataAccessWorkspaceRepository) ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error) {
-	ret := _m.Called(ctx, catalogName, schemaName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListTables")
+		panic("no return value specified for ListAllTables")
 	}
 
 	var r0 []catalog.TableInfo
@@ -350,32 +173,179 @@ func (_m *mockDataAccessWorkspaceRepository) ListTables(ctx context.Context, cat
 	return r0, r1
 }
 
-// mockDataAccessWorkspaceRepository_ListTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListTables'
-type mockDataAccessWorkspaceRepository_ListTables_Call struct {
+// mockDataAccessWorkspaceRepository_ListAllTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListAllTables'
+type mockDataAccessWorkspaceRepository_ListAllTables_Call struct {
 	*mock.Call
 }
 
-// ListTables is a helper method to define mock.On call
+// ListAllTables is a helper method to define mock.On call
 //   - ctx context.Context
 //   - catalogName string
 //   - schemaName string
-func (_e *mockDataAccessWorkspaceRepository_Expecter) ListTables(ctx interface{}, catalogName interface{}, schemaName interface{}) *mockDataAccessWorkspaceRepository_ListTables_Call {
-	return &mockDataAccessWorkspaceRepository_ListTables_Call{Call: _e.mock.On("ListTables", ctx, catalogName, schemaName)}
+func (_e *mockDataAccessWorkspaceRepository_Expecter) ListAllTables(ctx interface{}, catalogName interface{}, schemaName interface{}) *mockDataAccessWorkspaceRepository_ListAllTables_Call {
+	return &mockDataAccessWorkspaceRepository_ListAllTables_Call{Call: _e.mock.On("ListAllTables", ctx, catalogName, schemaName)}
 }
 
-func (_c *mockDataAccessWorkspaceRepository_ListTables_Call) Run(run func(ctx context.Context, catalogName string, schemaName string)) *mockDataAccessWorkspaceRepository_ListTables_Call {
+func (_c *mockDataAccessWorkspaceRepository_ListAllTables_Call) Run(run func(ctx context.Context, catalogName string, schemaName string)) *mockDataAccessWorkspaceRepository_ListAllTables_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *mockDataAccessWorkspaceRepository_ListTables_Call) Return(_a0 []catalog.TableInfo, _a1 error) *mockDataAccessWorkspaceRepository_ListTables_Call {
+func (_c *mockDataAccessWorkspaceRepository_ListAllTables_Call) Return(_a0 []catalog.TableInfo, _a1 error) *mockDataAccessWorkspaceRepository_ListAllTables_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockDataAccessWorkspaceRepository_ListTables_Call) RunAndReturn(run func(context.Context, string, string) ([]catalog.TableInfo, error)) *mockDataAccessWorkspaceRepository_ListTables_Call {
+func (_c *mockDataAccessWorkspaceRepository_ListAllTables_Call) RunAndReturn(run func(context.Context, string, string) ([]catalog.TableInfo, error)) *mockDataAccessWorkspaceRepository_ListAllTables_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListCatalogs provides a mock function with given fields: ctx
+func (_m *mockDataAccessWorkspaceRepository) ListCatalogs(ctx context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo] {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCatalogs")
+	}
+
+	var r0 <-chan repo.ChannelItem[catalog.CatalogInfo]
+	if rf, ok := ret.Get(0).(func(context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo]); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.CatalogInfo])
+		}
+	}
+
+	return r0
+}
+
+// mockDataAccessWorkspaceRepository_ListCatalogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCatalogs'
+type mockDataAccessWorkspaceRepository_ListCatalogs_Call struct {
+	*mock.Call
+}
+
+// ListCatalogs is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *mockDataAccessWorkspaceRepository_Expecter) ListCatalogs(ctx interface{}) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
+	return &mockDataAccessWorkspaceRepository_ListCatalogs_Call{Call: _e.mock.On("ListCatalogs", ctx)}
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) Run(run func(ctx context.Context)) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) Return(_a0 <-chan repo.ChannelItem[catalog.CatalogInfo]) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListCatalogs_Call) RunAndReturn(run func(context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo]) *mockDataAccessWorkspaceRepository_ListCatalogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListFunctions provides a mock function with given fields: ctx, catalogName, schemaName
+func (_m *mockDataAccessWorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) <-chan repo.ChannelItem[catalog.FunctionInfo] {
+	ret := _m.Called(ctx, catalogName, schemaName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListFunctions")
+	}
+
+	var r0 <-chan repo.ChannelItem[catalog.FunctionInfo]
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) <-chan repo.ChannelItem[catalog.FunctionInfo]); ok {
+		r0 = rf(ctx, catalogName, schemaName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.FunctionInfo])
+		}
+	}
+
+	return r0
+}
+
+// mockDataAccessWorkspaceRepository_ListFunctions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListFunctions'
+type mockDataAccessWorkspaceRepository_ListFunctions_Call struct {
+	*mock.Call
+}
+
+// ListFunctions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - catalogName string
+//   - schemaName string
+func (_e *mockDataAccessWorkspaceRepository_Expecter) ListFunctions(ctx interface{}, catalogName interface{}, schemaName interface{}) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
+	return &mockDataAccessWorkspaceRepository_ListFunctions_Call{Call: _e.mock.On("ListFunctions", ctx, catalogName, schemaName)}
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) Run(run func(ctx context.Context, catalogName string, schemaName string)) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) Return(_a0 <-chan repo.ChannelItem[catalog.FunctionInfo]) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListFunctions_Call) RunAndReturn(run func(context.Context, string, string) <-chan repo.ChannelItem[catalog.FunctionInfo]) *mockDataAccessWorkspaceRepository_ListFunctions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListSchemas provides a mock function with given fields: ctx, catalogName
+func (_m *mockDataAccessWorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) <-chan repo.ChannelItem[catalog.SchemaInfo] {
+	ret := _m.Called(ctx, catalogName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListSchemas")
+	}
+
+	var r0 <-chan repo.ChannelItem[catalog.SchemaInfo]
+	if rf, ok := ret.Get(0).(func(context.Context, string) <-chan repo.ChannelItem[catalog.SchemaInfo]); ok {
+		r0 = rf(ctx, catalogName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.SchemaInfo])
+		}
+	}
+
+	return r0
+}
+
+// mockDataAccessWorkspaceRepository_ListSchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSchemas'
+type mockDataAccessWorkspaceRepository_ListSchemas_Call struct {
+	*mock.Call
+}
+
+// ListSchemas is a helper method to define mock.On call
+//   - ctx context.Context
+//   - catalogName string
+func (_e *mockDataAccessWorkspaceRepository_Expecter) ListSchemas(ctx interface{}, catalogName interface{}) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
+	return &mockDataAccessWorkspaceRepository_ListSchemas_Call{Call: _e.mock.On("ListSchemas", ctx, catalogName)}
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) Run(run func(ctx context.Context, catalogName string)) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) Return(_a0 <-chan repo.ChannelItem[catalog.SchemaInfo]) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockDataAccessWorkspaceRepository_ListSchemas_Call) RunAndReturn(run func(context.Context, string) <-chan repo.ChannelItem[catalog.SchemaInfo]) *mockDataAccessWorkspaceRepository_ListSchemas_Call {
 	_c.Call.Return(run)
 	return _c
 }

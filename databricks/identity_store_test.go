@@ -14,8 +14,8 @@ import (
 
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
-	repo2 "cli-plugin-databricks/databricks/repo"
-	"cli-plugin-databricks/utils/array"
+	"cli-plugin-databricks/databricks/repo"
+	repo2 "cli-plugin-databricks/databricks/repo/types"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
@@ -23,8 +23,8 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	service, mockRepo := createIdentityStoreSyncer(t)
 	identityHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
 
-	mockRepo.EXPECT().ListGroups(mock.Anything).Return(array.ArrayToChannel([]interface{}{
-		iam.Group{
+	mockRepo.EXPECT().ListGroups(mock.Anything).Return(repo.ArrayToChannel([]iam.Group{
+		{
 			Id:          "gid2",
 			DisplayName: "group-2",
 			Members: []iam.ComplexValue{
@@ -45,7 +45,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 				},
 			},
 		},
-		iam.Group{
+		{
 			Id:          "gid1",
 			DisplayName: "group-1",
 			Members: []iam.ComplexValue{{
@@ -56,8 +56,8 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 	})).Once()
 
-	mockRepo.EXPECT().ListUsers(mock.Anything).Return(array.ArrayToChannel([]interface{}{
-		iam.User{
+	mockRepo.EXPECT().ListUsers(mock.Anything).Return(repo.ArrayToChannel([]iam.User{
+		{
 			DisplayName: "user1",
 			Id:          "idUser1",
 			UserName:    "username1",
@@ -74,7 +74,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 				},
 			},
 		},
-		iam.User{
+		{
 			DisplayName: "user2",
 			Id:          "idUser2",
 			UserName:    "username2",
@@ -88,14 +88,14 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 	})).Once()
 
-	mockRepo.EXPECT().ListServicePrincipals(mock.Anything).Return(array.ArrayToChannel([]interface{}{
-		iam.ServicePrincipal{
+	mockRepo.EXPECT().ListServicePrincipals(mock.Anything).Return(repo.ArrayToChannel([]iam.ServicePrincipal{
+		{
 			Active:        true,
 			ApplicationId: "someApplicationId1",
 			DisplayName:   "Service Principal 1",
 			Id:            "ServicePrincipalId1",
 		},
-		iam.ServicePrincipal{
+		{
 			Active:        true,
 			ApplicationId: "someApplicationId2",
 			DisplayName:   "Service Principal 2",

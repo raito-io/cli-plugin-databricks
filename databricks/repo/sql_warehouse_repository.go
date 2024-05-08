@@ -10,6 +10,8 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+
+	"cli-plugin-databricks/databricks/repo/types"
 )
 
 const (
@@ -21,7 +23,7 @@ var _ WarehouseRepository = (*SqlWarehouseRepository)(nil)
 //go:generate go run github.com/vektra/mockery/v2 --name=WarehouseRepository --testonly=false
 type WarehouseRepository interface {
 	ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error)
-	GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*ColumnInformation, error)
+	GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*types.ColumnInformation, error)
 	DropMask(ctx context.Context, catalog, schema, table, column string) error
 	DropRowFilter(ctx context.Context, catalog, schema, table string) error
 	DropFunction(ctx context.Context, catalog, schema, functionName string) error
@@ -68,7 +70,7 @@ func (r *SqlWarehouseRepository) ExecuteStatement(ctx context.Context, catalog, 
 	return response, nil
 }
 
-func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*ColumnInformation, error) {
+func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*types.ColumnInformation, error) {
 	response, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("DESCRIBE TABLE EXTENDED %s", tableName))
 	if err != nil {
 		return nil, err
@@ -82,7 +84,7 @@ func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalo
 		return nil, fmt.Errorf("no result on describe table %q", tableName)
 	}
 
-	result := make(map[string]*ColumnInformation)
+	result := make(map[string]*types.ColumnInformation)
 
 	section := "" // section 0 is the column name + type // section 2 is
 
@@ -98,7 +100,7 @@ func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalo
 
 		switch section {
 		case "":
-			result[row[0]] = &ColumnInformation{
+			result[row[0]] = &types.ColumnInformation{
 				Name: row[0],
 				Type: row[1],
 			}

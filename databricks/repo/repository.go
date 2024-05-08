@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/databricks/databricks-sdk-go"
+	"github.com/databricks/databricks-sdk-go/listing"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 
 	"cli-plugin-databricks/databricks/platform"
+	"cli-plugin-databricks/databricks/repo/types"
 )
 
 const (
@@ -24,7 +26,7 @@ type AccountRepository struct {
 	accountId string
 }
 
-func NewAccountRepository(pltfrm platform.DatabricksPlatform, credentials *RepositoryCredentials, accountId string) (*AccountRepository, error) {
+func NewAccountRepository(pltfrm platform.DatabricksPlatform, credentials *types.RepositoryCredentials, accountId string) (*AccountRepository, error) {
 	accountHost, err := pltfrm.Host()
 	if err != nil {
 		return nil, fmt.Errorf("get host for platform %s: %w", pltfrm, err)
@@ -45,7 +47,7 @@ func NewAccountRepository(pltfrm platform.DatabricksPlatform, credentials *Repos
 	}, nil
 }
 
-func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error) {
+func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error){
 	return r.dbClient.Metastores.ListAll(ctx)
 }
 
@@ -61,6 +63,8 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 
 		if workspace.WorkspaceStatus != "RUNNING" {
 			logger.Debug(fmt.Sprintf("Workspace %s is not running. Will ignore workspace", workspace.WorkspaceName))
+
+			continue
 		}
 
 		logger.Debug(fmt.Sprintf("Found running workspace %s with deployment name %s", workspace.WorkspaceName, workspace.DeploymentName))
@@ -108,142 +112,59 @@ func (r *AccountRepository) GetWorkspaceByName(ctx context.Context, workspaceNam
 	return r.dbClient.Workspaces.GetByWorkspaceName(ctx, workspaceName)
 }
 
-func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *DatabricksUsersFilter)) <-chan interface{} { //nolint:dupl
-	options := DatabricksUsersFilter{}
+func (r *AccountRepository) ListUsers(ctx context.Context, optFn ...func(options *types.DatabricksUsersFilter)) <-chan ChannelItem[iam.User] {
+	options := types.DatabricksUsersFilter{}
 	for _, fn := range optFn {
 		fn(&options)
 	}
 
-	outputChannel := make(chan interface{})
-
-	go func() {
-		defer close(outputChannel)
-
-		send := func(item interface{}) bool {
-			select {
-			case <-ctx.Done():
-				return false
-			case outputChannel <- item:
-				return true
-			}
-		}
-
+	return iteratorToChannel(ctx, func() listing.Iterator[iam.User] {
 		var filter string
 
 		if options.Username != nil {
 			filter = fmt.Sprintf("userName eq %s", *options.Username)
 		}
 
-		it := r.dbClient.Users.List(ctx, iam.ListAccountUsersRequest{
-			Filter: filter,
-		})
-
-		for it.HasNext(ctx) {
-			user, err := it.Next(ctx)
-			if err != nil {
-				send(err)
-				return
-			}
-
-			if !send(user) {
-				return
-			}
-		}
-	}()
-
-	return outputChannel
+		return r.dbClient.Users.List(ctx, iam.ListAccountUsersRequest{Filter: filter})
+	})
 }
 
-func (r *AccountRepository) ListServicePrincipals(ctx context.Context, optFn ...func(options *DatabricksServicePrincipalFilter)) <-chan interface{} { //nolint:dupl
-	options := DatabricksServicePrincipalFilter{}
+func (r *AccountRepository) ListServicePrincipals(ctx context.Context, optFn ...func(options *types.DatabricksServicePrincipalFilter)) <-chan ChannelItem[iam.ServicePrincipal] {
+	options := types.DatabricksServicePrincipalFilter{}
 	for _, fn := range optFn {
 		fn(&options)
 	}
 
-	outputChannel := make(chan interface{})
-
-	go func() {
-		defer close(outputChannel)
-
-		send := func(item interface{}) bool {
-			select {
-			case <-ctx.Done():
-				return false
-			case outputChannel <- item:
-				return true
-			}
-		}
-
+	return iteratorToChannel(ctx, func() listing.Iterator[iam.ServicePrincipal] {
 		var filter string
 
 		if options.ServicePrincipalName != nil {
 			filter = fmt.Sprintf("displayName eq %s", *options.ServicePrincipalName)
 		}
 
-		it := r.dbClient.ServicePrincipals.List(ctx, iam.ListAccountServicePrincipalsRequest{
+		return r.dbClient.ServicePrincipals.List(ctx, iam.ListAccountServicePrincipalsRequest{
 			Filter: filter,
 		})
-
-		for it.HasNext(ctx) {
-			servicePrincipal, err := it.Next(ctx)
-			if err != nil {
-				send(err)
-				return
-			}
-
-			if !send(servicePrincipal) {
-				return
-			}
-		}
-	}()
-
-	return outputChannel
+	})
 }
 
-func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *DatabricksGroupsFilter)) <-chan interface{} { //nolint:dupl
-	options := DatabricksGroupsFilter{}
+func (r *AccountRepository) ListGroups(ctx context.Context, optFn ...func(options *types.DatabricksGroupsFilter)) <-chan ChannelItem[iam.Group] {
+	options := types.DatabricksGroupsFilter{}
 	for _, fn := range optFn {
 		fn(&options)
 	}
 
-	outputChannel := make(chan interface{})
-
-	go func() {
-		defer close(outputChannel)
-
-		send := func(item interface{}) bool {
-			select {
-			case <-ctx.Done():
-				return false
-			case outputChannel <- item:
-				return true
-			}
-		}
-
+	return iteratorToChannel(ctx, func() listing.Iterator[iam.Group] {
 		var filter string
 
 		if options.Groupname != nil {
 			filter = fmt.Sprintf("displayName eq %s", *options.Groupname)
 		}
 
-		it := r.dbClient.Groups.List(ctx, iam.ListAccountGroupsRequest{
+		return r.dbClient.Groups.List(ctx, iam.ListAccountGroupsRequest{
 			Filter: filter,
 		})
-
-		for it.HasNext(ctx) {
-			group, err := it.Next(ctx)
-			if err != nil {
-				send(err)
-				return
-			}
-
-			if !send(group) {
-				return
-			}
-		}
-	}()
-
-	return outputChannel
+	})
 }
 
 func (r *AccountRepository) ListWorkspaceAssignments(ctx context.Context, workspaceId int64) ([]iam.PermissionAssignment, error) {
@@ -264,7 +185,7 @@ type WorkspaceRepository struct {
 	client *databricks.WorkspaceClient
 }
 
-func NewWorkspaceRepository(credentials *RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(credentials *types.RepositoryCredentials) (*WorkspaceRepository, error) {
 	config := credentials.DatabricksConfig()
 
 	client, err := databricks.NewWorkspaceClient(config)
@@ -277,38 +198,39 @@ func NewWorkspaceRepository(credentials *RepositoryCredentials) (*WorkspaceRepos
 	}, nil
 }
 
-func (r *WorkspaceRepository) ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error) {
-	response, err := r.client.Catalogs.ListAll(ctx, catalog.ListCatalogsRequest{
+func (r *WorkspaceRepository) ListCatalogs(ctx context.Context) <-chan ChannelItem[catalog.CatalogInfo] {
+	return iteratorToChannel(ctx, func() listing.Iterator[catalog.CatalogInfo] {
+		return r.client.Catalogs.List(ctx, catalog.ListCatalogsRequest{
+			IncludeBrowse: true,
+		})
+	})
+}
+
+func (r *WorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) <-chan ChannelItem[catalog.SchemaInfo] {
+	return iteratorToChannel(ctx, func() listing.Iterator[catalog.SchemaInfo] {
+		return r.client.Schemas.List(ctx, catalog.ListSchemasRequest{
+			CatalogName:   catalogName,
+			IncludeBrowse: true,
+		})
+	})
+}
+
+func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string, schemaName string) <-chan ChannelItem[catalog.TableInfo] {
+	return iteratorToChannel(ctx, func() listing.Iterator[catalog.TableInfo] {
+		return r.client.Tables.List(ctx, catalog.ListTablesRequest{
+			CatalogName:   catalogName,
+			SchemaName:    schemaName,
+			IncludeBrowse: true,
+		})
+	})
+}
+
+func (r *WorkspaceRepository) ListAllTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error) {
+	return r.client.Tables.ListAll(ctx, catalog.ListTablesRequest{
+		CatalogName:   catalogName,
+		SchemaName:    schemaName,
 		IncludeBrowse: true,
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
-func (r *WorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error) {
-	response, err := r.client.Schemas.ListAll(ctx, catalog.ListSchemasRequest{
-		CatalogName: catalogName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
-func (r *WorkspaceRepository) ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error) {
-	response, err := r.client.Tables.ListAll(ctx, catalog.ListTablesRequest{
-		CatalogName: catalogName,
-		SchemaName:  schemaName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
 }
 
 func (r *WorkspaceRepository) GetTable(ctx context.Context, catalogName string, schemaName string, tableName string) (*catalog.TableInfo, error) {
@@ -322,10 +244,12 @@ func (r *WorkspaceRepository) GetTable(ctx context.Context, catalogName string, 
 	return response, nil
 }
 
-func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) ([]catalog.FunctionInfo, error) {
-	return r.client.Functions.ListAll(ctx, catalog.ListFunctionsRequest{
-		CatalogName: catalogName,
-		SchemaName:  schemaName,
+func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName string, schemaName string) <-chan ChannelItem[catalog.FunctionInfo] {
+	return iteratorToChannel(ctx, func() listing.Iterator[catalog.FunctionInfo] {
+		return r.client.Functions.List(ctx, catalog.ListFunctionsRequest{
+			CatalogName: catalogName,
+			SchemaName:  schemaName,
+		})
 	})
 }
 

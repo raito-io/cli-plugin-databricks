@@ -22,6 +22,7 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
 	"cli-plugin-databricks/utils/array"
 )
 
@@ -63,23 +64,23 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 
 	accountRepo.EXPECT().GetWorkspaceMap(mock.Anything, metastores, workspaces).Return(nil, map[string]string{deployment: metastoreId}, nil).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
+	workspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog1",
 			MetastoreId: metastoreId,
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog1").Return([]catalog.SchemaInfo{
+	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema1",
 			FullName:    "catalog1.schema1",
 			MetastoreId: metastoreId,
 			CatalogName: "catalog1",
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog1", "schema1").Return([]catalog.TableInfo{
+	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog1", "schema1").Return(repo.ArrayToChannel([]catalog.TableInfo{
 		{
 			Name:        "table1",
 			FullName:    "catalog1.schema1.table1",
@@ -87,7 +88,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 			CatalogName: "catalog1",
 			SchemaName:  "schema1",
 		},
-	}, nil).Once()
+	})).Once()
 
 	startTime := time.Now().Add(time.Hour)
 	endTime := time.Now()
@@ -152,7 +153,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 		},
 	}
 
-	workspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
+	workspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog1",
 			MetastoreId: metastoreId,
@@ -161,27 +162,27 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			Name:        "catalog2",
 			MetastoreId: metastoreId,
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog1").Return([]catalog.SchemaInfo{
+	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema1",
 			FullName:    "catalog1.schema1",
 			MetastoreId: metastoreId,
 			CatalogName: "catalog1",
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog2").Return([]catalog.SchemaInfo{
+	workspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog2").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema1",
 			FullName:    "catalog2.schema1",
 			MetastoreId: metastoreId,
 			CatalogName: "catalog2",
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog1", "schema1").Return([]catalog.TableInfo{
+	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog1", "schema1").Return(repo.ArrayToChannel([]catalog.TableInfo{
 		{
 			Name:        "table1",
 			FullName:    "catalog1.schema1.table1",
@@ -196,9 +197,9 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			CatalogName: "catalog1",
 			SchemaName:  "schema1",
 		},
-	}, nil).Once()
+	})).Once()
 
-	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog2", "schema1").Return([]catalog.TableInfo{
+	workspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog2", "schema1").Return(repo.ArrayToChannel([]catalog.TableInfo{
 		{
 			Name:        "table1",
 			FullName:    "catalog2.schema1.table1",
@@ -206,7 +207,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			CatalogName: "catalog2",
 			SchemaName:  "schema1",
 		},
-	}, nil).Once()
+	})).Once()
 
 	startTime := time.Now().Add(time.Hour)
 	endTime := time.Now()
@@ -898,10 +899,10 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 	}
 
 	return &DataUsageSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")

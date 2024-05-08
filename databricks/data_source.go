@@ -17,6 +17,8 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/databricks/utils"
 )
 
 var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
@@ -28,8 +30,8 @@ type dataSourceWorkspaceRepository interface {
 }
 
 type DataSourceSyncer struct {
-	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error)
-	workspaceRepoFactory func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *types.RepositoryCredentials) (accountRepository, error)
+	workspaceRepoFactory func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
 	functionUsedAsMaskOrFilter set.Set[string]
 
@@ -38,10 +40,10 @@ type DataSourceSyncer struct {
 
 func NewDataSourceSyncer() *DataSourceSyncer {
 	return &DataSourceSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (accountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			return repo.NewWorkspaceRepository(repoCredentials)
 		},
 
@@ -65,7 +67,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		}
 	}()
 
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configParams)
+	pltfrm, accountId, repoCredentials, err := utils.GetAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
-		return selectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
+		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
 
 	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *provisioning.Workspace) error {

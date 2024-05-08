@@ -9,6 +9,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	repo "cli-plugin-databricks/databricks/repo"
+
 	sql "github.com/databricks/databricks-sdk-go/service/sql"
 
 	time "time"
@@ -28,33 +30,23 @@ func (_m *mockDataUsageWorkspaceRepository) EXPECT() *mockDataUsageWorkspaceRepo
 }
 
 // ListCatalogs provides a mock function with given fields: ctx
-func (_m *mockDataUsageWorkspaceRepository) ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error) {
+func (_m *mockDataUsageWorkspaceRepository) ListCatalogs(ctx context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo] {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListCatalogs")
 	}
 
-	var r0 []catalog.CatalogInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]catalog.CatalogInfo, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) []catalog.CatalogInfo); ok {
+	var r0 <-chan repo.ChannelItem[catalog.CatalogInfo]
+	if rf, ok := ret.Get(0).(func(context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo]); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.CatalogInfo)
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.CatalogInfo])
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // mockDataUsageWorkspaceRepository_ListCatalogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCatalogs'
@@ -75,44 +67,34 @@ func (_c *mockDataUsageWorkspaceRepository_ListCatalogs_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListCatalogs_Call) Return(_a0 []catalog.CatalogInfo, _a1 error) *mockDataUsageWorkspaceRepository_ListCatalogs_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *mockDataUsageWorkspaceRepository_ListCatalogs_Call) Return(_a0 <-chan repo.ChannelItem[catalog.CatalogInfo]) *mockDataUsageWorkspaceRepository_ListCatalogs_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListCatalogs_Call) RunAndReturn(run func(context.Context) ([]catalog.CatalogInfo, error)) *mockDataUsageWorkspaceRepository_ListCatalogs_Call {
+func (_c *mockDataUsageWorkspaceRepository_ListCatalogs_Call) RunAndReturn(run func(context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo]) *mockDataUsageWorkspaceRepository_ListCatalogs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ListSchemas provides a mock function with given fields: ctx, catalogName
-func (_m *mockDataUsageWorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error) {
+func (_m *mockDataUsageWorkspaceRepository) ListSchemas(ctx context.Context, catalogName string) <-chan repo.ChannelItem[catalog.SchemaInfo] {
 	ret := _m.Called(ctx, catalogName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListSchemas")
 	}
 
-	var r0 []catalog.SchemaInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]catalog.SchemaInfo, error)); ok {
-		return rf(ctx, catalogName)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []catalog.SchemaInfo); ok {
+	var r0 <-chan repo.ChannelItem[catalog.SchemaInfo]
+	if rf, ok := ret.Get(0).(func(context.Context, string) <-chan repo.ChannelItem[catalog.SchemaInfo]); ok {
 		r0 = rf(ctx, catalogName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.SchemaInfo)
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.SchemaInfo])
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, catalogName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // mockDataUsageWorkspaceRepository_ListSchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSchemas'
@@ -134,44 +116,34 @@ func (_c *mockDataUsageWorkspaceRepository_ListSchemas_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListSchemas_Call) Return(_a0 []catalog.SchemaInfo, _a1 error) *mockDataUsageWorkspaceRepository_ListSchemas_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *mockDataUsageWorkspaceRepository_ListSchemas_Call) Return(_a0 <-chan repo.ChannelItem[catalog.SchemaInfo]) *mockDataUsageWorkspaceRepository_ListSchemas_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListSchemas_Call) RunAndReturn(run func(context.Context, string) ([]catalog.SchemaInfo, error)) *mockDataUsageWorkspaceRepository_ListSchemas_Call {
+func (_c *mockDataUsageWorkspaceRepository_ListSchemas_Call) RunAndReturn(run func(context.Context, string) <-chan repo.ChannelItem[catalog.SchemaInfo]) *mockDataUsageWorkspaceRepository_ListSchemas_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ListTables provides a mock function with given fields: ctx, catalogName, schemaName
-func (_m *mockDataUsageWorkspaceRepository) ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error) {
+func (_m *mockDataUsageWorkspaceRepository) ListTables(ctx context.Context, catalogName string, schemaName string) <-chan repo.ChannelItem[catalog.TableInfo] {
 	ret := _m.Called(ctx, catalogName, schemaName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListTables")
 	}
 
-	var r0 []catalog.TableInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]catalog.TableInfo, error)); ok {
-		return rf(ctx, catalogName, schemaName)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []catalog.TableInfo); ok {
+	var r0 <-chan repo.ChannelItem[catalog.TableInfo]
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) <-chan repo.ChannelItem[catalog.TableInfo]); ok {
 		r0 = rf(ctx, catalogName, schemaName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]catalog.TableInfo)
+			r0 = ret.Get(0).(<-chan repo.ChannelItem[catalog.TableInfo])
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, catalogName, schemaName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // mockDataUsageWorkspaceRepository_ListTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListTables'
@@ -194,12 +166,12 @@ func (_c *mockDataUsageWorkspaceRepository_ListTables_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListTables_Call) Return(_a0 []catalog.TableInfo, _a1 error) *mockDataUsageWorkspaceRepository_ListTables_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *mockDataUsageWorkspaceRepository_ListTables_Call) Return(_a0 <-chan repo.ChannelItem[catalog.TableInfo]) *mockDataUsageWorkspaceRepository_ListTables_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockDataUsageWorkspaceRepository_ListTables_Call) RunAndReturn(run func(context.Context, string, string) ([]catalog.TableInfo, error)) *mockDataUsageWorkspaceRepository_ListTables_Call {
+func (_c *mockDataUsageWorkspaceRepository_ListTables_Call) RunAndReturn(run func(context.Context, string, string) <-chan repo.ChannelItem[catalog.TableInfo]) *mockDataUsageWorkspaceRepository_ListTables_Call {
 	_c.Call.Return(run)
 	return _c
 }
