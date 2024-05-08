@@ -11,12 +11,14 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
 
+	"cli-plugin-databricks/databricks"
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
@@ -90,7 +92,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_GetWorkspaceMap() {
 	workspaces, err := s.repo.GetWorkspaces(context.Background())
 	require.NoError(s.T(), err)
 
-	var workspace *repo.Workspace
+	var workspace *provisioning.Workspace
 	for _, w := range workspaces {
 		for _, a := range metastoreAssignment.WorkspaceIds {
 			if a == w.WorkspaceId {
@@ -103,7 +105,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_GetWorkspaceMap() {
 	require.NotNil(s.T(), workspace)
 
 	// When
-	metatoreToWorkspaceMap, workspaceToMetastoreMap, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []repo.Workspace{*workspace})
+	metatoreToWorkspaceMap, workspaceToMetastoreMap, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []provisioning.Workspace{*workspace})
 	require.NoError(s.T(), err)
 
 	// Then
@@ -111,7 +113,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_GetWorkspaceMap() {
 	require.NotEmpty(s.T(), metatoreToWorkspaceMap[metastore.MetastoreId])
 
 	for _, w := range metatoreToWorkspaceMap[metastore.MetastoreId] {
-		s.Equal(metastore.MetastoreId, workspaceToMetastoreMap[w])
+		s.Equal(metastore.MetastoreId, workspaceToMetastoreMap[w.DeploymentName])
 	}
 }
 
@@ -215,7 +217,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListWorkspaceAssignme
 	workspaces, err := s.repo.GetWorkspaces(context.Background())
 	require.NoError(s.T(), err)
 
-	var workspace *repo.Workspace
+	var workspace *provisioning.Workspace
 	for _, w := range workspaces {
 		for _, a := range metastoreAssignment.WorkspaceIds {
 			if a == w.WorkspaceId {
@@ -227,14 +229,14 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListWorkspaceAssignme
 
 	require.NotNil(s.T(), workspace)
 
-	metatoreToWorkspaceMap, _, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []repo.Workspace{*workspace})
+	metatoreToWorkspaceMap, _, err := s.repo.GetWorkspaceMap(context.Background(), []catalog.MetastoreInfo{*metastore}, []provisioning.Workspace{*workspace})
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), metatoreToWorkspaceMap[metastore.MetastoreId])
-	workspaceDeploymentName := metatoreToWorkspaceMap[metastore.MetastoreId][0]
+	workspaceInMetastore := metatoreToWorkspaceMap[metastore.MetastoreId][0]
 
-	var workspaceId int
+	var workspaceId int64
 	for _, w := range workspaces {
-		if w.DeploymentName == workspaceDeploymentName {
+		if w.DeploymentName == workspaceInMetastore.DeploymentName {
 			workspaceId = w.WorkspaceId
 			break
 		}
@@ -264,9 +266,6 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
-	host, err := pltfrm.WorkspaceAddress(os.Getenv("DB_TESTING_DEPLOYMENT"))
-	require.NoError(t, err)
-
 	credentials := repo.RepositoryCredentials{
 		Username:     config.GetString(constants.DatabricksUser),
 		Password:     config.GetString(constants.DatabricksPassword),
@@ -274,7 +273,16 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	repository, err := repo.NewWorkspaceRepository(pltfrm, host, config.GetString(constants.DatabricksAccountId), &credentials)
+	accountRepo, err := repo.NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
+	require.NoError(t, err)
+
+	workspace, err := accountRepo.GetWorkspaceByName(context.Background(), os.Getenv("DB_TESTING_WORKSPACE"))
+	require.NoError(t, err)
+
+	repoCredentials, err := databricks.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
+	require.NoError(t, err)
+
+	repository, err := repo.NewWorkspaceRepository(repoCredentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

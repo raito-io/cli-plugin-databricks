@@ -10,6 +10,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/iam"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/raito-io/bexpression"
 	"github.com/raito-io/bexpression/datacomparison"
@@ -53,7 +54,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -61,8 +62,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Twice()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Twice()
 	mockAccountRepo.EXPECT().ListWorkspaceAssignments(mock.Anything, workspaceObject.WorkspaceId).Return([]iam.PermissionAssignment{
 		{
 			Principal: &iam.PrincipalOutput{
@@ -162,7 +163,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]repo.FunctionInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]catalog.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: metastore1.MetastoreId,
@@ -509,7 +510,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -517,8 +518,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
@@ -603,9 +604,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
 	})
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(1592), []iam.WorkspacePermission{}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(1592), []iam.WorkspacePermission{}).Return(nil).Once()
 
 	// When
 	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
@@ -683,7 +684,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -691,8 +692,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
@@ -806,7 +807,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -814,8 +815,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
@@ -948,7 +949,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -956,8 +957,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
@@ -1086,7 +1087,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -1094,8 +1095,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
@@ -1213,7 +1214,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		MetastoreId: "metastore-id1",
 	}
 
-	workspaceObject := repo.Workspace{
+	workspaceObject := provisioning.Workspace{
 		WorkspaceId:     42,
 		DeploymentName:  deployment,
 		WorkspaceName:   workspace,
@@ -1221,8 +1222,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	}
 
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]repo.Workspace{workspaceObject}, nil).Once()
-	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []repo.Workspace{workspaceObject}).Return(map[string][]string{metastore1.MetastoreId: {deployment}}, nil, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
@@ -1307,9 +1308,9 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 
 		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
 	})
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
-	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, 42, int64(1592), []iam.WorkspacePermission{}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
+	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(1592), []iam.WorkspacePermission{}).Return(nil).Once()
 
 	// When
 	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
@@ -1351,10 +1352,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessAccountRepository, error) {
 			return accountRepo, nil
 		},
-		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
-			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
+			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
 
 			if workspaceMock, ok := workspaceMockRepos[deployment]; ok {
 				return workspaceMock, nil

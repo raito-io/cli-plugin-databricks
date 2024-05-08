@@ -32,12 +32,27 @@ func main() {
 				Version: plugin.ParseVersion(version.Version),
 				Parameters: []*plugin.ParameterInfo{
 					{Name: constants.DatabricksAccountId, Description: "The Databricks account to connect to.", Mandatory: true},
+					{Name: constants.DatabricksPlatform, Description: "The Databricks platform to connect to (AWS/GCP/Azure).", Mandatory: true},
+
+					// Native authentication
 					{Name: constants.DatabricksClientId, Description: "The (oauth) client ID to use when authenticating against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksClientSecret, Description: "The (oauth)  client Secret to use when authentic against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: false},
+					{Name: constants.DatabricksToken, Description: "The Databricks personal access token (PAT) (AWS, Azure, and GCP) or Azure Active Directory (Azure AD) token (Azure).", Mandatory: false},
+
+					// Azure authentication
+					{Name: constants.DatabricksAzureUseMSI, Description: "true to use Azure Managed Service Identity passwordless authentication flow for service principals. Requires AzureResourceID to be set.", Mandatory: false},
+					{Name: constants.DatabricksAzureClientId, Description: "The Azure AD service principal's client secret.", Mandatory: false},
+					{Name: constants.DatabricksAzureClientSecret, Description: "The Azure AD service principal's application ID.", Mandatory: false},
+					{Name: constants.DatabricksAzureTenantID, Description: "The Azure AD service principal's tenant ID.", Mandatory: false},
+					{Name: constants.DatabricksAzureEnvironment, Description: "The Azure environment type (such as Public, UsGov, China, and Germany) for a specific set of API endpoints. Defaults to PUBLIC.", Mandatory: false},
+
+					// GCP authentication
+					{Name: constants.DatabricksGoogleCredentials, Description: "GCP Service Account Credentials JSON or the location of these credentials on the local filesystem.", Mandatory: false},
+					{Name: constants.DatabricksGoogleServiceAccount, Description: "The Google Cloud Platform (GCP) service account e-mail used for impersonation in the Default Application Credentials Flow that does not require a password.", Mandatory: false},
+
 					{Name: constants.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 90. Maximum is 90 days.", Mandatory: false},
-					{Name: constants.DatabricksPlatform, Description: "The Databricks platform to connect to (AWS/GCP/Azure).", Mandatory: true},
 				},
 			},
 		},

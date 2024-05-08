@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
@@ -47,7 +48,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 		},
 	}
 
-	workspaces := []repo.Workspace{
+	workspaces := []provisioning.Workspace{
 		{
 			WorkspaceId:     42,
 			DeploymentName:  deployment,
@@ -303,7 +304,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 	}).Once()
 
 	// When
-	err := duSyncer.syncWorkspace(context.Background(), &repo.Workspace{WorkspaceId: 42, DeploymentName: deployment, WorkspaceName: "workspaceName", WorkspaceStatus: "RUNNING"}, &catalog.MetastoreInfo{Name: "Metastore1", MetastoreId: metastoreId}, fileCreatorMock, configMap)
+	err := duSyncer.syncWorkspace(context.Background(), &provisioning.Workspace{WorkspaceId: 42, DeploymentName: deployment, WorkspaceName: "workspaceName", WorkspaceStatus: "RUNNING"}, &catalog.MetastoreInfo{Name: "Metastore1", MetastoreId: metastoreId}, fileCreatorMock, configMap)
 
 	// Then
 	require.NoError(t, err)
@@ -900,10 +901,10 @@ func createDataUsageSyncer(t *testing.T, deployments ...string) (*DataUsageSynce
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(pltfrm platform.DatabricksPlatform, host string, account string, repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
-			deployment := deploymentRegex.ReplaceAllString(host, "${1}")
+			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
 
 			if workspaceMock, ok := workspaceMockRepos[deployment]; ok {
 				return workspaceMock, nil

@@ -50,22 +50,46 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
    identity-store-id: <<Databricks identitystore ID>>
 
    databricks-account-id: <<Databricks account ID>>
+   databricks-platform: <<Databricks platform>>
+   
+   # Native authentication
    databricks-client-id: <<Databricks client ID>>
    databricks-client-secret: <<Databricks client secret>>
    databricks-user: <<Databricks user email address>>
    databricks-password: <<Databricks user password>>
-   databricks-platform: <<Databricks platform>>
+   databricks-token: <<Databricks Personal Access Token>>
+   
+   # Azure authentication
+   databricks-azure-resource-id: <<Azure resource ID>>
+   databricks-azure-use-msi: <<Azure use MSI>>
+   databricks-azure-client-id: <<Azure client ID>>
+   databricks-azure-client-secret: <<Azure client secret>>
+   databricks-azure-tenant-id: <<Azure tenant ID>>
+   databricks-azure-environment: <<Azure environment>>
+   
+   # GCP authentication
+   databricks-google-credentials: <<GCP credential file>>
+   databricks-google-service-account: <<GCP service account>>
+
 ```
 
 Next, replace the values of the indicated fields with your specific values:
 - `<<Databricks datasource ID>>`: the ID of the Data source you created in the Raito Cloud UI.
 - `<<Databricks identitystore ID>>`: the ID of the Identity Store you created in the Raito Cloud UI.
 - `<<Databricks account ID>>`: the Databricks account ID`
+- `<<Databricks platform>>`: The databricks platform that is used. (supported platforms: AWS/GCP/Azure)
 - `<<Databricks client ID>>`: if using oauth, the Databricks client ID of an account with admin access to all workspaces
 - `<<Databricks client secret>>`: if using oauth, the Databricks client secret of the account specified in `databricks-client-id`
 - `<<Databricks user email address>>`: if using basic auth, the email address of an admin user in your databricks account with admin access to all workspaces
 - `<<Databricks user password>>`: if using basic auth, the email password of the `databricks-user` user
-- `<<Databricks platform>>`: The databricks platform that is used. (supported platforms: AWS/GCP/Azure)
+- `<<Databricks Personal Access Token>>`: authentication by using a personal access token. The Databricks personal access token (PAT) (AWS, Azure, and GCP) or Azure Active Directory (Azure AD) token (Azure).
+- `<<Azure resource ID>>`: If using azure authentication, the Azure Resource Manager ID for the Azure Databricks workspace, which is exchanged for a Databricks host URL.
+- `<<Azure use MSI>>`: If using azure authentication, true to use Azure Managed Service Identity passwordless authentication flow for service principals. Requires AzureResourceID to be set.
+- `<<Azure client ID>>`: If using azure authentication, the Azure AD service principal's application ID.
+- `<<Azure client secret>>`: If using azure authentication, the Azure AD service principal's tenant ID.
+- `<<Azure environment>>`: If using azure authentication, the Azure environment type (such as Public, UsGov, China, and Germany) for a specific set of API endpoints. Defaults to PUBLIC.
+- `<<GCP credential file>>`: If using GCP authentication, GCP Service Account Credentials JSON or the location of these credentials on the local filesystem.
+- `<<GCP service account>>`: If using GCP authentication, the Google Cloud Platform (GCP) service account e-mail used for impersonation in the Default Application Credentials Flow that does not require a password.
 
 
 You will also need to configure the Raito CLI further to connect to your Raito Cloud account, if that's not set up yet.
