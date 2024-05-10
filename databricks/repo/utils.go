@@ -39,8 +39,8 @@ func iteratorToChannel[T any](ctx context.Context, f func() listing.Iterator[T])
 			}
 
 			if !send(ChannelItem[T]{I: &item}) {
-                return
-            }
+				return
+			}
 		}
 	}()
 

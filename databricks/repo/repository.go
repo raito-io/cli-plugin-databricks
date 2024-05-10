@@ -47,7 +47,7 @@ func NewAccountRepository(pltfrm platform.DatabricksPlatform, credentials *types
 	}, nil
 }
 
-func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error){
+func (r *AccountRepository) ListMetastores(ctx context.Context) ([]catalog.MetastoreInfo, error) {
 	return r.dbClient.Metastores.ListAll(ctx)
 }
 

@@ -137,3 +137,47 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_GetTableInf
 		},
 	}, tableInformation)
 }
+
+func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Mask() {
+	ctx := context.Background()
+	catalog := "raito_testing"
+	schema := "humanresources"
+
+	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropFunction(ctx, catalog, schema, "mask_ssn")
+		assert.NoError(s.T(), err)
+	}()
+
+	err = s.repo.SetMask(ctx, catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropMask(ctx, catalog, schema, "employee", "NationalIDNumber")
+		assert.NoError(s.T(), err)
+	}()
+}
+
+func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Filter() {
+	ctx := context.Background()
+	catalog := "raito_testing"
+	schema := "person"
+
+	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS filter_state(id decimal(38,0)) RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admin'), true, id > 10)")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropFunction(ctx, catalog, schema, "filter_state")
+		assert.NoError(s.T(), err)
+	}()
+
+	err = s.repo.SetRowFilter(ctx, catalog, schema, "stateprovince", "filter_state", []string{"StateProvinceID"})
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropRowFilter(ctx, catalog, schema, "stateprovince")
+		assert.NoError(s.T(), err)
+	}()
+}

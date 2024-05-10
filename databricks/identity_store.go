@@ -109,7 +109,6 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 		}
 
 		groupMap[group.Id] = group
-
 	}
 
 	err := dependencyTree.DependencyCleanup()

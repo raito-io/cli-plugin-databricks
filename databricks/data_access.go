@@ -2,6 +2,7 @@ package databricks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -35,7 +36,6 @@ var _ wrappers.AccessProviderSyncer = (*AccessSyncer)(nil)
 
 const (
 	raitoPrefix = "raito_"
-	idAlphabet  = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataAccessAccountRepository
@@ -97,316 +97,24 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, a.workspaceRepoFactory)
 	}, createFullName)
 
-	storedFunctions := types.NewStoredFunctions()
+	apDataObjectVisitor := AccessProviderVisitor{
+		syncer:                a,
+		accessProviderHandler: accessProviderHandler,
+		accountId:             accountId,
+		repoCredentials:       repoCredentials,
+		pltfrm:                pltfrm,
+		storedFunctions:       types.NewStoredFunctions(),
+		metaStoreIdMap:        map[string]string{},
+	}
 
-	metaStoreIdMap := map[string]string{}
-
-	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, metastore *provisioning.Workspace) error {
-		metastoreSync := func(f func(repo dataAccessWorkspaceRepository) error) error {
-			credentials, err2 := utils.InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, metastore)
-			if err2 != nil {
-				return fmt.Errorf("workspace address: %w", err2)
-			}
-
-			client, err2 := a.workspaceRepoFactory(credentials)
-			if err2 != nil {
-				return err2
-			}
-
-			return f(client)
-		}
-
-		switch securableType {
-		case constants.WorkspaceType:
-			return a.syncFromTargetWorkspace(ctx, pltfrm, accessProviderHandler, accountId, &repoCredentials, object)
-		case constants.MetastoreType:
-			if ms, ok := object.(*catalog.MetastoreInfo); ok {
-				metaStoreIdMap[ms.MetastoreId] = ms.Name
-			}
-
-			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetMetastore(ctx, accessProviderHandler, repo, object)
-			})
-		case constants.CatalogType:
-			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetCatalog(ctx, accessProviderHandler, repo, object, metaStoreIdMap)
-			})
-		case data_source.Schema:
-			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetSchema(ctx, accessProviderHandler, repo, object, metaStoreIdMap)
-			})
-		case data_source.Table:
-			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetTable(ctx, &storedFunctions, accessProviderHandler, repo, object, metaStoreIdMap)
-			})
-		case data_source.Column:
-			return a.syncFromTargetColumn(ctx, &storedFunctions, parentObject, object)
-		case constants.FunctionType:
-			return metastoreSync(func(repo dataAccessWorkspaceRepository) error {
-				return a.syncFromTargetFunction(ctx, accessProviderHandler, repo, &storedFunctions, object, metaStoreIdMap)
-			})
-		}
-
-		return fmt.Errorf("unsupported type %s", securableType)
-	}, func(traverserOptions *DataObjectTraverserOptions) {
+	err = traverser.Traverse(ctx, &apDataObjectVisitor, func(traverserOptions *DataObjectTraverserOptions) {
 		traverserOptions.SecurableTypesToReturn = set.NewSet[string](constants.WorkspaceType, constants.MetastoreType, constants.CatalogType, data_source.Schema, data_source.Table, data_source.Column, constants.FunctionType)
 	})
-
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (a *AccessSyncer) syncFromTargetWorkspace(ctx context.Context, pltfrm platform.DatabricksPlatform, accessProviderHandler wrappers.AccessProviderHandler, accountId string, repoCredentials *types2.RepositoryCredentials, object interface{}) error {
-	workspace, ok := object.(*provisioning.Workspace)
-	if !ok {
-		return fmt.Errorf("unable to parse Workspace. Expected *catalog.WorkspaceInfo but got %T", object)
-	}
-
-	accountClient, err := a.accountRepoFactory(pltfrm, accountId, repoCredentials)
-	if err != nil {
-		return err
-	}
-
-	assignments, err := accountClient.ListWorkspaceAssignments(ctx, workspace.WorkspaceId)
-	if err != nil {
-		return err
-	}
-
-	privilegesToSync := make(map[string][]string)
-
-	logger.Debug(fmt.Sprintf("Found %d workspace assignments for workspace %s", len(assignments), workspace.WorkspaceName))
-
-	for _, assignment := range assignments {
-		var principalId string
-
-		if assignment.Principal.UserName != "" {
-			principalId = assignment.Principal.UserName
-		} else if assignment.Principal.GroupName != "" {
-			principalId = assignment.Principal.GroupName
-		} else if assignment.Principal.ServicePrincipalName != "" {
-			principalId = assignment.Principal.ServicePrincipalName
-		} else {
-			logger.Error(fmt.Sprintf("Unknown principal assignment type %+v", assignment.Principal))
-
-			continue
-		}
-
-		do := data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType}
-
-		for _, permission := range assignment.Permissions {
-			p := string(permission)
-			if !a.privilegeCache.ContainsPrivilege(do, principalId, p) {
-				privilegesToSync[p] = append(privilegesToSync[p], principalId)
-			}
-		}
-	}
-
-	for privilege, principleList := range privilegesToSync {
-		apName := fmt.Sprintf("%s_%s", workspace.WorkspaceName, privilege)
-
-		whoItems := sync_from_target.WhoItem{}
-
-		for _, principal := range principleList {
-			// We assume that a group doesn't contain an @ character
-			if strings.Contains(principal, "@") {
-				whoItems.Users = append(whoItems.Users, principal)
-			} else {
-				whoItems.Groups = append(whoItems.Groups, principal)
-			}
-		}
-
-		err2 := accessProviderHandler.AddAccessProviders(
-			&sync_from_target.AccessProvider{
-				ExternalId: apName,
-				Action:     sync_from_target.Grant,
-				Name:       apName,
-				NamingHint: apName,
-				ActualName: apName,
-				Type:       ptr.String(access_provider.AclSet),
-				What: []sync_from_target.WhatItem{
-					{
-						DataObject:  &data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType},
-						Permissions: []string{privilege},
-					},
-				},
-				Who: &whoItems,
-			},
-		)
-		if err2 != nil {
-			return err2
-		}
-	}
-
-	return nil
-}
-
-func (a *AccessSyncer) syncFromTargetMetastore(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}) error {
-	metastore, ok := object.(*catalog.MetastoreInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Metastore. Expected *catalog.MetastoreInfo but got %T", object)
-	}
-
-	logger.Debug(fmt.Sprintf("Load permissions on metastore %q", metastore.MetastoreId))
-
-	permissionsList, err := workspaceClient.GetPermissionsOnResource(ctx, catalog.SecurableTypeMetastore, metastore.MetastoreId)
-	if err != nil {
-		return err
-	}
-
-	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
-
-	err = a.addPermissionIfNotSetByRaito(accessProviderHandler, metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: constants.MetastoreType}, permissionsList)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *AccessSyncer) syncFromTargetCatalog(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
-	c, ok := object.(*catalog.CatalogInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Catalog. Expected *catalog.CatalogInfo but got %T", object)
-	}
-
-	metastoreName, ok := metastoreIdMap[c.MetastoreId]
-	if !ok {
-		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", c.MetastoreId))
-		metastoreName = c.MetastoreId
-	}
-
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, c.MetastoreId, c.FullName, constants.CatalogType, catalog.SecurableTypeCatalog)
-}
-
-func (a *AccessSyncer) syncFromTargetSchema(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
-	schema, ok := object.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Schema. Expected *catalog.SchemaInfo but got %T", object)
-	}
-
-	metastoreName, ok := metastoreIdMap[schema.MetastoreId]
-	if !ok {
-		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", schema.MetastoreId))
-		metastoreName = schema.MetastoreId
-	}
-
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, schema.MetastoreId, schema.FullName, data_source.Schema, catalog.SecurableTypeSchema)
-}
-
-func (a *AccessSyncer) syncFromTargetTable(ctx context.Context, storedFunctions *types.StoredFunctions, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, object interface{}, metastoreIdMap map[string]string) error {
-	table, ok := object.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Table. Expected *catalog.TableInfo but got %T", object)
-	}
-
-	metastoreName, ok := metastoreIdMap[table.MetastoreId]
-	if !ok {
-		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", table.MetastoreId))
-		metastoreName = table.MetastoreId
-	}
-
-	if table.RowFilter != nil {
-		functionId := createUniqueId(table.MetastoreId, table.RowFilter.FunctionName)
-		storedFunctions.AddFilter(functionId, createUniqueId(table.MetastoreId, table.FullName))
-	}
-
-	return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, table.MetastoreId, table.FullName, data_source.Table, catalog.SecurableTypeTable)
-}
-
-func (a *AccessSyncer) syncFromTargetColumn(_ context.Context, storedFunctions *types.StoredFunctions, parent interface{}, object interface{}) error {
-	column, ok := object.(*catalog.ColumnInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Column. Expected *catalog.ColumnInfo but got %T", object)
-	}
-
-	table, ok := parent.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Table. Expected *catalog.TableInfo but got %T", parent)
-	}
-
-	if column.Mask != nil {
-		functionId := createUniqueId(table.MetastoreId, column.Mask.FunctionName)
-		storedFunctions.AddMask(functionId, createTableUniqueId(table.MetastoreId, table.FullName, column.Name))
-	}
-
-	return nil
-}
-
-func (a *AccessSyncer) syncFromTargetFunction(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, storedFunction *types.StoredFunctions, object interface{}, metastoreIdMap map[string]string) error {
-	function, ok := object.(*catalog.FunctionInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
-	}
-
-	if strings.HasPrefix(function.Name, raitoPrefix) {
-		// NO need to import functions create by Raito
-		return nil
-	}
-
-	functionId := createUniqueId(function.MetastoreId, function.FullName)
-	if columns, found := storedFunction.Masks[functionId]; found {
-		what := make([]sync_from_target.WhatItem, 0, len(columns))
-
-		for _, column := range columns {
-			what = append(what, sync_from_target.WhatItem{
-				DataObject: &data_source.DataObjectReference{FullName: column, Type: data_source.Column},
-			})
-		}
-
-		return accessProviderHandler.AddAccessProviders(&sync_from_target.AccessProvider{
-			ExternalId:        functionId,
-			Name:              function.Name,
-			ActualName:        functionId,
-			Policy:            function.RoutineDefinition,
-			Action:            sync_from_target.Mask,
-			What:              what,
-			NotInternalizable: true,
-			Incomplete:        ptr.Bool(true),
-		})
-	} else if tables, found := storedFunction.Filters[functionId]; found {
-		// Currently this is not called due to a bug in by Databricks as they dont return correctly the row filter function name
-		for _, table := range tables {
-			err := accessProviderHandler.AddAccessProviders(&sync_from_target.AccessProvider{
-				ExternalId: functionId,
-				Name:       function.Name,
-				ActualName: functionId,
-				Policy:     function.RoutineDefinition,
-				Action:     sync_from_target.Filtered,
-				What: []sync_from_target.WhatItem{
-					{
-						DataObject: &data_source.DataObjectReference{FullName: table, Type: data_source.Table},
-					},
-				},
-				NotInternalizable: true,
-			})
-
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		metastoreName, ok := metastoreIdMap[function.MetastoreId]
-		if !ok {
-			logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", function.MetastoreId))
-			metastoreName = function.MetastoreId
-		}
-
-		return a.syncAccessDataObjectFromTarget(ctx, accessProviderHandler, workspaceClient, metastoreName, function.MetastoreId, function.FullName, constants.FunctionType, catalog.SecurableTypeFunction)
-	}
-
-	return nil
-}
-
-func (a *AccessSyncer) syncAccessDataObjectFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, workspaceClient dataAccessWorkspaceRepository, metastoreName, metastoreId, fullName string, doType string, securableType catalog.SecurableType) error {
-	permissionsList, err := workspaceClient.GetPermissionsOnResource(ctx, securableType, fullName)
-	if err != nil {
-		return err
-	}
-
-	return a.addPermissionIfNotSetByRaito(accessProviderHandler, createUniqueId(metastoreName, fullName), &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *sync_to_target.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) (err error) {
@@ -845,10 +553,10 @@ func (a *AccessSyncer) getUserFromEmail(ctx context.Context, email string, accou
 	users := accountRepo.ListUsers(cancelCtx, func(options *types2.DatabricksUsersFilter) { options.Username = &email })
 	for user := range users {
 		if user.HasError() {
-            return nil, fmt.Errorf("list user item: %w", user.Error())
-        } else {
-            return user.I, nil
-        }
+			return nil, fmt.Errorf("list user item: %w", user.Error())
+		} else {
+			return user.I, nil
+		}
 	}
 
 	return nil, fmt.Errorf("no user found for email %q", email)
@@ -1223,66 +931,6 @@ func (a *AccessSyncer) syncGrantToTarget(_ context.Context, ap *sync_to_target.A
 	return nil
 }
 
-func (a *AccessSyncer) addPermissionIfNotSetByRaito(accessProviderHandler wrappers.AccessProviderHandler, apNamePrefix string, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
-	if assignments == nil {
-		return nil
-	}
-
-	privilegeToPrincipleMap := make(map[catalog.Privilege][]string)
-
-	for _, assignment := range assignments.PrivilegeAssignments {
-		for _, privilege := range assignment.Privileges {
-			logger.Debug(fmt.Sprintf("Check if privilege was assigned by Raito: {%s, %s}, %s, %v", do.FullName, do.Type, assignment.Principal, privilege))
-
-			if a.privilegeCache.ContainsPrivilege(*do, assignment.Principal, string(privilege)) {
-				logger.Debug(fmt.Sprintf("Privilege was assigned by Raito and will be ignored: %v, %s, %v", *do, assignment.Principal, privilege))
-				continue
-			}
-
-			privilegeToPrincipleMap[privilege] = append(privilegeToPrincipleMap[privilege], assignment.Principal)
-		}
-	}
-
-	for privilege, principleList := range privilegeToPrincipleMap {
-		externalId := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
-		apName := fmt.Sprintf("%s_%s", apNamePrefix, privilege.String())
-
-		whoItems := sync_from_target.WhoItem{}
-
-		for _, principal := range principleList {
-			// We assume that a group doesn't contain an @ character
-			if strings.Contains(principal, "@") {
-				whoItems.Users = append(whoItems.Users, principal)
-			} else {
-				whoItems.Groups = append(whoItems.Groups, principal)
-			}
-		}
-
-		err := accessProviderHandler.AddAccessProviders(
-			&sync_from_target.AccessProvider{
-				ExternalId: externalId,
-				Action:     sync_from_target.Grant,
-				Name:       apName,
-				NamingHint: apName,
-				ActualName: apName,
-				Type:       ptr.String(access_provider.AclSet),
-				What: []sync_from_target.WhatItem{
-					{
-						DataObject:  do,
-						Permissions: []string{strings.ToUpper(strings.ReplaceAll(privilege.String(), "_", " "))},
-					},
-				},
-				Who: &whoItems,
-			},
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (a *AccessSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []provisioning.Workspace, map[string][]*provisioning.Workspace, error) {
 	pltfrm, accountId, repoCredentials, err := utils.GetAndValidateParameters(configMap)
 	if err != nil {
@@ -1465,4 +1113,336 @@ func workspacePermissionsToDatabricksPermissions(p []string) []iam.WorkspacePerm
 
 func raitoPrefixName(name string) string {
 	return strings.ToLower(fmt.Sprintf("%s%s", raitoPrefix, strings.ReplaceAll(strings.ToUpper(name), " ", "_")))
+}
+
+var _ DataObjectVisitor = (*AccessProviderVisitor)(nil)
+
+type AccessProviderVisitor struct {
+	syncer                *AccessSyncer
+	accessProviderHandler wrappers.AccessProviderHandler
+
+	repoCredentials types2.RepositoryCredentials
+	accountId       string
+	pltfrm          platform.DatabricksPlatform
+	storedFunctions types.StoredFunctions
+	metaStoreIdMap  map[string]string
+}
+
+func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *provisioning.Workspace) error {
+	accountClient, err := a.syncer.accountRepoFactory(a.pltfrm, a.accountId, &a.repoCredentials)
+	if err != nil {
+		return err
+	}
+
+	assignments, err := accountClient.ListWorkspaceAssignments(ctx, workspace.WorkspaceId)
+	if err != nil {
+		return err
+	}
+
+	privilegesToSync := make(map[string][]string)
+
+	logger.Debug(fmt.Sprintf("Found %d workspace assignments for workspace %s", len(assignments), workspace.WorkspaceName))
+
+	for _, assignment := range assignments {
+		var principalId string
+
+		if assignment.Principal.UserName != "" {
+			principalId = assignment.Principal.UserName
+		} else if assignment.Principal.GroupName != "" {
+			principalId = assignment.Principal.GroupName
+		} else if assignment.Principal.ServicePrincipalName != "" {
+			principalId = assignment.Principal.ServicePrincipalName
+		} else {
+			logger.Error(fmt.Sprintf("Unknown principal assignment type %+v", assignment.Principal))
+
+			continue
+		}
+
+		do := data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType}
+
+		for _, permission := range assignment.Permissions {
+			p := string(permission)
+			if !a.syncer.privilegeCache.ContainsPrivilege(do, principalId, p) {
+				privilegesToSync[p] = append(privilegesToSync[p], principalId)
+			}
+		}
+	}
+
+	for privilege, principleList := range privilegesToSync {
+		apName := fmt.Sprintf("%s_%s", workspace.WorkspaceName, privilege)
+
+		whoItems := sync_from_target.WhoItem{}
+
+		for _, principal := range principleList {
+			// We assume that a group doesn't contain an @ character
+			if strings.Contains(principal, "@") {
+				whoItems.Users = append(whoItems.Users, principal)
+			} else {
+				whoItems.Groups = append(whoItems.Groups, principal)
+			}
+		}
+
+		err2 := a.accessProviderHandler.AddAccessProviders(
+			&sync_from_target.AccessProvider{
+				ExternalId: apName,
+				Action:     sync_from_target.Grant,
+				Name:       apName,
+				NamingHint: apName,
+				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
+				What: []sync_from_target.WhatItem{
+					{
+						DataObject:  &data_source.DataObjectReference{FullName: strconv.FormatInt(workspace.WorkspaceId, 10), Type: constants.WorkspaceType},
+						Permissions: []string{privilege},
+					},
+				},
+				Who: &whoItems,
+			},
+		)
+		if err2 != nil {
+			return err2
+		}
+	}
+
+	return nil
+}
+
+func (a *AccessProviderVisitor) VisitMetastore(ctx context.Context, metastore *catalog.MetastoreInfo, workspace *provisioning.Workspace) error {
+	a.metaStoreIdMap[metastore.MetastoreId] = metastore.Name
+
+	if workspace == nil {
+		return fmt.Errorf("no workspace found for metastore %s", metastore.MetastoreId)
+	}
+
+	workspaceClient, err := a.getWorkspaceRepository(workspace)
+	if err != nil {
+		return fmt.Errorf("unable to get workspace repository: %w", err)
+	}
+
+	logger.Debug(fmt.Sprintf("Load permissions on metastore %q", metastore.MetastoreId))
+
+	permissionsList, err := workspaceClient.GetPermissionsOnResource(ctx, catalog.SecurableTypeMetastore, metastore.MetastoreId)
+	if err != nil {
+		return err
+	}
+
+	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
+
+	err = a.addPermissionIfNotSetByRaito(metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: constants.MetastoreType}, permissionsList)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *AccessProviderVisitor) VisitCatalog(ctx context.Context, c *catalog.CatalogInfo, _ *catalog.MetastoreInfo, workspace *provisioning.Workspace) error {
+	workspaceClient, err := a.getWorkspaceRepository(workspace)
+	if err != nil {
+		return fmt.Errorf("unable to get workspace repository: %w", err)
+	}
+
+	metastoreName, ok := a.metaStoreIdMap[c.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", c.MetastoreId))
+		metastoreName = c.MetastoreId
+	}
+
+	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, c.MetastoreId, c.FullName, constants.CatalogType, catalog.SecurableTypeCatalog)
+}
+
+func (a *AccessProviderVisitor) VisitSchema(ctx context.Context, schema *catalog.SchemaInfo, _ *catalog.CatalogInfo, workspace *provisioning.Workspace) error {
+	workspaceClient, err := a.getWorkspaceRepository(workspace)
+	if err != nil {
+		return fmt.Errorf("unable to get workspace repository: %w", err)
+	}
+
+	metastoreName, ok := a.metaStoreIdMap[schema.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", schema.MetastoreId))
+		metastoreName = schema.MetastoreId
+	}
+
+	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, schema.MetastoreId, schema.FullName, data_source.Schema, catalog.SecurableTypeSchema)
+}
+
+func (a *AccessProviderVisitor) VisitTable(ctx context.Context, table *catalog.TableInfo, parent *catalog.SchemaInfo, workspace *provisioning.Workspace) error {
+	workspaceClient, err := a.getWorkspaceRepository(workspace)
+	if err != nil {
+		return fmt.Errorf("unable to get workspace repository: %w", err)
+	}
+
+	metastoreName, ok := a.metaStoreIdMap[table.MetastoreId]
+	if !ok {
+		logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", table.MetastoreId))
+		metastoreName = table.MetastoreId
+	}
+
+	if table.RowFilter != nil {
+		functionId := createUniqueId(table.MetastoreId, table.RowFilter.FunctionName)
+		a.storedFunctions.AddFilter(functionId, createUniqueId(table.MetastoreId, table.FullName))
+	}
+
+	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, table.MetastoreId, table.FullName, data_source.Table, catalog.SecurableTypeTable)
+}
+
+func (a *AccessProviderVisitor) VisitColumn(_ context.Context, column *catalog.ColumnInfo, table *catalog.TableInfo, _ *provisioning.Workspace) error {
+	if column.Mask != nil {
+		functionId := createUniqueId(table.MetastoreId, column.Mask.FunctionName)
+		a.storedFunctions.AddMask(functionId, createTableUniqueId(table.MetastoreId, table.FullName, column.Name))
+	}
+
+	return nil
+}
+
+func (a *AccessProviderVisitor) VisitFunction(ctx context.Context, function *catalog.FunctionInfo, parent *catalog.SchemaInfo, workspace *provisioning.Workspace) error {
+	if strings.HasPrefix(function.Name, raitoPrefix) {
+		// NO need to import functions create by Raito
+		return nil
+	}
+
+	functionId := createUniqueId(function.MetastoreId, function.FullName)
+	if columns, found := a.storedFunctions.Masks[functionId]; found {
+		what := make([]sync_from_target.WhatItem, 0, len(columns))
+
+		for _, column := range columns {
+			what = append(what, sync_from_target.WhatItem{
+				DataObject: &data_source.DataObjectReference{FullName: column, Type: data_source.Column},
+			})
+		}
+
+		return a.accessProviderHandler.AddAccessProviders(&sync_from_target.AccessProvider{
+			ExternalId:        functionId,
+			Name:              function.Name,
+			ActualName:        functionId,
+			Policy:            function.RoutineDefinition,
+			Action:            sync_from_target.Mask,
+			What:              what,
+			NotInternalizable: true,
+			Incomplete:        ptr.Bool(true),
+		})
+	} else if tables, found := a.storedFunctions.Filters[functionId]; found {
+		// Currently this is not called due to a bug in by Databricks as they dont return correctly the row filter function name
+		for _, table := range tables {
+			err := a.accessProviderHandler.AddAccessProviders(&sync_from_target.AccessProvider{
+				ExternalId: functionId,
+				Name:       function.Name,
+				ActualName: functionId,
+				Policy:     function.RoutineDefinition,
+				Action:     sync_from_target.Filtered,
+				What: []sync_from_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{FullName: table, Type: data_source.Table},
+					},
+				},
+				NotInternalizable: true,
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		workspaceClient, err := a.getWorkspaceRepository(workspace)
+		if err != nil {
+			return fmt.Errorf("unable to get workspace repository: %w", err)
+		}
+
+		metastoreName, ok := a.metaStoreIdMap[function.MetastoreId]
+		if !ok {
+			logger.Warn(fmt.Sprintf("Unable to find metastore name for metastore id %q", function.MetastoreId))
+			metastoreName = function.MetastoreId
+		}
+
+		return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, function.MetastoreId, function.FullName, constants.FunctionType, catalog.SecurableTypeFunction)
+	}
+
+	return nil
+}
+
+func (a *AccessProviderVisitor) getWorkspaceRepository(workspace *provisioning.Workspace) (dataAccessWorkspaceRepository, error) {
+	if workspace == nil {
+		return nil, errors.New("workspace not found")
+	}
+
+	credentials, err2 := utils.InitializeWorkspaceRepoCredentials(a.repoCredentials, a.pltfrm, workspace)
+	if err2 != nil {
+		return nil, fmt.Errorf("workspace address: %w", err2)
+	}
+
+	client, err2 := a.syncer.workspaceRepoFactory(credentials)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	return client, nil
+}
+
+func (a *AccessProviderVisitor) syncAccessProviderObjectFromTarget(ctx context.Context, workspaceClient dataAccessWorkspaceRepository, metastoreName, metastoreId, fullName string, doType string, securableType catalog.SecurableType) error {
+	permissionsList, err := workspaceClient.GetPermissionsOnResource(ctx, securableType, fullName)
+	if err != nil {
+		return err
+	}
+
+	return a.addPermissionIfNotSetByRaito(createUniqueId(metastoreName, fullName), &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
+}
+
+func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
+	if assignments == nil {
+		return nil
+	}
+
+	privilegeToPrincipleMap := make(map[catalog.Privilege][]string)
+
+	for _, assignment := range assignments.PrivilegeAssignments {
+		for _, privilege := range assignment.Privileges {
+			logger.Debug(fmt.Sprintf("Check if privilege was assigned by Raito: {%s, %s}, %s, %v", do.FullName, do.Type, assignment.Principal, privilege))
+
+			if a.syncer.privilegeCache.ContainsPrivilege(*do, assignment.Principal, string(privilege)) {
+				logger.Debug(fmt.Sprintf("Privilege was assigned by Raito and will be ignored: %v, %s, %v", *do, assignment.Principal, privilege))
+				continue
+			}
+
+			privilegeToPrincipleMap[privilege] = append(privilegeToPrincipleMap[privilege], assignment.Principal)
+		}
+	}
+
+	for privilege, principleList := range privilegeToPrincipleMap {
+		externalId := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
+		apName := fmt.Sprintf("%s_%s", apNamePrefix, privilege.String())
+
+		whoItems := sync_from_target.WhoItem{}
+
+		for _, principal := range principleList {
+			// We assume that a group doesn't contain an @ character
+			if strings.Contains(principal, "@") {
+				whoItems.Users = append(whoItems.Users, principal)
+			} else {
+				whoItems.Groups = append(whoItems.Groups, principal)
+			}
+		}
+
+		err := a.accessProviderHandler.AddAccessProviders(
+			&sync_from_target.AccessProvider{
+				ExternalId: externalId,
+				Action:     sync_from_target.Grant,
+				Name:       apName,
+				NamingHint: apName,
+				ActualName: apName,
+				Type:       ptr.String(access_provider.AclSet),
+				What: []sync_from_target.WhatItem{
+					{
+						DataObject:  do,
+						Permissions: []string{strings.ToUpper(strings.ReplaceAll(privilege.String(), "_", " "))},
+					},
+				},
+				Who: &whoItems,
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
