@@ -1440,9 +1440,8 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 
 		whoItems := sync_from_target.WhoItem{}
 
+		// The principal can be a user email address, a group name or a service principal ID (https://docs.databricks.com/api/workspace/grants/get#privilege_assignments)
 		for _, principal := range principleList {
-			// The principal can be a user email address, a group name or a service principal ID (https://docs.databricks.com/api/workspace/grants/get#privilege_assignments)
-
 			if a.servicePrincipals.Contains(principal) {
 				whoItems.Users = append(whoItems.Users, principal)
 			} else if a.groups.Contains(principal) {
