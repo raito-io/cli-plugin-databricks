@@ -1,5 +1,3 @@
-//go:build integration
-
 package it
 
 import (
@@ -24,7 +22,7 @@ var (
 	lock               = &sync.Mutex{}
 )
 
-func readDatabaseConfig() *config.ConfigMap {
+func ReadDatabaseConfig() *config.ConfigMap {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -56,7 +54,7 @@ type DatabricksTestSuite struct {
 }
 
 func (s *DatabricksTestSuite) GetConfig() *config.ConfigMap {
-	return readDatabaseConfig()
+	return ReadDatabaseConfig()
 }
 
 func (s *DatabricksTestSuite) GetTestingMetastore() string {

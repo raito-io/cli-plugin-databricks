@@ -1,5 +1,11 @@
 package repo
 
+import (
+	"context"
+
+	"github.com/raito-io/golang-set/set"
+)
+
 type ChannelItem[T any] struct {
 	I   *T
 	Err error
@@ -43,4 +49,22 @@ func ArrayToChannel[T any](a []T) <-chan ChannelItem[T] {
 	}()
 
 	return outputChannel
+}
+
+func ChannelToSet[T any, O comparable](channel func(ctx context.Context) <-chan ChannelItem[T], f func(T) O) (set.Set[O], error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	outputSet := set.NewSet[O]()
+
+	ch := channel(ctx)
+	for item := range ch {
+		if item.HasError() {
+			return nil, item.Error()
+		}
+
+		outputSet.Add(f(*item.I))
+	}
+
+	return outputSet, nil
 }

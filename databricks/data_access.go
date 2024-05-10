@@ -42,6 +42,7 @@ const (
 type dataAccessAccountRepository interface {
 	ListUsers(ctx context.Context, optFn ...func(options *types2.DatabricksUsersFilter)) <-chan repo.ChannelItem[iam.User]
 	ListGroups(ctx context.Context, optFn ...func(options *types2.DatabricksGroupsFilter)) <-chan repo.ChannelItem[iam.Group]
+	ListServicePrincipals(ctx context.Context, optFn ...func(options *types2.DatabricksServicePrincipalFilter)) <-chan repo.ChannelItem[iam.ServicePrincipal]
 	ListWorkspaceAssignments(ctx context.Context, workspaceId int64) ([]iam.PermissionAssignment, error)
 	UpdateWorkspaceAssignment(ctx context.Context, workspaceId int64, principalId int64, permission []iam.WorkspacePermission) error
 	accountRepository
@@ -91,11 +92,31 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return err
 	}
 
+	accountRepo, err := a.accountRepoFactory(pltfrm, accountId, &repoCredentials)
+	if err != nil {
+		return fmt.Errorf("account repository factory: %w", err)
+	}
+
 	traverser := NewDataObjectTraverser(nil, func() (accountRepository, error) {
-		return a.accountRepoFactory(pltfrm, accountId, &repoCredentials)
+		return accountRepo, nil
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, a.workspaceRepoFactory)
 	}, createFullName)
+
+	groups, err := repo.ChannelToSet(func(ctx context.Context) <-chan repo.ChannelItem[iam.Group] {
+		return accountRepo.ListGroups(ctx)
+	}, func(group iam.Group) string {
+		return group.DisplayName
+	})
+	if err != nil {
+		return fmt.Errorf("list groups: %w", err)
+	}
+
+	servicePrincipals, err := repo.ChannelToSet(func(ctx context.Context) <-chan repo.ChannelItem[iam.ServicePrincipal] {
+		return accountRepo.ListServicePrincipals(ctx)
+	}, func(servicePrincipal iam.ServicePrincipal) string {
+		return servicePrincipal.ApplicationId
+	})
 
 	apDataObjectVisitor := AccessProviderVisitor{
 		syncer:                a,
@@ -105,6 +126,9 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		pltfrm:                pltfrm,
 		storedFunctions:       types.NewStoredFunctions(),
 		metaStoreIdMap:        map[string]string{},
+
+		groups:            groups,
+		servicePrincipals: servicePrincipals,
 	}
 
 	err = traverser.Traverse(ctx, &apDataObjectVisitor, func(traverserOptions *DataObjectTraverserOptions) {
@@ -1121,6 +1145,9 @@ type AccessProviderVisitor struct {
 	syncer                *AccessSyncer
 	accessProviderHandler wrappers.AccessProviderHandler
 
+	groups            set.Set[string]
+	servicePrincipals set.Set[string]
+
 	repoCredentials types2.RepositoryCredentials
 	accountId       string
 	pltfrm          platform.DatabricksPlatform
@@ -1414,11 +1441,16 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 		whoItems := sync_from_target.WhoItem{}
 
 		for _, principal := range principleList {
-			// We assume that a group doesn't contain an @ character
-			if strings.Contains(principal, "@") {
+			// The principal can be a user email address, a group name or a service principal ID (https://docs.databricks.com/api/workspace/grants/get#privilege_assignments)
+
+			if a.servicePrincipals.Contains(principal) {
+				whoItems.Users = append(whoItems.Users, principal)
+			} else if a.groups.Contains(principal) {
+				whoItems.Groups = append(whoItems.Groups, principal)
+			} else if strings.Contains(principal, "@") {
 				whoItems.Users = append(whoItems.Users, principal)
 			} else {
-				whoItems.Groups = append(whoItems.Groups, principal)
+				logger.Warn(fmt.Sprintf("Unable to find to validate if %q is users, group or service principal", principal))
 			}
 		}
 

@@ -162,3 +162,36 @@ The plugin offers support for a subset of SQL statements in a best effort manner
 
 - **No support for linux 386**:
 Currently, the plugin does is not supported on linux 386 systems.
+
+- **No support for locking**:
+Currently, the plugin do no support access control locking.
+
+## Access controls
+### From Target
+#### Unity Catalog Permissions
+Unity catalog permissions are imported ad `grant`.
+All Unity Catalog permissions that are not set by a Raito managed access control are imported as `grant` in Raito.
+A grant will be created for each permission, data object pair. All principals sharing the same permission (and are not set Raito) will be included.
+
+#### Column mask
+Column masks are imported as `mask`.
+Column masks are imported as non-internalizable because most existing masking policies cannot be correctly interpreted within Raito.
+
+#### Row Filter
+Row filters are imported as `filter`.
+The same mechanism is used as for column masks. Therefor, row filters are non-internalizable as the `who`-items can not be identified.
+
+## To Target
+#### Grants
+Grants will be implemented as permissions.
+A permission will be grated for each (unpacked) who item, data object pair.
+
+#### Purposes
+Purposes will be implemented exactly the same as grants.
+
+#### Masks
+Each mask will be exported as masking policy to all schemas associated with the what-items of the mask.
+Within each schema a masking policy function is created for each required data type.
+
+#### Filters
+Each filter will be exported as row access policy to exactly one table.

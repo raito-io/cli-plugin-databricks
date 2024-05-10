@@ -61,6 +61,21 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		WorkspaceStatus: "RUNNING",
 	}
 
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything).Return(repo.ArrayToChannel[iam.Group]([]iam.Group{
+		{
+			DisplayName: "group1",
+			ExternalId:  "group1",
+			Id:          "group1",
+		},
+	}))
+	mockAccountRepo.EXPECT().ListServicePrincipals(mock.Anything).Return(repo.ArrayToChannel[iam.ServicePrincipal]([]iam.ServicePrincipal{
+		{
+			ApplicationId: "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+			DisplayName:   "Service Principal 1",
+			ExternalId:    "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+			Id:            "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+		},
+	}))
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Twice()
@@ -121,7 +136,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		Return(&catalog.PermissionsList{
 			PrivilegeAssignments: []catalog.PrivilegeAssignment{
 				{
-					Principal:  "principal1",
+					Principal:  "5f239a72-c050-47b4-947c-f329f8e2e8f2",
 					Privileges: []catalog.Privilege{catalog.PrivilegeSelect, catalog.PrivilegeExecute},
 				},
 				{
@@ -308,7 +323,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
-				Groups: []string{"principal1"},
+				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2"},
 			},
 			What: []sync_from_target.WhatItem{
 				{
@@ -328,8 +343,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
-				Users: []string{"ruben@raito.io"},
-				// Groups principal1 should be excluded
+				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2", "ruben@raito.io"},
 			},
 			What: []sync_from_target.WhatItem{
 				{
