@@ -36,7 +36,7 @@ func main() {
 
 					// Native authentication
 					{Name: constants.DatabricksClientId, Description: "The (oauth) client ID to use when authenticating against the Databricks account.", Mandatory: false},
-					{Name: constants.DatabricksClientSecret, Description: "The (oauth)  client Secret to use when authentic against the Databricks account.", Mandatory: false},
+					{Name: constants.DatabricksClientSecret, Description: "The (oauth) client Secret to use when authentic against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksUser, Description: "The username to authenticate against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksPassword, Description: "The password to authenticate against the Databricks account.", Mandatory: false},
 					{Name: constants.DatabricksToken, Description: "The Databricks personal access token (PAT) (AWS, Azure, and GCP) or Azure Active Directory (Azure AD) token (Azure).", Mandatory: false},

@@ -9,9 +9,9 @@ builds:
     goos:
       - linux
       - darwin
-    ignore:
-      - goos: linux
-        goarch: 386
+#    ignore:
+#      - goos: linux
+#        goarch: 386
     ldflags:
       - -X version.Version={{.Version}}
 checksum:
