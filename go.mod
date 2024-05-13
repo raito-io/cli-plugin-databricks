@@ -7,7 +7,6 @@ toolchain go1.22.0
 require (
 	github.com/aws/smithy-go v1.20.2
 	github.com/databricks/databricks-sdk-go v0.40.0
-	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/raito-io/bexpression v0.1.2
@@ -49,7 +48,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
-	github.com/google/subcommands v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
