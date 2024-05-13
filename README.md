@@ -155,7 +155,7 @@ The following configuration parameters are available
 It is essential to be aware of these limitations to ensure appropriate usage and manage expectations. The current limitations of the plugin include:
 
 - **Lack of support for data objects**:
-At present, the plugin does not provide support for data objects wiht following types: pipelines, provider, recipient, share, storage_credential and volume.
+Currently, this software only supports data objects defined in the [Supported data objects](#supported-data-objects) section.
 
 - **Limited support for usage**:
 The plugin offers support for a subset of SQL statements in the best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
