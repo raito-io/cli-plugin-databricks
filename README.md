@@ -36,7 +36,7 @@ To use this plugin, you will need
 3. An admin user on your databricks account with admin access on all workspaces or, a service principle that is owner of all databricks metastores and assigned as admin to the account and worspaces
 4. Within the databricks account and all workspaces, Unity Catalog should be enabled
 
-A full example on how to start using Raito Cloud with Snowflake can be found as a [guide in our documentation](http://docs.raito.io/docs/guide/cloud).
+A full example on how to start using Raito Cloud can be found as a [guide in our documentation](http://docs.raito.io/docs/guide/cloud).
 
 ## Usage
 To use the plugin, add the following snippet to your Raito CLI configuration file (`raito.yml`, by default) under the `targets` section:
@@ -137,7 +137,7 @@ The following configuration parameters are available
 |---------------------|-----------|------------------------------------------------------------------------------------------------------------------|
 | Row level filtering | ✅         | Databricks feature is still in [Public Preview](https://docs.databricks.com/en/release-notes/release-types.html) |
 | Column masking      | ✅         | Databricks feature is still in [Public Preview](https://docs.databricks.com/en/release-notes/release-types.html) |
-| Locking             | ❌         | Not supported yet                                                                                                |
+| Locking             | ❌         | Not supported                                                                                                    |
 | Replay              | ✅         | Explicit deletes cannot be replayed                                                                              |
 | Usage               | ✅         | Usage SQL parsing is limited to best effort                                                                      |
 
@@ -155,16 +155,16 @@ The following configuration parameters are available
 It is essential to be aware of these limitations to ensure appropriate usage and manage expectations. The current limitations of the plugin include:
 
 - **Lack of support for data objects**:
-At present, the plugin does not provide support for data objects iwht following types: pipelines, provider, recipient, share, storage_credential and volume.
+At present, the plugin does not provide support for data objects wiht following types: pipelines, provider, recipient, share, storage_credential and volume.
 
 - **Limited support for usage**:
-The plugin offers support for a subset of SQL statements in a best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
+The plugin offers support for a subset of SQL statements in the best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
 
 - **No support for linux 386**:
-Currently, the plugin does is not supported on linux 386 systems.
+Currently, the plugin is not supported on linux 386 systems.
 
 - **No support for locking**:
-Currently, the plugin do no support access control locking.
+- As databricks is ACL based, access control locking is not possible.
 
 ## Access controls
 ### From Target
