@@ -22,8 +22,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.5 h1:PG1F3OD1szkuQPzDw3C
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.5/go.mod h1:jU1li6RFryMz+so64PpKtudI+QzbKoIEivqdf6LNpOc=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 h1:hT8rVHwugYE2lEfdFE0QWVo81lF7jMrYJVDWI+f+VxU=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0/go.mod h1:8tu/lYfQfFe6IGnaOdrpVgEL2IrrDOf6/m9RQum4NkY=
-github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.36.5 h1:JP3CujVmcSm/MlP8oCF/BxrtjVjeh41y3jY/T88q3Eo=
-github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.36.5/go.mod h1:TiLZ2/+WAEyG2PnuAYj/un46UJ7qBf5BWWTAKgaHP8I=
+github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.37.0 h1:cAYdiSyKAvVuBGu8587c0kAA98RojEOfvCygbSrp+8E=
+github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.37.0/go.mod h1:TiLZ2/+WAEyG2PnuAYj/un46UJ7qBf5BWWTAKgaHP8I=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 h1:Ji0DY1xUsUr3I8cHps0G+XM3WWU16lP6yG8qu1GAZAs=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2/go.mod h1:5CsjAbs3NlGQyZNFACh+zztPDI7fU6eW9QsxjfnuBKg=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.7 h1:ogRAwT1/gxJBcSWDMZlgyFUM962F51A5CRhDLbxLdmo=
@@ -47,8 +47,8 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
-github.com/databricks/databricks-sdk-go v0.39.0 h1:nVnQYkk47SkEsRSXWkn6j7jBOxXgusjoo6xwbaHTGss=
-github.com/databricks/databricks-sdk-go v0.39.0/go.mod h1:Yjy1gREDLK65g4axpVbVNKYAHYE2Sqzj0AB9QWHCBVM=
+github.com/databricks/databricks-sdk-go v0.40.0 h1:H9KAyRbM5lwnY8t9nY/xAYHVTBsLqFuIRwVaRGqYJe0=
+github.com/databricks/databricks-sdk-go v0.40.0/go.mod h1:Yjy1gREDLK65g4axpVbVNKYAHYE2Sqzj0AB9QWHCBVM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
@@ -168,8 +168,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/raito-io/bexpression v0.1.2 h1:DHBTG2kNGSfwM3BwH97WP1vFjB2N8Ub41RRNUDWztVA=
 github.com/raito-io/bexpression v0.1.2/go.mod h1:z0in8o1zo5cPNeCUa3Mh5ZP7h6v/LX0JH5/NbV3VtzI=
-github.com/raito-io/cli v0.64.1 h1:wwRMM0zOZgenqShMkJon6QRmF4wr9D4Q9VA7g0iA1Lk=
-github.com/raito-io/cli v0.64.1/go.mod h1:xtoP7siGDklxuC1RgSzIqFpTu7DK8/P7xvLKMX1OGfI=
+github.com/raito-io/cli v0.65.1 h1:z5SlJV8C5mYMr5FTs9oTpacjUBGBLnjHERXoC6h7MDQ=
+github.com/raito-io/cli v0.65.1/go.mod h1:lGUaRMT58G78R9WJzD7GjCHMol6kqhr7J40kLk8ZvSE=
 github.com/raito-io/enumer v0.1.4 h1:r2QqGMjfKwn+yMHo4ybOAWvYON4pLBy+ucVP5niyHK4=
 github.com/raito-io/enumer v0.1.4/go.mod h1:+tSaVlYRuVnf2vA7ETf8t7/Mzq/sgvWT/dHeMVOjBu8=
 github.com/raito-io/golang-set v0.0.4 h1:7zk8r1TCE/F9JOOgseIXYx7oZJdC9/j5uivkCYjnCg0=

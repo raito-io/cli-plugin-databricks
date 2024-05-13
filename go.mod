@@ -6,11 +6,11 @@ toolchain go1.22.0
 
 require (
 	github.com/aws/smithy-go v1.20.2
-	github.com/databricks/databricks-sdk-go v0.39.0
+	github.com/databricks/databricks-sdk-go v0.40.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/raito-io/bexpression v0.1.2
-	github.com/raito-io/cli v0.64.1
+	github.com/raito-io/cli v0.65.1
 	github.com/raito-io/enumer v0.1.4
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.9.0
@@ -30,7 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.36.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.37.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.5 // indirect
