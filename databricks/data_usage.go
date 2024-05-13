@@ -20,6 +20,8 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/databricks/utils"
 )
 
 const (
@@ -39,24 +41,24 @@ type dataUsageAccountRepository interface {
 //go:generate go run github.com/vektra/mockery/v2 --name=dataUsageWorkspaceRepository
 type dataUsageWorkspaceRepository interface {
 	QueryHistory(ctx context.Context, startTime *time.Time, f func(context.Context, *sql.QueryInfo) error) error
-	ListCatalogs(ctx context.Context) ([]catalog.CatalogInfo, error)
-	ListSchemas(ctx context.Context, catalogName string) ([]catalog.SchemaInfo, error)
-	ListTables(ctx context.Context, catalogName string, schemaName string) ([]catalog.TableInfo, error)
+	ListCatalogs(ctx context.Context) <-chan repo.ChannelItem[catalog.CatalogInfo]
+	ListSchemas(ctx context.Context, catalogName string) <-chan repo.ChannelItem[catalog.SchemaInfo]
+	ListTables(ctx context.Context, catalogName string, schemaName string) <-chan repo.ChannelItem[catalog.TableInfo]
 }
 
 var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
-	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error)
-	workspaceRepoFactory func(*repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (dataUsageAccountRepository, error)
+	workspaceRepoFactory func(*types.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
 	return &DataUsageSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataUsageAccountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
 			return repo.NewWorkspaceRepository(repoCredentials)
 		},
 	}
@@ -99,12 +101,12 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisioning.Workspace, metastore *catalog.MetastoreInfo, fileCreator wrappers.DataUsageStatementHandler, configParams *config.ConfigMap) error {
 	logger.Info(fmt.Sprintf("Syncing workspace %s", workspace.DeploymentName))
 
-	pltfrm, _, repoCredentials, err := getAndValidateParameters(configParams)
+	pltfrm, _, repoCredentials, err := utils.GetAndValidateParameters(configParams)
 	if err != nil {
 		return fmt.Errorf("get credentials: %w", err)
 	}
 
-	credentials, err := InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
+	credentials, err := utils.InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
 	if err != nil {
 		return fmt.Errorf("initialize workspace repo credentials: %w", err)
 	}
@@ -217,25 +219,34 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 func (d *DataUsageSyncer) getTableInfoMap(ctx context.Context, workspaceRepo dataUsageWorkspaceRepository) (map[string][]catalog.TableInfo, error) {
 	tableSchemaCatalogMap := make(map[string][]catalog.TableInfo)
 
-	catalogs, err := workspaceRepo.ListCatalogs(ctx)
-	if err != nil {
-		return nil, err
-	}
+	catalogs := workspaceRepo.ListCatalogs(ctx)
 
 	for ci := range catalogs {
-		schemas, err := workspaceRepo.ListSchemas(ctx, catalogs[ci].Name)
-		if err != nil {
-			return nil, err
+		if ci.HasError() {
+			return nil, fmt.Errorf("list catalogs: %w", ci.Error())
 		}
 
+		catalogItem := ci.I
+
+		schemas := workspaceRepo.ListSchemas(ctx, catalogItem.Name)
+
 		for si := range schemas {
-			tables, err := workspaceRepo.ListTables(ctx, catalogs[ci].Name, schemas[si].Name)
-			if err != nil {
-				return nil, err
+			if si.HasError() {
+				return nil, fmt.Errorf("list schemas: %w", si.Error())
 			}
 
+			schemaItem := si.I
+
+			tables := workspaceRepo.ListTables(ctx, catalogItem.Name, schemaItem.Name)
+
 			for ti := range tables {
-				tableSchemaCatalogMap[tables[ti].Name] = append(tableSchemaCatalogMap[tables[ti].Name], tables[ti])
+				if ti.HasError() {
+					return nil, fmt.Errorf("list tables: %w", ti.Error())
+				}
+
+				tableItem := ti.Item()
+
+				tableSchemaCatalogMap[tableItem.Name] = append(tableSchemaCatalogMap[tableItem.Name], tableItem)
 			}
 		}
 	}
@@ -526,7 +537,7 @@ func (d *DataUsageSyncer) generateWhatItemsFromTable(tableNames []string, userId
 }
 
 func (d *DataUsageSyncer) loadMetastores(ctx context.Context, configMap *config.ConfigMap) ([]catalog.MetastoreInfo, []provisioning.Workspace, map[string]string, error) {
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, accountId, repoCredentials, err := utils.GetAndValidateParameters(configMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package repo
 
 import (
 	"context"
@@ -12,16 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"cli-plugin-databricks/databricks"
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
-	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/databricks/utils"
 )
 
 type SqlWarehouseRepositoryTestSuite struct {
 	it.DatabricksTestSuite
-	repo repo.WarehouseRepository
+	repo WarehouseRepository
 }
 
 func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
@@ -32,23 +32,23 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
-	credentials := repo.RepositoryCredentials{
+	credentials := types.RepositoryCredentials{
 		Username:     config.GetString(constants.DatabricksUser),
 		Password:     config.GetString(constants.DatabricksPassword),
 		ClientId:     config.GetString(constants.DatabricksClientId),
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	accountRepo, err := repo.NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
+	accountRepo, err := NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
 	require.NoError(t, err)
 
 	workspace, err := accountRepo.GetWorkspaceByName(context.Background(), os.Getenv("DB_TESTING_WORKSPACE"))
 	require.NoError(t, err)
 
-	repoCredentials, err := databricks.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
+	repoCredentials, err := utils.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
 	require.NoError(t, err)
 
-	repository, err := repo.NewWorkspaceRepository(repoCredentials)
+	repository, err := NewWorkspaceRepository(repoCredentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 
@@ -70,7 +70,7 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_GetTableInf
 	tableInformation, err := s.repo.GetTableInformation(context.Background(), "raito_testing", "humanresources", "employee")
 
 	require.NoError(s.T(), err)
-	assert.Equal(s.T(), map[string]*repo.ColumnInformation{
+	assert.Equal(s.T(), map[string]*types.ColumnInformation{
 		"BirthDate": {
 			Name: "BirthDate",
 			Type: "date",
@@ -136,4 +136,48 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_GetTableInf
 			Type: "decimal(38,0)",
 		},
 	}, tableInformation)
+}
+
+func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Mask() {
+	ctx := context.Background()
+	catalog := "raito_testing"
+	schema := "humanresources"
+
+	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropFunction(ctx, catalog, schema, "mask_ssn")
+		assert.NoError(s.T(), err)
+	}()
+
+	err = s.repo.SetMask(ctx, catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropMask(ctx, catalog, schema, "employee", "NationalIDNumber")
+		assert.NoError(s.T(), err)
+	}()
+}
+
+func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Filter() {
+	ctx := context.Background()
+	catalog := "raito_testing"
+	schema := "person"
+
+	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS filter_state(id decimal(38,0)) RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admin'), true, id > 10)")
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropFunction(ctx, catalog, schema, "filter_state")
+		assert.NoError(s.T(), err)
+	}()
+
+	err = s.repo.SetRowFilter(ctx, catalog, schema, "stateprovince", "filter_state", []string{"StateProvinceID"})
+	require.NoError(s.T(), err)
+
+	defer func() {
+		err = s.repo.DropRowFilter(ctx, catalog, schema, "stateprovince")
+		assert.NoError(s.T(), err)
+	}()
 }

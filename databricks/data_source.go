@@ -17,6 +17,8 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/databricks/utils"
 )
 
 var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
@@ -28,8 +30,8 @@ type dataSourceWorkspaceRepository interface {
 }
 
 type DataSourceSyncer struct {
-	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error)
-	workspaceRepoFactory func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *types.RepositoryCredentials) (accountRepository, error)
+	workspaceRepoFactory func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
 	functionUsedAsMaskOrFilter set.Set[string]
 
@@ -38,10 +40,10 @@ type DataSourceSyncer struct {
 
 func NewDataSourceSyncer() *DataSourceSyncer {
 	return &DataSourceSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (accountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			return repo.NewWorkspaceRepository(repoCredentials)
 		},
 
@@ -65,7 +67,7 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		}
 	}()
 
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configParams)
+	pltfrm, accountId, repoCredentials, err := utils.GetAndValidateParameters(configParams)
 	if err != nil {
 		return err
 	}
@@ -76,29 +78,15 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
-		return selectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
+		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
 
-	err = traverser.Traverse(ctx, func(ctx context.Context, securableType string, parentObject interface{}, object interface{}, _ *provisioning.Workspace) error {
-		switch securableType {
-		case constants.MetastoreType:
-			return d.parseMetastore(ctx, dataSourceHandler, object)
-		case constants.WorkspaceType:
-			return d.parseWorkspace(ctx, dataSourceHandler, object)
-		case constants.CatalogType:
-			return d.parseCatalog(ctx, dataSourceHandler, object)
-		case ds.Schema:
-			return d.parseSchema(ctx, dataSourceHandler, parentObject, object)
-		case ds.Table:
-			return d.parseTable(ctx, dataSourceHandler, parentObject, object)
-		case ds.Column:
-			return d.parseColumn(ctx, dataSourceHandler, parentObject, object)
-		case constants.FunctionType:
-			return d.parseFunctions(ctx, dataSourceHandler, parentObject, object)
-		}
+	visitor := DataSourceVisitor{
+		dataSourceHandler: dataSourceHandler,
+		syncer:            d,
+	}
 
-		return fmt.Errorf("unsupported type: %s", securableType)
-	}, func(traverserOptions *DataObjectTraverserOptions) {
+	err = traverser.Traverse(ctx, visitor, func(traverserOptions *DataObjectTraverserOptions) {
 		traverserOptions.SecurableTypesToReturn = set.NewSet[string](constants.MetastoreType, constants.WorkspaceType, constants.CatalogType, ds.Schema, ds.Table, ds.Column, constants.FunctionType)
 	})
 
@@ -141,175 +129,6 @@ func createFullName(securableType string, parent interface{}, object interface{}
 	return ""
 }
 
-func (d *DataSourceSyncer) parseMetastore(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	metastore, ok := object.(*catalog.MetastoreInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse MetastoreInfo object. Expected *catalog.MetastoreInfo but got %T", object)
-	}
-
-	logger.Info(fmt.Sprintf("Found metastore %q: %+v", metastore.Name, metastore))
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:       metastore.Name,
-		Type:       constants.MetastoreType,
-		FullName:   metastore.MetastoreId,
-		ExternalId: metastore.MetastoreId,
-	})
-}
-
-func (d *DataSourceSyncer) parseWorkspace(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	workspace, ok := object.(*provisioning.Workspace)
-	if !ok {
-		return fmt.Errorf("unable to parse Workspace object. Expected *repo.Workspace but got %T", object)
-	}
-
-	id := strconv.FormatInt(workspace.WorkspaceId, 10)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:       workspace.WorkspaceName,
-		FullName:   id,
-		Type:       constants.WorkspaceType,
-		ExternalId: id,
-	})
-}
-
-func (d *DataSourceSyncer) parseCatalog(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, object interface{}) error {
-	c, ok := object.(*catalog.CatalogInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse CatalogInfo object. Expected *catalog.CatalogInfo but got %T", object)
-	}
-
-	uniqueId := createUniqueId(c.MetastoreId, c.Name)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             c.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: c.MetastoreId,
-		Description:      c.Comment,
-		FullName:         uniqueId,
-		Type:             constants.CatalogType,
-	})
-}
-
-func (d *DataSourceSyncer) parseSchema(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parent interface{}, object interface{}) error {
-	schema, ok := object.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse SchemaInfo object. Expected *catalog.SchemaInfo but got %T", object)
-	}
-
-	c, ok := parent.(*catalog.CatalogInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent CatalogInfo object. Expected *catalog.CatalogInfo but got %T", object)
-	}
-
-	uniqueId := createUniqueId(schema.MetastoreId, schema.FullName)
-	parentId := createUniqueId(c.MetastoreId, c.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             schema.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      schema.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Schema,
-	})
-}
-
-func (d *DataSourceSyncer) parseTable(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parent interface{}, object interface{}) error {
-	table, ok := object.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse TableInfo object. Expected *catalog.TableInfo but got %T", object)
-	}
-
-	if table.RowFilter != nil {
-		if table.RowFilter.FunctionName == "" {
-			// Currently all row filters are unknown due to a bug in Databricks
-			logger.Warn(fmt.Sprintf("Unknown row filter applied to table %q", table.FullName))
-		} else {
-			logger.Debug(fmt.Sprintf("Row filter function %q found on table %q", table.RowFilter.FunctionName, table.FullName))
-			d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, table.RowFilter.FunctionName))
-		}
-	}
-
-	schema, ok := parent.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent SchemaInfo object. Expected *catalog.SchemaInfo but got %T", parent)
-	}
-
-	uniqueId := createUniqueId(table.MetastoreId, table.FullName)
-	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             table.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      table.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Table,
-	})
-}
-
-func (d *DataSourceSyncer) parseColumn(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parentObject interface{}, object interface{}) error {
-	column, ok := object.(*catalog.ColumnInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse ColumnInfo object. Expected *catalog.ColumnInfo but got %T", object)
-	}
-
-	table, ok := parentObject.(*catalog.TableInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent TableInfo object. Expected *catalog.TableInfo but got %T", parentObject)
-	}
-
-	uniqueId := createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
-	parentId := createUniqueId(table.MetastoreId, table.FullName)
-
-	if column.Mask != nil {
-		logger.Debug(fmt.Sprintf("Ignoring mask function: '%s'", column.Mask.FunctionName))
-		d.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, column.Mask.FunctionName))
-	}
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             column.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      column.Comment,
-		FullName:         uniqueId,
-		Type:             ds.Column,
-		DataType:         ptr.String(column.TypeName.String()),
-	})
-}
-
-func (d *DataSourceSyncer) parseFunctions(_ context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, parentObject interface{}, object interface{}) error {
-	function, ok := object.(*catalog.FunctionInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse Function. Expected *catalog.FunctionInfo but got %T", object)
-	}
-
-	uniqueId := createUniqueId(function.MetastoreId, function.FullName)
-
-	if d.functionUsedAsMaskOrFilter.Contains(uniqueId) {
-		logger.Debug(fmt.Sprintf("Function %s used as mask. Will ignore function", uniqueId))
-
-		return nil
-	}
-
-	schema, ok := parentObject.(*catalog.SchemaInfo)
-	if !ok {
-		return fmt.Errorf("unable to parse parent SchemaInfo object. Expected *catalog.SchemaInfo but got %T", parentObject)
-	}
-
-	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
-
-	return dataSourceHandler.AddDataObjects(&ds.DataObject{
-		Name:             function.Name,
-		ExternalId:       uniqueId,
-		ParentExternalId: parentId,
-		Description:      function.Comment,
-		FullName:         uniqueId,
-		Type:             constants.FunctionType,
-	})
-}
-
 func createUniqueId(metastoreId string, fullName string) string {
 	return fmt.Sprintf("%s.%s", metastoreId, fullName)
 }
@@ -323,14 +142,123 @@ func getMetastoreAndFullnameOfUniqueId(uniqueId string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func TableTypeToRaitoType(tType catalog.TableType) (string, error) {
-	switch tType {
-	case catalog.TableTypeManaged, catalog.TableTypeExternal, catalog.TableTypeStreamingTable:
-		//Regular table
-		return ds.Table, nil
-	case catalog.TableTypeView, catalog.TableTypeMaterializedView:
-		return ds.View, nil
-	default:
-		return "", fmt.Errorf("unknown table type %s", tType)
+var _ DataObjectVisitor = (*DataSourceVisitor)(nil)
+
+type DataSourceVisitor struct {
+	dataSourceHandler wrappers.DataSourceObjectHandler
+	syncer            *DataSourceSyncer
+}
+
+func (d DataSourceVisitor) VisitWorkspace(_ context.Context, workspace *provisioning.Workspace) error {
+	id := strconv.FormatInt(workspace.WorkspaceId, 10)
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:       workspace.WorkspaceName,
+		FullName:   id,
+		Type:       constants.WorkspaceType,
+		ExternalId: id,
+	})
+}
+
+func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.MetastoreInfo, workspace *provisioning.Workspace) error {
+	logger.Info(fmt.Sprintf("Found metastore %q: %+v", metastore.Name, metastore))
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:       metastore.Name,
+		Type:       constants.MetastoreType,
+		FullName:   metastore.MetastoreId,
+		ExternalId: metastore.MetastoreId,
+	})
+}
+
+func (d DataSourceVisitor) VisitCatalog(_ context.Context, c *catalog.CatalogInfo, _ *catalog.MetastoreInfo, _ *provisioning.Workspace) error {
+	uniqueId := createUniqueId(c.MetastoreId, c.Name)
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:             c.Name,
+		ExternalId:       uniqueId,
+		ParentExternalId: c.MetastoreId,
+		Description:      c.Comment,
+		FullName:         uniqueId,
+		Type:             constants.CatalogType,
+	})
+}
+
+func (d DataSourceVisitor) VisitSchema(_ context.Context, schema *catalog.SchemaInfo, c *catalog.CatalogInfo, _ *provisioning.Workspace) error {
+	uniqueId := createUniqueId(schema.MetastoreId, schema.FullName)
+	parentId := createUniqueId(c.MetastoreId, c.FullName)
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:             schema.Name,
+		ExternalId:       uniqueId,
+		ParentExternalId: parentId,
+		Description:      schema.Comment,
+		FullName:         uniqueId,
+		Type:             ds.Schema,
+	})
+}
+
+func (d DataSourceVisitor) VisitTable(_ context.Context, table *catalog.TableInfo, schema *catalog.SchemaInfo, _ *provisioning.Workspace) error {
+	if table.RowFilter != nil {
+		if table.RowFilter.FunctionName == "" {
+			// Currently all row filters are unknown due to a bug in Databricks
+			logger.Warn(fmt.Sprintf("Unknown row filter applied to table %q", table.FullName))
+		} else {
+			logger.Debug(fmt.Sprintf("Row filter function %q found on table %q", table.RowFilter.FunctionName, table.FullName))
+			d.syncer.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, table.RowFilter.FunctionName))
+		}
 	}
+
+	uniqueId := createUniqueId(table.MetastoreId, table.FullName)
+	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:             table.Name,
+		ExternalId:       uniqueId,
+		ParentExternalId: parentId,
+		Description:      table.Comment,
+		FullName:         uniqueId,
+		Type:             ds.Table,
+	})
+}
+
+func (d DataSourceVisitor) VisitColumn(_ context.Context, column *catalog.ColumnInfo, table *catalog.TableInfo, _ *provisioning.Workspace) error {
+	uniqueId := createTableUniqueId(table.MetastoreId, table.FullName, column.Name)
+	parentId := createUniqueId(table.MetastoreId, table.FullName)
+
+	if column.Mask != nil {
+		logger.Debug(fmt.Sprintf("Ignoring mask function: '%s'", column.Mask.FunctionName))
+		d.syncer.functionUsedAsMaskOrFilter.Add(createUniqueId(table.MetastoreId, column.Mask.FunctionName))
+	}
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:             column.Name,
+		ExternalId:       uniqueId,
+		ParentExternalId: parentId,
+		Description:      column.Comment,
+		FullName:         uniqueId,
+		Type:             ds.Column,
+		DataType:         ptr.String(column.TypeName.String()),
+	})
+}
+
+func (d DataSourceVisitor) VisitFunction(_ context.Context, function *catalog.FunctionInfo, schema *catalog.SchemaInfo, _ *provisioning.Workspace) error {
+	uniqueId := createUniqueId(function.MetastoreId, function.FullName)
+
+	if d.syncer.functionUsedAsMaskOrFilter.Contains(uniqueId) {
+		logger.Debug(fmt.Sprintf("Function %s used as mask. Will ignore function", uniqueId))
+
+		return nil
+	}
+
+	parentId := createUniqueId(schema.MetastoreId, schema.FullName)
+
+	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:             function.Name,
+		ExternalId:       uniqueId,
+		ParentExternalId: parentId,
+		Description:      function.Comment,
+		FullName:         uniqueId,
+		Type:             constants.FunctionType,
+	})
 }

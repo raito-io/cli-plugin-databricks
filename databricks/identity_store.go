@@ -12,6 +12,8 @@ import (
 
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	utils2 "cli-plugin-databricks/databricks/utils"
 	"cli-plugin-databricks/utils"
 )
 
@@ -19,18 +21,18 @@ var _ wrappers.IdentityStoreSyncer = (*IdentityStoreSyncer)(nil)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=identityStoreAccountRepository
 type identityStoreAccountRepository interface {
-	ListUsers(ctx context.Context, optFn ...func(options *repo.DatabricksUsersFilter)) <-chan interface{}
-	ListGroups(ctx context.Context, optFn ...func(options *repo.DatabricksGroupsFilter)) <-chan interface{}
-	ListServicePrincipals(ctx context.Context, optFn ...func(options *repo.DatabricksServicePrincipalFilter)) <-chan interface{}
+	ListUsers(ctx context.Context, optFn ...func(options *types.DatabricksUsersFilter)) <-chan repo.ChannelItem[iam.User]
+	ListGroups(ctx context.Context, optFn ...func(options *types.DatabricksGroupsFilter)) <-chan repo.ChannelItem[iam.Group]
+	ListServicePrincipals(ctx context.Context, optFn ...func(options *types.DatabricksServicePrincipalFilter)) <-chan repo.ChannelItem[iam.ServicePrincipal]
 }
 
 type IdentityStoreSyncer struct {
-	accountRepoFactory func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (identityStoreAccountRepository, error)
+	accountRepoFactory func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (identityStoreAccountRepository, error)
 }
 
 func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (identityStoreAccountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (identityStoreAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
 	}
@@ -45,7 +47,7 @@ func (i *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *con
 }
 
 func (i *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	pltfrm, accountId, repoCredentials, err := getAndValidateParameters(configMap)
+	pltfrm, accountId, repoCredentials, err := utils2.GetAndValidateParameters(configMap)
 	if err != nil {
 		return err
 	}
@@ -85,28 +87,28 @@ func (i *IdentityStoreSyncer) getGroups(ctx context.Context, identityHandler wra
 	userParents := make(map[string][]string)
 
 	for groupItem := range groupsChannel {
-		switch item := groupItem.(type) {
-		case error:
-			return nil, fmt.Errorf("list group item: %w", item)
-		case iam.Group:
-			membergroups := make([]string, 0, len(item.Members))
-
-			for _, member := range item.Members {
-				if strings.HasPrefix(member.Ref, "Groups/") {
-					membergroups = append(membergroups, member.Value)
-					groupParents[member.Value] = append(groupParents[member.Value], item.Id)
-				} else {
-					userParents[member.Value] = append(userParents[member.Value], item.Id)
-				}
-			}
-
-			err := dependencyTree.AddDependency(item.Id, membergroups...)
-			if err != nil {
-				return nil, fmt.Errorf("add member groups to dependency tree: %w", err)
-			}
-
-			groupMap[item.Id] = item
+		if groupItem.HasError() {
+			return nil, fmt.Errorf("list group item: %w", groupItem.Error())
 		}
+
+		group := groupItem.Item()
+		membergroups := make([]string, 0, len(group.Members))
+
+		for _, member := range group.Members {
+			if strings.HasPrefix(member.Ref, "Groups/") {
+				membergroups = append(membergroups, member.Value)
+				groupParents[member.Value] = append(groupParents[member.Value], group.Id)
+			} else {
+				userParents[member.Value] = append(userParents[member.Value], group.Id)
+			}
+		}
+
+		err := dependencyTree.AddDependency(group.Id, membergroups...)
+		if err != nil {
+			return nil, fmt.Errorf("add member groups to dependency tree: %w", err)
+		}
+
+		groupMap[group.Id] = group
 	}
 
 	err := dependencyTree.DependencyCleanup()
@@ -139,45 +141,46 @@ func (i *IdentityStoreSyncer) getUsers(ctx context.Context, identityHandler wrap
 	usersChannel := repo.ListUsers(channelCtx)
 
 	for userItem := range usersChannel {
-		switch item := userItem.(type) {
-		case error:
-			return item
-		case iam.User:
-			var primaryEmail string
+		if userItem.HasError() {
+			return fmt.Errorf("list user item: %w", userItem.Error())
+		}
 
-			for _, email := range item.Emails {
-				if email.Primary {
-					primaryEmail = email.Value
-					break
-				}
+		user := userItem.Item()
+
+		var primaryEmail string
+
+		for _, email := range user.Emails {
+			if email.Primary {
+				primaryEmail = email.Value
+				break
 			}
+		}
 
-			if primaryEmail == "" {
-				return fmt.Errorf("user %s has no primary email", item.Name)
+		if primaryEmail == "" {
+			return fmt.Errorf("user %s has no primary email", user.Name)
+		}
+
+		name := user.DisplayName
+		if name == "" {
+			if user.UserName != "" {
+				logger.Warn(fmt.Sprintf("user %s has no display name. Will use username instead.", user.Id))
+				name = user.UserName
+			} else {
+				logger.Warn(fmt.Sprintf("user %s has no display name. Will use id instead.", user.Id))
+				name = user.Id
 			}
+		}
 
-			name := item.DisplayName
-			if name == "" {
-				if item.UserName != "" {
-					logger.Warn(fmt.Sprintf("user %s has no display name. Will use username instead.", item.Id))
-					name = item.UserName
-				} else {
-					logger.Warn(fmt.Sprintf("user %s has no display name. Will use id instead.", item.Id))
-					name = item.Id
-				}
-			}
+		err := identityHandler.AddUsers(&is.User{
+			Name:             name,
+			Email:            primaryEmail,
+			ExternalId:       user.Id,
+			UserName:         user.UserName,
+			GroupExternalIds: userParentMap[user.Id],
+		})
 
-			err := identityHandler.AddUsers(&is.User{
-				Name:             name,
-				Email:            primaryEmail,
-				ExternalId:       item.Id,
-				UserName:         item.UserName,
-				GroupExternalIds: userParentMap[item.Id],
-			})
-
-			if err != nil {
-				return err
-			}
+		if err != nil {
+			return err
 		}
 	}
 
@@ -191,28 +194,28 @@ func (i *IdentityStoreSyncer) getServicePrincipals(ctx context.Context, identity
 	servicePrincipalsChannel := repo.ListServicePrincipals(channelCtx)
 
 	for servicePrincipalItem := range servicePrincipalsChannel {
-		switch item := servicePrincipalItem.(type) {
-		case error:
-			return item
-		case iam.ServicePrincipal:
-			name := item.DisplayName
+		if servicePrincipalItem.HasError() {
+			return fmt.Errorf("list service principal item: %w", servicePrincipalItem.Error())
+		}
 
-			if name == "" {
-				logger.Warn(fmt.Sprintf("Service Principal %s has no display name. Will use id instead.", item.Id))
-				name = item.Id
-			}
+		sp := servicePrincipalItem.Item()
+		name := sp.DisplayName
 
-			err := identityHandler.AddUsers(&is.User{
-				Name:             name,
-				Email:            item.ApplicationId,
-				ExternalId:       item.Id,
-				UserName:         item.ApplicationId,
-				GroupExternalIds: userParentMap[item.Id],
-			})
+		if name == "" {
+			logger.Warn(fmt.Sprintf("Service Principal %s has no display name. Will use id instead.", sp.Id))
+			name = sp.Id
+		}
 
-			if err != nil {
-				return err
-			}
+		err := identityHandler.AddUsers(&is.User{
+			Name:             name,
+			Email:            sp.ApplicationId,
+			ExternalId:       sp.Id,
+			UserName:         sp.ApplicationId,
+			GroupExternalIds: userParentMap[sp.Id],
+		})
+
+		if err != nil {
+			return err
 		}
 	}
 

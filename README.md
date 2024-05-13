@@ -11,6 +11,7 @@
 
 <p align="center">
     <a href="/LICENSE.md" target="_blank"><img src="https://img.shields.io/badge/license-Apache%202-brightgreen.svg" alt="Software License" /></a>
+<a href="https://github.com/raito-io/cli-plugin-snowflake/actions/workflows/build.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/raito-io/cli-plugin-databricks/build.yml?branch=main" alt="Build status" /></a>
     <a href="https://codecov.io/gh/raito-io/cli-plugin-databricks" target="_blank"><img src="https://img.shields.io/codecov/c/github/raito-io/cli-plugin-databricks" alt="Code Coverage" /></a>
 </p>
 
@@ -22,13 +23,10 @@
 At this point, no contributions are accepted to the project yet.**
 
 This Raito CLI plugin implements the integration with Databricks. It can
- - Synchronize the users in a databricks account to an identity store in Raito Cloud.
+ - Synchronize the users, groups and service principals in a databricks account to an identity store in Raito Cloud.
  - Synchronize the Databricks Unity Catalog meta data (data structure, known permissions, ...) to a data source in Raito Cloud.
  - Synchronize the access providers from Raito Cloud into Databricks Unity Catalog grants.
  - Synchronize the data usage information to Raito Cloud.
-
-[//]: # ( - Synchronize the data usage information to Raito Cloud.)
-
 
 ## Prerequisites
 To use this plugin, you will need
@@ -38,7 +36,7 @@ To use this plugin, you will need
 3. An admin user on your databricks account with admin access on all workspaces or, a service principle that is owner of all databricks metastores and assigned as admin to the account and worspaces
 4. Within the databricks account and all workspaces, Unity Catalog should be enabled
 
-[//]: # (A full example on how to start using Raito Cloud with Databricks can be found as a [guide in our documentation]&#40;http://docs.raito.io/docs/guide/cloud&#41;.)
+A full example on how to start using Raito Cloud can be found as a [guide in our documentation](http://docs.raito.io/docs/guide/cloud).
 
 ## Usage
 To use the plugin, add the following snippet to your Raito CLI configuration file (`raito.yml`, by default) under the `targets` section:
@@ -112,15 +110,88 @@ This will take the configuration from the `raito.yml` file (in the current worki
 
 Note: if you have multiple targets configured in your configuration file, you can run only this target by adding `--only-targets databricks` at the end of the command.
 
+## Configuration
+The following configuration parameters are available
+
+| Configuration name                  | Description                                                                                                                                                 | Mandatory | Default value |
+|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|---------------|
+| `databricks-account-id`             | The Databricks account to connect to.                                                                                                                       | True      |               |
+| `databricks-platform`               | The Databricks platform to connect to (AWS/GCP/Azure).                                                                                                      | True      |               |
+| `databricks-client-id`              | The (oauth) client ID to use when authenticating against the Databricks account.                                                                            | False     |               |
+| `databricks-client-secret `         | The (oauth) client Secret to use when authentic against the Databricks account.                                                                             | False     |               |
+| `databricks-user`                   | The username to authenticate against the Databricks account.                                                                                                | False     |               |
+| `databricks-password`               | The password to authenticate against the Databricks account.                                                                                                | False     |               |
+| `databricks-token`                  | The Databricks personal access token (PAT) (AWS, Azure, and GCP) or Azure Active Directory (Azure AD) token (Azure).                                        | False     |               |
+| `databricks-azure-use-msi `         | `true` to use Azure Managed Service Identity passwordless authentication flow for service principals. Requires AzureResourceID to be set.                   | False     | `false`       |
+| `databricks-azure-client-id`        | The Azure AD service principal's client secret.                                                                                                             | False     |               |
+| `databricks-azure-client-secret `   | The Azure AD service principal's application ID.                                                                                                            | False     |               |
+| `databricks-azure-tenant-id`        | The Azure AD service principal's tenant ID.                                                                                                                 | False     |               |
+| `databricks-azure-environment`      | The Azure environment type (such as Public, UsGov, China, and Germany) for a specific set of API endpoints.                                                 | False     | `PUBLIC`      |
+| `databricks-google-credentials`     | GCP Service Account Credentials JSON or the location of these credentials on the local filesystem.                                                          | False     |               |
+| `databricks-google-service-account` | The Google Cloud Platform (GCP) service account e-mail used for impersonation in the Default Application Credentials Flow that does not require a password. | False     |               |
+| `databricks-data-usage-window`      | The maximum number of days of usage data to retrieve. Maximum is 90 days.                                                                                   | False     | 90            |
+
+## Supported features
+
+| Feature             | Supported | Remarks                                                                                                          |
+|---------------------|-----------|------------------------------------------------------------------------------------------------------------------|
+| Row level filtering | ✅         | Databricks feature is still in [Public Preview](https://docs.databricks.com/en/release-notes/release-types.html) |
+| Column masking      | ✅         | Databricks feature is still in [Public Preview](https://docs.databricks.com/en/release-notes/release-types.html) |
+| Locking             | ❌         | Not supported                                                                                                    |
+| Replay              | ✅         | Explicit deletes cannot be replayed                                                                              |
+| Usage               | ✅         | Usage SQL parsing is limited to best effort                                                                      |
+
+## Supported data objects
+- Metastore
+- Workspace
+- Catalog
+- Schema
+- Table
+- Column
+- Function
+
 ## Limitations
 
 It is essential to be aware of these limitations to ensure appropriate usage and manage expectations. The current limitations of the plugin include:
 
-- **Lack of support for functions, external locations, and shares**:
-At present, the plugin does not provide support for functions, external locations, or shares data objects.
+- **Lack of support for data objects**:
+Currently, this software only supports data objects defined in the [Supported data objects](#supported-data-objects) section.
 
 - **Limited support for usage**:
-The plugin offers support for a subset of SQL statements in a best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
+The plugin offers support for a subset of SQL statements in the best effort manner. The supported statements include select, insert, merge, update, delete, and copy. However, certain advanced or complex scenarios may not be fully supported.
 
 - **No support for linux 386**:
-Currently, the plugin does is not supported on linux 386 systems.
+Currently, the plugin is not supported on linux 386 systems.
+
+- **No support for locking**:
+- As databricks is ACL based, access control locking is not possible.
+
+## Access controls
+### From Target
+#### Unity Catalog Permissions
+Unity catalog permissions are imported ad `grant`.
+All Unity Catalog permissions that are not set by a Raito managed access control are imported as `grant` in Raito.
+A grant will be created for each permission, data object pair. All principals sharing the same permission (and are not set Raito) will be included.
+
+#### Column mask
+Column masks are imported as `mask`.
+Column masks are imported as non-internalizable because most existing masking policies cannot be correctly interpreted within Raito.
+
+#### Row Filter
+Row filters are imported as `filter`.
+The same mechanism is used as for column masks. Therefor, row filters are non-internalizable as the `who`-items can not be identified.
+
+## To Target
+#### Grants
+Grants will be implemented as permissions.
+A permission will be grated for each (unpacked) who item, data object pair.
+
+#### Purposes
+Purposes will be implemented exactly the same as grants.
+
+#### Masks
+Each mask will be exported as masking policy to all schemas associated with the what-items of the mask.
+Within each schema a masking policy function is created for each required data type.
+
+#### Filters
+Each filter will be exported as row access policy to exactly one table.

@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package repo
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
-	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/stretchr/testify/assert"
@@ -18,17 +17,17 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
 
-	"cli-plugin-databricks/databricks"
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/it"
 	platform2 "cli-plugin-databricks/databricks/platform"
-	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/databricks/utils"
 	"cli-plugin-databricks/utils/array"
 )
 
 type AccountRepositoryTestSuite struct {
 	it.DatabricksTestSuite
-	repo *repo.AccountRepository
+	repo *AccountRepository
 }
 
 func TestAccountRepositoryTestSuite(t *testing.T) {
@@ -40,14 +39,14 @@ func TestAccountRepositoryTestSuite(t *testing.T) {
 		t.Fatalf("failed to parse platform: %s", err.Error())
 	}
 
-	credentials := repo.RepositoryCredentials{
+	credentials := types.RepositoryCredentials{
 		Username:     config.GetString(constants.DatabricksUser),
 		Password:     config.GetString(constants.DatabricksPassword),
 		ClientId:     config.GetString(constants.DatabricksClientId),
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	testSuite.repo, err = repo.NewAccountRepository(platform, &credentials, config.GetString(constants.DatabricksAccountId))
+	testSuite.repo, err = NewAccountRepository(platform, &credentials, config.GetString(constants.DatabricksAccountId))
 	if err != nil {
 		t.Fatalf("failed to create account repository: %s", err.Error())
 	}
@@ -133,13 +132,12 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListUsers() {
 	var users []string
 
 	for channelItem := range userChannel {
-		switch item := channelItem.(type) {
-		case error:
-			s.Fail(item.Error())
+		if channelItem.HasError() {
+			s.Fail(channelItem.Error().Error())
 
 			return
-		case iam.User:
-			users = append(users, item.DisplayName)
+		} else {
+			users = append(users, channelItem.Item().DisplayName)
 		}
 	}
 
@@ -159,16 +157,12 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListServicePrincipals
 	var servicePrincipals []string
 
 	for channelItem := range servicePrincipalChannel {
-		switch item := channelItem.(type) {
-		case error:
-			s.Fail(item.Error())
-
-			return
-		case iam.ServicePrincipal:
-			servicePrincipals = append(servicePrincipals, item.DisplayName)
+		if channelItem.HasError() {
+			s.Fail(channelItem.Error().Error())
+		} else {
+			servicePrincipals = append(servicePrincipals, channelItem.Item().DisplayName)
 		}
 	}
-
 	s.Contains(servicePrincipals, "RaitoSync")
 }
 
@@ -181,13 +175,10 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListGroups() {
 	var groups []string
 
 	for channelItem := range groupChannel {
-		switch item := channelItem.(type) {
-		case error:
-			s.Fail(item.Error())
-
-			return
-		case iam.Group:
-			groups = append(groups, item.DisplayName)
+		if channelItem.HasError() {
+			s.Fail(channelItem.Error().Error())
+		} else {
+			groups = append(groups, channelItem.Item().DisplayName)
 		}
 	}
 
@@ -256,7 +247,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_UpdateWorkspaceAssign
 
 type WorkspaceRepositoryTestSuite struct {
 	it.DatabricksTestSuite
-	repo *repo.WorkspaceRepository
+	repo *WorkspaceRepository
 }
 
 func TestWorkspaceRepositoryTestSuite(t *testing.T) {
@@ -266,23 +257,23 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 	pltfrm, err := platform2.DatabricksPlatformString(config.GetString(constants.DatabricksPlatform))
 	require.NoError(t, err)
 
-	credentials := repo.RepositoryCredentials{
+	credentials := types.RepositoryCredentials{
 		Username:     config.GetString(constants.DatabricksUser),
 		Password:     config.GetString(constants.DatabricksPassword),
 		ClientId:     config.GetString(constants.DatabricksClientId),
 		ClientSecret: config.GetString(constants.DatabricksClientSecret),
 	}
 
-	accountRepo, err := repo.NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
+	accountRepo, err := NewAccountRepository(pltfrm, &credentials, config.GetString(constants.DatabricksAccountId))
 	require.NoError(t, err)
 
 	workspace, err := accountRepo.GetWorkspaceByName(context.Background(), os.Getenv("DB_TESTING_WORKSPACE"))
 	require.NoError(t, err)
 
-	repoCredentials, err := databricks.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
+	repoCredentials, err := utils.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
 	require.NoError(t, err)
 
-	repository, err := repo.NewWorkspaceRepository(repoCredentials)
+	repository, err := NewWorkspaceRepository(repoCredentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 
@@ -292,8 +283,17 @@ func TestWorkspaceRepositoryTestSuite(t *testing.T) {
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListCatalogs() {
-	catalogs, err := s.repo.ListCatalogs(context.Background())
-	require.NoError(s.T(), err)
+	var catalogs []catalog.CatalogInfo
+
+	catalogChannel := s.repo.ListCatalogs(context.Background())
+
+	for catalogItem := range catalogChannel {
+		if catalogItem.HasError() {
+			s.Fail(catalogItem.Error().Error())
+		} else {
+			catalogs = append(catalogs, catalogItem.Item())
+		}
+	}
 
 	catalogNames := make([]string, 0, len(catalogs))
 	for _, c := range catalogs {
@@ -304,8 +304,17 @@ func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListCatalogs() {
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListSchemas() {
-	schemas, err := s.repo.ListSchemas(context.Background(), "raito_testing")
-	require.NoError(s.T(), err)
+	var schemas []catalog.SchemaInfo
+
+	schemaChannel := s.repo.ListSchemas(context.Background(), "raito_testing")
+
+	for schema := range schemaChannel {
+		if schema.HasError() {
+			s.Fail(schema.Error().Error())
+		} else {
+			schemas = append(schemas, schema.Item())
+		}
+	}
 
 	schemaNames := make([]string, 0, len(schemas))
 	for _, s := range schemas {
@@ -317,8 +326,17 @@ func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListSchemas() {
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListTables() {
-	tables, err := s.repo.ListTables(context.Background(), "raito_testing", "humanresources")
-	require.NoError(s.T(), err)
+	var tables []catalog.TableInfo
+
+	tableChannel := s.repo.ListTables(context.Background(), "raito_testing", "humanresources")
+
+	for table := range tableChannel {
+		if table.HasError() {
+			s.Fail(table.Error().Error())
+		} else {
+			tables = append(tables, table.Item())
+		}
+	}
 
 	tableNames := make([]string, 0, len(tables))
 	for _, t := range tables {
@@ -349,8 +367,17 @@ func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_GetTable() {
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListFunctions() {
-	functions, err := s.repo.ListFunctions(context.Background(), "raito_testing", "humanresources")
-	require.NoError(s.T(), err)
+	var functions []catalog.FunctionInfo
+
+	functionChannel := s.repo.ListFunctions(context.Background(), "raito_testing", "humanresources")
+
+	for function := range functionChannel {
+		if function.HasError() {
+			s.Fail(function.Error().Error())
+		} else {
+			functions = append(functions, function.Item())
+		}
+	}
 
 	functionNames := make([]string, 0, len(functions))
 	for _, f := range functions {

@@ -19,6 +19,9 @@ test:
 	$(gotestsum) --debug --format testname -- -mod=readonly -tags=integration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./...
 	go tool cover -html=coverage.txt -o coverage.html
 
+test-sync:
+	$(gotestsum) --debug --format testname -- -mod=readonly -tags=syncintegration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage-sync.txt ./sync_test.go
+
 gen-test-infra:
 	if [ -z "${TARGET}" ]; then cd .infra/infra; terraform apply -auto-approve; else cd .infra/infra; terraform apply -auto-approve -target=${TARGET}; fi
 

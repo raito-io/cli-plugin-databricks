@@ -27,8 +27,8 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	types2 "cli-plugin-databricks/databricks/repo/types"
 	"cli-plugin-databricks/databricks/types"
-	"cli-plugin-databricks/utils/array"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
@@ -61,6 +61,21 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		WorkspaceStatus: "RUNNING",
 	}
 
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything).Return(repo.ArrayToChannel[iam.Group]([]iam.Group{
+		{
+			DisplayName: "group1",
+			ExternalId:  "group1",
+			Id:          "group1",
+		},
+	}))
+	mockAccountRepo.EXPECT().ListServicePrincipals(mock.Anything).Return(repo.ArrayToChannel[iam.ServicePrincipal]([]iam.ServicePrincipal{
+		{
+			ApplicationId: "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+			DisplayName:   "Service Principal 1",
+			ExternalId:    "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+			Id:            "5f239a72-c050-47b4-947c-f329f8e2e8f2",
+		},
+	}))
 	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Twice()
@@ -86,14 +101,14 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeMetastore, "metastore-id1").Return(nil, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
 			FullName:    "catalog-1",
 			MetastoreId: metastore1.MetastoreId,
 			Comment:     "comment on catalog-1",
 		},
-	}, nil).Once()
+	})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1").
 		Return(&catalog.PermissionsList{
 			PrivilegeAssignments: []catalog.PrivilegeAssignment{
@@ -108,7 +123,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return([]catalog.SchemaInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema-1",
 			MetastoreId: metastore1.MetastoreId,
@@ -116,12 +131,12 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Comment:     "comment on schema-1",
 			FullName:    "catalog-1.schema-1",
 		},
-	}, nil).Once()
+	})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeSchema, "catalog-1.schema-1").
 		Return(&catalog.PermissionsList{
 			PrivilegeAssignments: []catalog.PrivilegeAssignment{
 				{
-					Principal:  "principal1",
+					Principal:  "5f239a72-c050-47b4-947c-f329f8e2e8f2",
 					Privileges: []catalog.Privilege{catalog.PrivilegeSelect, catalog.PrivilegeExecute},
 				},
 				{
@@ -131,7 +146,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListAllTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
 		{
 			Name:        "table-1",
 			MetastoreId: metastore1.MetastoreId,
@@ -163,7 +178,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 		}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]catalog.FunctionInfo{
+	mockWorkspaceRepoMap[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return(repo.ArrayToChannel([]catalog.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: metastore1.MetastoreId,
@@ -181,7 +196,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			FullName:          "catalog-1.schema-1.function-2",
 			RoutineDefinition: "CASE username() IN ('ruben@raito.io') THEN val else '****'",
 		},
-	}, nil).Once()
+	})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.function-1").
 		Return(&catalog.PermissionsList{
 			PrivilegeAssignments: []catalog.PrivilegeAssignment{
@@ -308,7 +323,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
-				Groups: []string{"principal1"},
+				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2"},
 			},
 			What: []sync_from_target.WhatItem{
 				{
@@ -328,8 +343,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
-				Users: []string{"ruben@raito.io"},
-				// Groups principal1 should be excluded
+				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2", "ruben@raito.io"},
 			},
 			What: []sync_from_target.WhatItem{
 				{
@@ -565,8 +579,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		return nil
 	}).Once()
 
-	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksUsersFilter)) <-chan interface{} {
-		options := repo.DatabricksUsersFilter{}
+	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *types2.DatabricksUsersFilter)) <-chan repo.ChannelItem[iam.User] {
+		options := types2.DatabricksUsersFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
@@ -574,15 +588,15 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		require.NotNil(t, options.Username)
 
 		if *options.Username == "ruben@raito.io" {
-			return array.ArrayToChannel([]interface{}{
-				iam.User{
+			return repo.ArrayToChannel([]iam.User{
+				{
 					DisplayName: "Ruben Mennes",
 					Id:          "314",
 				},
 			})
 		} else if *options.Username == "dieter@raito.io" {
-			return array.ArrayToChannel([]interface{}{
-				iam.User{
+			return repo.ArrayToChannel([]iam.User{
+				{
 					DisplayName: "Dieter Wachters",
 					Id:          "1592",
 				},
@@ -591,10 +605,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			assert.Fail(t, "unexpected username")
 		}
 
-		return array.ArrayToChannel[interface{}]([]interface{}{})
+		return repo.ArrayToChannel[iam.User]([]iam.User{})
 	})
-	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksGroupsFilter)) <-chan interface{} {
-		options := repo.DatabricksGroupsFilter{}
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *types2.DatabricksGroupsFilter)) <-chan repo.ChannelItem[iam.Group] {
+		options := types2.DatabricksGroupsFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
@@ -602,7 +616,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		require.NotNil(t, options.Groupname)
 		require.Equal(t, "group1", *options.Groupname)
 
-		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
+		return repo.ArrayToChannel([]iam.Group{{DisplayName: "group1", Id: "6535"}})
 	})
 	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
 	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
@@ -699,7 +713,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 
-	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*repo.ColumnInformation{
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
 		"column-1": {
 			Name: "column-1",
 			Type: "string",
@@ -826,14 +840,14 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-2.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner2@raito.io"}).Return(nil)
 
-	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*repo.ColumnInformation{
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
 		"column1": {
 			Type: "float",
 			Name: "column1",
 		},
 	}, nil)
 
-	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-2", "table-1").Return(map[string]*repo.ColumnInformation{
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-2", "table-1").Return(map[string]*types2.ColumnInformation{
 		"refColumn": {
 			Name: "refColumn",
 			Type: "string",
@@ -966,7 +980,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
 
-	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*repo.ColumnInformation{
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
 		"column1": {
 			Type: "float",
 			Name: "column1",
@@ -1269,8 +1283,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		return errors.New("boom")
 	}).Once()
 
-	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksUsersFilter)) <-chan interface{} {
-		options := repo.DatabricksUsersFilter{}
+	mockAccountRepo.EXPECT().ListUsers(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *types2.DatabricksUsersFilter)) <-chan repo.ChannelItem[iam.User] {
+		options := types2.DatabricksUsersFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
@@ -1278,15 +1292,15 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		require.NotNil(t, options.Username)
 
 		if *options.Username == "ruben@raito.io" {
-			return array.ArrayToChannel([]interface{}{
-				iam.User{
+			return repo.ArrayToChannel([]iam.User{
+				{
 					DisplayName: "Ruben Mennes",
 					Id:          "314",
 				},
 			})
 		} else if *options.Username == "dieter@raito.io" {
-			return array.ArrayToChannel([]interface{}{
-				iam.User{
+			return repo.ArrayToChannel([]iam.User{
+				{
 					DisplayName: "Dieter Wachters",
 					Id:          "1592",
 				},
@@ -1295,10 +1309,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			assert.Fail(t, "unexpected username")
 		}
 
-		return array.ArrayToChannel[interface{}]([]interface{}{})
+		return repo.ArrayToChannel([]iam.User{})
 	})
-	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *repo.DatabricksGroupsFilter)) <-chan interface{} {
-		options := repo.DatabricksGroupsFilter{}
+	mockAccountRepo.EXPECT().ListGroups(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, f ...func(filter *types2.DatabricksGroupsFilter)) <-chan repo.ChannelItem[iam.Group] {
+		options := types2.DatabricksGroupsFilter{}
 		for _, fn := range f {
 			fn(&options)
 		}
@@ -1306,7 +1320,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 		require.NotNil(t, options.Groupname)
 		require.Equal(t, "group1", *options.Groupname)
 
-		return array.ArrayToChannel([]interface{}{iam.Group{DisplayName: "group1", Id: "6535"}})
+		return repo.ArrayToChannel([]iam.Group{{DisplayName: "group1", Id: "6535"}})
 	})
 	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(314), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
 	mockAccountRepo.EXPECT().UpdateWorkspaceAssignment(mock.Anything, int64(42), int64(6535), []iam.WorkspacePermission{iam.WorkspacePermissionUser}).Return(nil).Once()
@@ -1349,10 +1363,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 	}
 
 	return &AccessSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (dataAccessAccountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types2.RepositoryCredentials) (dataAccessAccountRepository, error) {
 			return accountRepo, nil
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")

@@ -19,6 +19,7 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo"
+	"cli-plugin-databricks/databricks/repo/types"
 )
 
 func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
@@ -68,14 +69,14 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
 	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
-	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
+	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
 			MetastoreId: "metastore-Id1",
 			Comment:     "comment on catalog-1",
 		},
-	}, nil).Once()
-	workspaceMocks[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return([]catalog.SchemaInfo{
+	})).Once()
+	workspaceMocks[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema-1",
 			MetastoreId: "metastore-Id1",
@@ -83,8 +84,8 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			Comment:     "comment on schema-1",
 			FullName:    "catalog-1.schema-1",
 		},
-	}, nil).Once()
-	workspaceMocks[deployment].EXPECT().ListTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
+	})).Once()
+	workspaceMocks[deployment].EXPECT().ListAllTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
 		{
 			Name:        "table-1",
 			MetastoreId: "metastore-Id1",
@@ -99,7 +100,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			},
 		},
 	}, nil)
-	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]catalog.FunctionInfo{
+	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return(repo.ArrayToChannel([]catalog.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: "metastore-Id1",
@@ -107,7 +108,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			FullName:    "catalog-1.schema-1.function-1",
 			CatalogName: "catalog-1",
 		},
-	}, nil)
+	}))
 
 	// When
 	err := dsSyncer.SyncDataSource(context.Background(), dataSourceHandlerMock, &ds.DataSourceSyncConfig{ConfigMap: configMap})
@@ -168,7 +169,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
 	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
-	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return([]catalog.CatalogInfo{
+	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
 			MetastoreId: "metastore-Id1",
@@ -179,8 +180,8 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			MetastoreId: "metastore-Id2",
 			Comment:     "comment on catalog-2",
 		},
-	}, nil).Once()
-	workspaceMocks[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return([]catalog.SchemaInfo{
+	})).Once()
+	workspaceMocks[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
 			Name:        "schema-1",
 			MetastoreId: "metastore-Id1",
@@ -195,8 +196,8 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			Comment:     "comment on schema-2",
 			FullName:    "catalog-1.schema-2",
 		},
-	}, nil).Once()
-	workspaceMocks[deployment].EXPECT().ListTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
+	})).Once()
+	workspaceMocks[deployment].EXPECT().ListAllTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
 		{
 			Name:        "table-1",
 			MetastoreId: "metastore-Id1",
@@ -211,7 +212,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			},
 		},
 	}, nil)
-	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return([]catalog.FunctionInfo{
+	workspaceMocks[deployment].EXPECT().ListFunctions(mock.Anything, "catalog-1", "schema-1").Return(repo.ArrayToChannel([]catalog.FunctionInfo{
 		{
 			Name:        "function-1",
 			MetastoreId: "metastore-Id1",
@@ -219,7 +220,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 			FullName:    "catalog-1.schema-1.function-1",
 			CatalogName: "catalog-1",
 		},
-	}, nil)
+	}))
 
 	// When
 	err := dsSyncer.SyncDataSource(context.Background(), dataSourceHandlerMock, &ds.DataSourceSyncConfig{ConfigMap: configMap, DataObjectParent: "metastore-Id1.catalog-1.schema-1", DataObjectExcludes: []string{"function-1"}})
@@ -245,10 +246,10 @@ func createDataSourceSyncer(t *testing.T, deployments ...string) (*DataSourceSyn
 	}
 
 	return &DataSourceSyncer{
-		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *repo.RepositoryCredentials) (accountRepository, error) {
+		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (accountRepository, error) {
 			return mockAccountRepo, nil
 		},
-		workspaceRepoFactory: func(repoCredentials *repo.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
