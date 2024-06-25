@@ -175,11 +175,11 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 					User:                queryInfo.UserName,
 					Success:             queryInfo.Status == sql.QueryStatusFinished,
 					Status:              string(queryInfo.Status),
-					//Query:               queryInfo.QueryText, // App server assumes that the query is not parsable if we add this field
-					StartTime: time.UnixMilli(int64(queryInfo.QueryStartTimeMs)).Unix(),
-					EndTime:   time.UnixMilli(int64(queryInfo.QueryEndTimeMs)).Unix(),
-					Bytes:     bytes,
-					Rows:      rows,
+					Query:               queryInfo.QueryText,
+					StartTime:           time.UnixMilli(int64(queryInfo.QueryStartTimeMs)).Unix(),
+					EndTime:             time.UnixMilli(int64(queryInfo.QueryEndTimeMs)).Unix(),
+					Bytes:               bytes,
+					Rows:                rows,
 				},
 			})
 
