@@ -24,7 +24,8 @@ linters-settings:
       - paramTypeCombine
 
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
 
   revive:
     rules:
@@ -51,7 +52,7 @@ linters-settings:
   predeclared:
     ignore: "error"
 
-  gomnd:
+  mnd:
     ignored-functions:
       - 'math.*' # Magic number generation, should be fixed and removed?
 
@@ -113,7 +114,6 @@ run:
 output:
   path-prefix: ""
   sort-results: true
-  format: tab
   print-issued-lines: false
   print-linter-name: true
   uniq-by-line: false

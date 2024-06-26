@@ -10,7 +10,6 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
-	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/data_usage"
 	"github.com/raito-io/cli/base/util/config"
@@ -125,13 +124,14 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 			StartTime:  startTime.Unix(),
 			User:       "ruben@raito.io",
 			Success:    true,
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			Query:      "SELECT * FROM `catalog1`.`schema1`.`table1`",
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
@@ -314,13 +314,13 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 	assert.ElementsMatch(t, fileCreatorMock.Statements, []data_usage.Statement{
 		{
 			ExternalId: "queryId1",
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 			User:      "ruben@raito.io",
@@ -330,16 +330,17 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     2,
 			Rows:      1,
+			Query:     "SELECT * FROM `catalog1`.`schema1`.`table1`",
 		},
 		{
 			ExternalId: "queryId2",
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 			User:      "ruben@raito.io",
@@ -349,6 +350,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     2,
 			Rows:      1,
+			Query:     "INSERT INTO `catalog1`.`schema1`.`table1` (`id`,`name`,`description`,`created`) VALUES (?,?,?,?)",
 		},
 		{
 			ExternalId:          "queryId3",
@@ -362,20 +364,20 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 		},
 		{
 			ExternalId: "queryId4",
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog2.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"MERGE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 			User:      "ruben@raito.io",
@@ -385,16 +387,17 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     6,
 			Rows:      5,
+			Query:     "MERGE INTO `schema1`.`table1` USING `catalog1`.schema1`.table1 ON merge_condition",
 		},
 		{
 			ExternalId: "queryId5",
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog2.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"UPDATE"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 			User:      "ruben@raito.io",
@@ -404,16 +407,17 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     6,
 			Rows:      5,
+			Query:     "UPDATE `schema1`.`table1` SET `description` = 'blablabla'",
 		},
 		{
 			ExternalId: "queryId6",
-			AccessedDataObjects: []sync_from_target.WhatItem{
+			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog2.schema1.table1",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"DELETE"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 			User:      "ruben@raito.io",
@@ -423,6 +427,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     21,
 			Rows:      20,
+			Query:     "DELETE FROM `schema1`.`table1`",
 		},
 	})
 }
@@ -478,7 +483,7 @@ func TestDataUsageSyncer_SelectStatement(t *testing.T) {
 			// Then
 			assert.Equal(t, rows, 1)
 			assert.Equal(t, bytes, 2)
-			assert.ElementsMatch(t, array.Map(whatItems, func(i *sync_from_target.WhatItem) string { return i.DataObject.FullName }), test.expectedTables)
+			assert.ElementsMatch(t, array.Map(whatItems, func(i *data_usage.UsageDataObjectItem) string { return i.DataObject.FullName }), test.expectedTables)
 		})
 	}
 }
@@ -486,55 +491,55 @@ func TestDataUsageSyncer_SelectStatement(t *testing.T) {
 func TestDataUsageSyncer_UpdateStatement(t *testing.T) {
 	tests := []struct {
 		query             string
-		expectedWhatItems []sync_from_target.WhatItem
+		expectedWhatItems []data_usage.UsageDataObjectItem
 	}{
 		{
 			query: "UPDATE events SET eventType = 'click' WHERE eventType = 'clk';",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"UPDATE"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "UPDATE all_events SET session_time = 0, ignored = true WHERE session_time < (SELECT min(session_time) FROM good_events)",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.all_events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"UPDATE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.good_events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
 		{
 			query: "UPDATE orders AS t1 SET order_status = 'returned' WHERE EXISTS (SELECT oid FROM returned_orders WHERE t1.oid = oid)",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.orders",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"UPDATE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.returned_orders",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
@@ -578,62 +583,62 @@ func TestDataUsageSyncer_UpdateStatement(t *testing.T) {
 func TestDataUsageSyncer_MergeStatement(t *testing.T) {
 	tests := []struct {
 		query             string
-		expectedWhatItems []sync_from_target.WhatItem
+		expectedWhatItems []data_usage.UsageDataObjectItem
 	}{
 		{
 			query: "MERGE INTO target USING source ON target.key = source.key WHEN MATCHED THEN DELETE",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.target",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"MERGE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.source",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
 		{
 			query: "MERGE INTO target USING source ON target.key = source.key WHEN MATCHED AND target.updated_at < source.updated_at THEN UPDATE SET *",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.target",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"MERGE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.source",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
 		{
 			query: "MERGE INTO target USING source ON target.key = source.key WHEN NOT MATCHED BY SOURCE THEN DELETE",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.target",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"MERGE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.source",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
@@ -674,91 +679,91 @@ func TestDataUsageSyncer_MergeStatement(t *testing.T) {
 func TestDataUsageSyncer_InsertStatement(t *testing.T) {
 	tests := []struct {
 		query             string
-		expectedWhatItems []sync_from_target.WhatItem
+		expectedWhatItems []data_usage.UsageDataObjectItem
 	}{
 		{
 			query: "INSERT INTO students VALUES ('Amy Smith', '123 Park Ave, San Jose', 111111);",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "INSERT INTO students(name, student_id) VALUES('Grayson Miller', 222222);",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "INSERT INTO students VALUES('Youna Kim', DEFAULT, 333333);",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "INSERT INTO students VALUES ('Bob Brown', '456 Taylor St, Cupertino', 444444), ('Cathy Johnson', '789 Race Ave, Palo Alto', 555555);",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "INSERT INTO students PARTITION (student_id = 444444)    SELECT name, address FROM persons WHERE name = \"Dora Williams\";",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.persons",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
 		{
 			query: "INSERT INTO students TABLE visiting_students;",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"INSERT"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.visiting_students",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
@@ -800,55 +805,55 @@ func TestDataUsageSyncer_InsertStatement(t *testing.T) {
 func TestDataUsageSyncer_DeleteStatement(t *testing.T) {
 	tests := []struct {
 		query             string
-		expectedWhatItems []sync_from_target.WhatItem
+		expectedWhatItems []data_usage.UsageDataObjectItem
 	}{
 		{
 			query: "DELETE FROM events WHERE date < '2017-01-01';",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"DELETE"},
+					GlobalPermission: data_usage.Write,
 				},
 			},
 		},
 		{
 			query: "DELETE FROM all_events  WHERE session_time < (SELECT min(session_time) FROM good_events)",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.all_events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"DELETE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.good_events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
 		{
 			query: "DELETE FROM events   WHERE category NOT IN (SELECT category FROM events2 WHERE date > '2001-01-01');",
-			expectedWhatItems: []sync_from_target.WhatItem{
+			expectedWhatItems: []data_usage.UsageDataObjectItem{
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.events",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"DELETE"},
+					GlobalPermission: data_usage.Write,
 				},
 				{
-					DataObject: &data_source.DataObjectReference{
+					DataObject: data_usage.UsageDataObjectReference{
 						FullName: "metastoreId1.catalog1.schema1.events2",
 						Type:     data_source.Table,
 					},
-					Permissions: []string{"SELECT"},
+					GlobalPermission: data_usage.Read,
 				},
 			},
 		},
