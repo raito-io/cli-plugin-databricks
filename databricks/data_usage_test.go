@@ -124,6 +124,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 			StartTime:  startTime.Unix(),
 			User:       "ruben@raito.io",
 			Success:    true,
+			Query:      "SELECT * FROM `catalog1`.`schema1`.`table1`",
 			AccessedDataObjects: []data_usage.UsageDataObjectItem{
 				{
 					DataObject: data_usage.UsageDataObjectReference{
@@ -329,6 +330,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     2,
 			Rows:      1,
+			Query:     "SELECT * FROM `catalog1`.`schema1`.`table1`",
 		},
 		{
 			ExternalId: "queryId2",
@@ -348,6 +350,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     2,
 			Rows:      1,
+			Query:     "INSERT INTO `catalog1`.`schema1`.`table1` (`id`,`name`,`description`,`created`) VALUES (?,?,?,?)",
 		},
 		{
 			ExternalId:          "queryId3",
@@ -384,6 +387,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     6,
 			Rows:      5,
+			Query:     "MERGE INTO `schema1`.`table1` USING `catalog1`.schema1`.table1 ON merge_condition",
 		},
 		{
 			ExternalId: "queryId5",
@@ -403,6 +407,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     6,
 			Rows:      5,
+			Query:     "UPDATE `schema1`.`table1` SET `description` = 'blablabla'",
 		},
 		{
 			ExternalId: "queryId6",
@@ -422,6 +427,7 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			EndTime:   endTime.Unix(),
 			Bytes:     21,
 			Rows:      20,
+			Query:     "DELETE FROM `schema1`.`table1`",
 		},
 	})
 }
