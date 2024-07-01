@@ -9,7 +9,7 @@ resource "databricks_service_principal_secret" "secret" {
 resource "databricks_mws_permission_assignment" "workspace_assignment" {
   for_each = var.workspace_id
 
-  permissions = ["USER"]
+  permissions  = ["USER"]
   workspace_id = each.value
   principal_id = databricks_service_principal.principal.id
 }

@@ -11,6 +11,6 @@ output "application_id" {
 }
 
 output "secret" {
-  value = databricks_service_principal_secret.secret.secret
+  value     = databricks_service_principal_secret.secret.secret
   sensitive = true
 }

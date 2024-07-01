@@ -5,13 +5,13 @@ variable "workspace_id" {
 }
 
 variable "display_name" {
-    type      = string
-    sensitive = false
-    nullable  = false
+  type      = string
+  sensitive = false
+  nullable  = false
 }
 
 variable "permissions" {
-    type      = set(string)
-    sensitive = false
-    default   = ["USER"]
+  type      = set(string)
+  sensitive = false
+  default   = ["USER"]
 }

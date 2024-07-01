@@ -3,7 +3,7 @@ module "benjamin" {
     databricks = databricks.accounts
   }
 
-  source = "./workspace_service_principal"
+  source       = "./workspace_service_principal"
   display_name = "b_stewart"
   workspace_id = [local.workspace_id]
 }
@@ -13,7 +13,7 @@ module "carla" {
     databricks = databricks.accounts
   }
 
-  source = "./workspace_service_principal"
+  source       = "./workspace_service_principal"
   display_name = "c_harris"
   workspace_id = [local.workspace_id]
 }
@@ -23,7 +23,7 @@ module "dustin" {
     databricks = databricks.accounts
   }
 
-  source = "./workspace_service_principal"
+  source       = "./workspace_service_principal"
   display_name = "d_hayden"
   workspace_id = [local.workspace_id]
 }
@@ -33,7 +33,7 @@ module "mary" {
     databricks = databricks.accounts
   }
 
-  source = "./workspace_service_principal"
+  source       = "./workspace_service_principal"
   display_name = "m_carissa"
   workspace_id = [local.workspace_id]
 }
@@ -43,7 +43,7 @@ module "nick" {
     databricks = databricks.accounts
   }
 
-  source = "./workspace_service_principal"
+  source       = "./workspace_service_principal"
   display_name = "n_nguyen"
   workspace_id = [local.workspace_id]
 }

@@ -2,13 +2,13 @@ resource "databricks_grant" "catalog" {
   catalog = databricks_catalog.testing.name
 
   for_each = tomap({
-    benjamin = var.benjamin_user_name,
-    carla = var.carla_user_name,
-    dustin = var.dustin_user_name,
-    mary = var.mary_user_name,
-    nick = var.nick_user_name,
+    benjamin    = var.benjamin_user_name,
+    carla       = var.carla_user_name,
+    dustin      = var.dustin_user_name,
+    mary        = var.mary_user_name,
+    nick        = var.nick_user_name,
     owner_group = var.master_owner_group_name,
-    me = data.databricks_current_user.me.user_name
+    me          = data.databricks_current_user.me.user_name
   })
 
   principal  = each.value
