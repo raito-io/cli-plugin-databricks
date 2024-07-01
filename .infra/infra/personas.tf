@@ -1,31 +1,51 @@
-data "databricks_user" "benjamin" {
-  provider  = databricks.accounts
-  user_name = var.benjamin_user_name
-}
-// This list is not complete but is only used to generate data usage
-data "databricks_user" "carla" {
-  provider  = databricks.accounts
-  user_name = var.carla_user_name
+module "benjamin" {
+  providers = {
+    databricks = databricks.accounts
+  }
+
+  source       = "./workspace_service_principal"
+  display_name = "b_stewart"
+  workspace_id = [local.workspace_id]
 }
 
-data "databricks_user" "dustin" {
-  provider  = databricks.accounts
-  user_name = var.dustin_user_name
+module "carla" {
+  providers = {
+    databricks = databricks.accounts
+  }
+
+  source       = "./workspace_service_principal"
+  display_name = "c_harris"
+  workspace_id = [local.workspace_id]
 }
 
-data "databricks_user" "mary" {
-  provider  = databricks.accounts
-  user_name = var.mary_user_name
+module "dustin" {
+  providers = {
+    databricks = databricks.accounts
+  }
+
+  source       = "./workspace_service_principal"
+  display_name = "d_hayden"
+  workspace_id = [local.workspace_id]
 }
 
-data "databricks_user" "nick" {
-  provider  = databricks.accounts
-  user_name = var.nick_user_name
+module "mary" {
+  providers = {
+    databricks = databricks.accounts
+  }
+
+  source       = "./workspace_service_principal"
+  display_name = "m_carissa"
+  workspace_id = [local.workspace_id]
 }
 
-data "databricks_user" "current_user" {
-  provider  = databricks.accounts
-  user_name = var.databricks_username
+module "nick" {
+  providers = {
+    databricks = databricks.accounts
+  }
+
+  source       = "./workspace_service_principal"
+  display_name = "n_nguyen"
+  workspace_id = [local.workspace_id]
 }
 
 data "databricks_service_principal" "raitoServicePrincipal" {
@@ -61,7 +81,7 @@ module "group_human_resources" {
   source       = "./workspace_group"
   display_name = "HUMAN_RESOURCES_TF_2"
   workspace_id = [local.workspace_id]
-  members      = { benjamin : data.databricks_user.benjamin.id, mary : data.databricks_user.mary.id }
+  members      = { benjamin : module.benjamin.id, mary : module.mary.id }
 }
 
 module "group_marketing" {
@@ -82,7 +102,7 @@ module "group_sales" {
   source       = "./workspace_group"
   display_name = "SALES_TF_2"
   workspace_id = [local.workspace_id]
-  members      = { dustin : data.databricks_user.dustin.id, mary : data.databricks_user.mary.id }
+  members      = { dustin : module.dustin.id, mary : module.mary.id }
 }
 
 module "group_sales_analysis" {
@@ -93,7 +113,7 @@ module "group_sales_analysis" {
   source       = "./workspace_group"
   display_name = "SALES_ANALYSIS_TF_2"
   workspace_id = [local.workspace_id]
-  members      = { mary : data.databricks_user.mary.id }
+  members      = { mary : module.mary.id }
 }
 
 module "group_sales_ext" {
@@ -104,7 +124,7 @@ module "group_sales_ext" {
   source       = "./workspace_group"
   display_name = "SALES_EXT_TF_2"
   workspace_id = [local.workspace_id]
-  members      = { nick : data.databricks_user.nick.id, sales : module.group_sales.group.id }
+  members      = { nick : module.nick.id, sales : module.group_sales.group.id }
 }
 
 module "group_data_engineer" {
@@ -115,7 +135,7 @@ module "group_data_engineer" {
   source       = "./workspace_group"
   display_name = "DATA_ENGINEER_TF_2"
   workspace_id = [local.workspace_id]
-  members      = { benjamin : data.databricks_user.benjamin.id }
+  members      = { benjamin : module.benjamin.id }
 }
 
 module "group_data_engineer_sync" {

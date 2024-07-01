@@ -30,7 +30,7 @@ destroy-test-infra:
 	if [ -z "${TARGET}" ]; then cd .infra/infra;  terraform apply -destroy -auto-approve; else cd .infra/infra; terraform apply -destroy -auto-approve -target=${TARGET}; fi
 
 destroy-grants:
-	cd .infra/infra; go run destroy.go --dbUsername "${dbUsername}" --dbPassword "${dbPassword}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
+	cd .infra/infra; go run destroy.go --dbClientId "${dbClientId}" --dbClientSecret "${dbClientSecret}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
 
 gen-test-usage:
-	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}" --dbUsers "${dbUsers}"
+	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}"

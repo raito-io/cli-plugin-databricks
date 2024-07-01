@@ -11,9 +11,9 @@ on:
     secrets:
       DB_HOST:
         required: true
-      DB_USERNAME:
+      DB_CLIENT_ID:
         required: true
-      DB_PASSWORD:
+      DB_CLIENT_SECRET:
         required: true
   workflow_dispatch:
     inputs:
@@ -49,7 +49,7 @@ jobs:
       - name: Destroy infrastructure
         run: make destroy-grants
         env:
-          dbUsername: ${{ secrets.DB_USERNAME }}
-          dbPassword: ${{ secrets.DB_PASSWORD }}
+          dbClientId: ${{ secrets.DB_CLIENT_ID }}
+          dbClientSecret: ${{ secrets.DB_CLIENT_SECRET }}
           dbHost: ${{ secrets.DB_HOST }}
           dbCatalogs: ${{ inputs.catalogs }}

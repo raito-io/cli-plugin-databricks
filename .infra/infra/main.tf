@@ -25,11 +25,11 @@ module "demo" {
 
   master_owner_group_name = var.owner_group_name
 
-  benjamin_user_name = data.databricks_user.benjamin.user_name
-  carla_user_name    = data.databricks_user.carla.user_name
-  dustin_user_name   = data.databricks_user.dustin.user_name
-  mary_user_name     = data.databricks_user.mary.user_name
-  nick_user_name     = data.databricks_user.nick.user_name
+  benjamin_user_name = module.benjamin.application_id
+  carla_user_name    = module.carla.application_id
+  dustin_user_name   = module.dustin.application_id
+  mary_user_name     = module.mary.application_id
+  nick_user_name     = module.nick.application_id
 
   finance_group_name            = module.group_finance.group.display_name
   data_analyst_group_name       = module.group_data_analyst.group.display_name
@@ -51,11 +51,11 @@ module "testing" {
 
   master_owner_group_name = var.owner_group_name
 
-  benjamin_user_name = data.databricks_user.benjamin.user_name
-  carla_user_name    = data.databricks_user.carla.user_name
-  dustin_user_name   = data.databricks_user.dustin.user_name
-  mary_user_name     = data.databricks_user.mary.user_name
-  nick_user_name     = data.databricks_user.nick.user_name
+  benjamin_user_name = module.benjamin.application_id
+  carla_user_name    = module.carla.application_id
+  dustin_user_name   = module.dustin.application_id
+  mary_user_name     = module.mary.application_id
+  nick_user_name     = module.nick.application_id
 
   finance_group_name            = module.group_finance.group.display_name
   data_analyst_group_name       = module.group_data_analyst.group.display_name

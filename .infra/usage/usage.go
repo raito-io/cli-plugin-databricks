@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strings"
 
 	"github.com/databricks/databricks-sdk-go"
 	"github.com/databricks/databricks-sdk-go/service/sql"
@@ -16,6 +15,13 @@ import (
 
 var logger hclog.Logger
 
+type Persona struct {
+	Id           string `json:"id"`
+	ClientId     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	Name         string `json:"name"`
+}
+
 type InfrastructureInput struct {
 	TestingTables struct {
 		Value []string `json:"value"`
@@ -23,20 +29,18 @@ type InfrastructureInput struct {
 	DemoTables struct {
 		Value []string `json:"value"`
 	} `json:"demo_tables,omitempty"`
+	Personas struct {
+		Value []Persona `json:"value"`
+	} `json:"personas"`
 }
 
-type UserInput struct {
-	Username string
-	Password string
-}
-
-func CreateUsage(infraInput *InfrastructureInput, users []UserInput, host string, warehouseId string) error {
+func CreateUsage(infraInput *InfrastructureInput, users []Persona, host string, warehouseId string) error {
 	ctx := context.Background()
 
 	for _, user := range users {
-		logger.Info(fmt.Sprintf("Executing queries for user %q", user.Username))
+		logger.Info(fmt.Sprintf("Executing queries for user %q", user.Name))
 
-		err := ExecuteQueriesForUser(ctx, infraInput, user.Username, user.Password, host, warehouseId)
+		err := ExecuteQueriesForUser(ctx, infraInput, user.Name, user.ClientId, user.ClientSecret, host, warehouseId)
 		if err != nil {
 			return fmt.Errorf("execute queries for user %s: %w", user, err)
 		}
@@ -45,13 +49,13 @@ func CreateUsage(infraInput *InfrastructureInput, users []UserInput, host string
 	return nil
 }
 
-func ExecuteQueriesForUser(ctx context.Context, infraInput *InfrastructureInput, user string, password string, host string, warehouseId string) error {
-	logger.Info(fmt.Sprintf("Executing queries for user %s", user))
+func ExecuteQueriesForUser(ctx context.Context, infraInput *InfrastructureInput, name, clientId, clientSecret, host string, warehouseId string) error {
+	logger.Info(fmt.Sprintf("Executing queries for user %s", name))
 
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
-		Username: user,
-		Password: password,
-		Host:     host,
+		ClientID:     clientId,
+		ClientSecret: clientSecret,
+		Host:         host,
 	})
 	if err != nil {
 		return fmt.Errorf("create workspace client: %w", err)
@@ -87,12 +91,10 @@ func ExecuteQueriesForUser(ctx context.Context, infraInput *InfrastructureInput,
 func main() {
 	logger = hclog.New(&hclog.LoggerOptions{Name: "usage-logger", Level: hclog.Info})
 
-	var users string
 	var host string
 	var warehouseId string
 
 	flag.StringVar(&host, "dbHost", "", "databricks workspace host")
-	flag.StringVar(&users, "dbUsers", "", "list of users and passwords user1,password1;user2,password2")
 	flag.StringVar(&warehouseId, "dbWarehouseId", "", "databricks warehouse id")
 	flag.Parse()
 
@@ -115,15 +117,7 @@ func main() {
 		panic(err)
 	}
 
-	userArray := strings.Split(users, ";")
-	userInput := make([]UserInput, 0, len(userArray))
-
-	for _, user := range userArray {
-		userPassword := strings.SplitN(user, ",", 2)
-		userInput = append(userInput, UserInput{Username: userPassword[0], Password: userPassword[1]})
-	}
-
-	err = CreateUsage(&usageConfig, userInput, host, warehouseId)
+	err = CreateUsage(&usageConfig, usageConfig.Personas.Value, host, warehouseId)
 	if err != nil {
 		panic(err)
 	}

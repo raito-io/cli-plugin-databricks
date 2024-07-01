@@ -10,15 +10,15 @@ import (
 	catalog2 "github.com/databricks/databricks-sdk-go/service/catalog"
 )
 
-var dbUsername, dbPassword, dbHost string
+var dbClientId, dbClientSecret, dbHost string
 var catalogsStr string
 var nonDryRun bool
 
 func dropAllGrantsOfCatalogs(ctx context.Context, catalogs []string) error {
 	client, err := databricks.NewWorkspaceClient(&databricks.Config{
-		Username: dbUsername,
-		Password: dbPassword,
-		Host:     dbHost,
+		ClientID:     dbClientId,
+		ClientSecret: dbClientSecret,
+		Host:         dbHost,
 	})
 	if err != nil {
 		return fmt.Errorf("create workspace client: %w", err)
@@ -146,8 +146,8 @@ func removeGrants(ctx context.Context, client *databricks.WorkspaceClient, fulln
 }
 
 func main() {
-	flag.StringVar(&dbUsername, "dbUsername", "", "databricks username")
-	flag.StringVar(&dbPassword, "dbPassword", "", "databricks password")
+	flag.StringVar(&dbClientId, "dbClientId", "", "databricks client id")
+	flag.StringVar(&dbClientSecret, "dbClientSecret", "", "databricks client secret")
 	flag.StringVar(&dbHost, "dbHost", "", "databricks workspace host")
 	flag.StringVar(&catalogsStr, "catalogs", "", "comma separated list of catalogs")
 	flag.BoolVar(&nonDryRun, "drop", false, "Execute drop roles. If not set or false a dry run will be executed.")
@@ -165,12 +165,12 @@ func main() {
 		return
 	}
 
-	if dbUsername == "" {
+	if dbClientId == "" {
 		fmt.Println("No databricks username specified")
 		return
 	}
 
-	if dbPassword == "" {
+	if dbClientSecret == "" {
 		fmt.Println("No databricks password specified")
 		return
 	}
