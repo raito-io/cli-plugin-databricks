@@ -1,13 +1,13 @@
-variable "databricks_username" {
+variable "databricks_client_id" {
   type        = string
-  description = "Username of the Databricks account"
+  description = "Client ID of the Databricks account"
   nullable    = false
-  sensitive   = false
+  sensitive   = true
 }
 
-variable "databricks_password" {
+variable "databricks_client_secret" {
   type        = string
-  description = "Password of the Databricks account"
+  description = "Client secret of the Databricks account"
   nullable    = false
   sensitive   = true
 }
@@ -52,46 +52,6 @@ variable "databricks_workspace_name" {
   description = "Name of the Databricks workspace"
   nullable    = false
   sensitive   = false
-}
-
-variable "benjamin_user_name" {
-  type        = string
-  description = "Username of Benjamin"
-  nullable    = false
-  sensitive   = false
-  default     = "b_stewart+databricks@raito.io"
-}
-
-variable "carla_user_name" {
-  type        = string
-  description = "Username of Carla"
-  nullable    = false
-  sensitive   = false
-  default     = "c_harris+databricks@raito.io"
-}
-
-variable "dustin_user_name" {
-  type        = string
-  description = "Username of Dustin"
-  nullable    = false
-  sensitive   = false
-  default     = "d_hayden+databricks2@raito.io"
-}
-
-variable "mary_user_name" {
-  type        = string
-  description = "Username of Mary"
-  nullable    = false
-  sensitive   = false
-  default     = "m_carissa+databricks@raito.io"
-}
-
-variable "nick_user_name" {
-  type        = string
-  description = "Username of Nick"
-  nullable    = false
-  sensitive   = false
-  default     = "n_nguyen+databricks@raito.io"
 }
 
 variable "owner_group_name" {

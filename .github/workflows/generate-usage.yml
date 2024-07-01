@@ -89,4 +89,3 @@ jobs:
         env:
           dbHost: ${{ secrets.DB_HOST }}
           dbWarehouseId: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
-          dbUsers: ${{ secrets.DB_USERS }}
