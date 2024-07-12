@@ -184,3 +184,9 @@ resource "databricks_grant" "table_grant" {
   principal  = each.value.principal
   privileges = each.value.privileges
 }
+
+resource "databricks_grant" "information_schema_grant" {
+  schema     = format("%s.information_schema", databricks_catalog.testing.name)
+  principal  = var.master_owner_group_name
+  privileges = ["USE_SCHEMA", "SELECT"]
+}

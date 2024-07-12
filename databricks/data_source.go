@@ -8,8 +8,10 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	ds "github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/cli/base/tag"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
@@ -26,6 +28,9 @@ var _ wrappers.DataSourceSyncer = (*DataSourceSyncer)(nil)
 //go:generate go run github.com/vektra/mockery/v2 --name=dataSourceWorkspaceRepository
 type dataSourceWorkspaceRepository interface {
 	Ping(ctx context.Context) error
+	SetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string, changes ...catalog.PermissionsChange) error
+	SqlWarehouseRepository(warehouseId string) repo.WarehouseRepository
+	Me(ctx context.Context) (*iam.User, error)
 	workspaceRepository
 }
 
@@ -81,9 +86,19 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
 
+	tags, err := NewDataSourceTagHandler(config.ConfigMap, d.workspaceRepoFactory)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to create tag handler: %s", err.Error()))
+
+		tags = &DataSourceTagHandler{
+			tagCache: make(map[string][]*tag.Tag),
+		}
+	}
+
 	visitor := DataSourceVisitor{
 		dataSourceHandler: dataSourceHandler,
 		syncer:            d,
+		tagHandler:        tags,
 	}
 
 	err = traverser.Traverse(ctx, visitor, func(traverserOptions *DataObjectTraverserOptions) {
@@ -147,6 +162,7 @@ var _ DataObjectVisitor = (*DataSourceVisitor)(nil)
 type DataSourceVisitor struct {
 	dataSourceHandler wrappers.DataSourceObjectHandler
 	syncer            *DataSourceSyncer
+	tagHandler        *DataSourceTagHandler
 }
 
 func (d DataSourceVisitor) VisitWorkspace(_ context.Context, workspace *provisioning.Workspace) error {
@@ -160,7 +176,7 @@ func (d DataSourceVisitor) VisitWorkspace(_ context.Context, workspace *provisio
 	})
 }
 
-func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.MetastoreInfo, workspace *provisioning.Workspace) error {
+func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.MetastoreInfo, _ *provisioning.Workspace) error {
 	logger.Info(fmt.Sprintf("Found metastore %q: %+v", metastore.Name, metastore))
 
 	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
@@ -171,7 +187,12 @@ func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.
 	})
 }
 
-func (d DataSourceVisitor) VisitCatalog(_ context.Context, c *catalog.CatalogInfo, _ *catalog.MetastoreInfo, _ *provisioning.Workspace) error {
+func (d DataSourceVisitor) VisitCatalog(ctx context.Context, c *catalog.CatalogInfo, _ *catalog.MetastoreInfo, workspace *provisioning.Workspace) error {
+	err := d.tagHandler.LoadTags(ctx, workspace, c)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to load tags for catalog %q: %s", c.Name, err.Error()))
+	}
+
 	uniqueId := createUniqueId(c.MetastoreId, c.Name)
 
 	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{
@@ -181,6 +202,7 @@ func (d DataSourceVisitor) VisitCatalog(_ context.Context, c *catalog.CatalogInf
 		Description:      c.Comment,
 		FullName:         uniqueId,
 		Type:             constants.CatalogType,
+		Tags:             d.tagHandler.GetTag(c.FullName),
 	})
 }
 
@@ -195,6 +217,7 @@ func (d DataSourceVisitor) VisitSchema(_ context.Context, schema *catalog.Schema
 		Description:      schema.Comment,
 		FullName:         uniqueId,
 		Type:             ds.Schema,
+		Tags:             d.tagHandler.GetTag(schema.FullName),
 	})
 }
 
@@ -219,6 +242,7 @@ func (d DataSourceVisitor) VisitTable(_ context.Context, table *catalog.TableInf
 		Description:      table.Comment,
 		FullName:         uniqueId,
 		Type:             ds.Table,
+		Tags:             d.tagHandler.GetTag(table.FullName),
 	})
 }
 
@@ -238,6 +262,7 @@ func (d DataSourceVisitor) VisitColumn(_ context.Context, column *catalog.Column
 		Description:      column.Comment,
 		FullName:         uniqueId,
 		Type:             ds.Column,
+		Tags:             d.tagHandler.GetTag(table.FullName + "." + column.Name),
 		DataType:         ptr.String(column.TypeName.String()),
 	})
 }

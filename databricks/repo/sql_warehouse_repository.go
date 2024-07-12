@@ -29,6 +29,7 @@ type WarehouseRepository interface {
 	DropFunction(ctx context.Context, catalog, schema, functionName string) error
 	SetMask(ctx context.Context, catalog, schema, table, column, function string) error
 	SetRowFilter(ctx context.Context, catalog, schema, table, functionName string, arguments []string) error
+	GetTags(ctx context.Context, catalog string, fn func(ctx context.Context, fullName string, key string, value string) error) error
 }
 
 type SqlWarehouseRepository struct {
@@ -72,10 +73,6 @@ func (r *SqlWarehouseRepository) ExecuteStatement(ctx context.Context, catalog, 
 
 func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*types.ColumnInformation, error) {
 	response, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("DESCRIBE TABLE EXTENDED %s", tableName))
-	if err != nil {
-		return nil, err
-	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +141,62 @@ func (r *SqlWarehouseRepository) SetRowFilter(ctx context.Context, catalog, sche
 	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s SET ROW FILTER %s ON (%s);", table, functionName, strings.Join(arguments, ", ")))
 
 	return err
+}
+
+func (r *SqlWarehouseRepository) GetTags(ctx context.Context, catalog string, fn func(ctx context.Context, fullName string, key string, value string) error) error {
+	// Catalog tags
+	response, err := r.ExecuteStatement(ctx, catalog, "", "SELECT catalog_name, tag_name, tag_value FROM information_schema.catalog_tags")
+	if err != nil {
+		return fmt.Errorf("get catalog tags: %w", err)
+	}
+
+	for _, row := range response.Result.DataArray {
+		err = fn(ctx, row[0], row[1], row[2])
+		if err != nil {
+			return err
+		}
+	}
+
+	// Schema tags
+	response, err = r.ExecuteStatement(ctx, catalog, "", "SELECT catalog_name, schema_name, tag_name, tag_value FROM information_schema.schema_tags")
+	if err != nil {
+		return fmt.Errorf("get schema tags: %w", err)
+	}
+
+	for _, row := range response.Result.DataArray {
+		err = fn(ctx, row[0]+"."+row[1], row[2], row[3])
+		if err != nil {
+			return err
+		}
+	}
+
+	// Table tags
+	response, err = r.ExecuteStatement(ctx, catalog, "", "SELECT catalog_name, schema_name, table_name, tag_name, tag_value FROM information_schema.table_tags")
+	if err != nil {
+		return fmt.Errorf("get table tags: %w", err)
+	}
+
+	for _, row := range response.Result.DataArray {
+		err = fn(ctx, row[0]+"."+row[1]+"."+row[2], row[3], row[4])
+		if err != nil {
+			return err
+		}
+	}
+
+	// Column tags
+	response, err = r.ExecuteStatement(ctx, catalog, "", "SELECT catalog_name, schema_name, table_name, column_name, tag_name, tag_value FROM information_schema.column_tags")
+	if err != nil {
+		return fmt.Errorf("get column tags: %w", err)
+	}
+
+	for _, row := range response.Result.DataArray {
+		err = fn(ctx, row[0]+"."+row[1]+"."+row[2]+"."+row[3], row[4], row[5])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *SqlWarehouseRepository) waitForWarehouse(ctx context.Context) error {
