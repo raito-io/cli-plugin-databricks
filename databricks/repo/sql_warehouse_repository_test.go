@@ -181,3 +181,16 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Filter() {
 		assert.NoError(s.T(), err)
 	}()
 }
+
+func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_GetTags() {
+	ctx := context.Background()
+	catalog := "raito_testing"
+
+	err := s.repo.GetTags(ctx, catalog, func(ctx context.Context, fullName string, key string, value string) error {
+		s.Fail("Should not be called") // Currently we cannot set tags via TF. So we are not expecting any tags but we test if the queries ran successfully
+
+		return nil
+	})
+
+	require.NoError(s.T(), err)
+}

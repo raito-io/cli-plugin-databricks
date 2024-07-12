@@ -29,4 +29,6 @@ const (
 	MetastoreType = "metastore"
 	CatalogType   = "catalog"
 	FunctionType  = "function"
+
+	TagSource = "Databricks"
 )

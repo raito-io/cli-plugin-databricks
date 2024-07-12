@@ -356,10 +356,14 @@ func (r *WorkspaceRepository) SqlWarehouseRepository(warehouseId string) Warehou
 }
 
 func (r *WorkspaceRepository) Ping(ctx context.Context) error {
-	_, err := r.client.CurrentUser.Me(ctx)
+	_, err := r.Me(ctx)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (r *WorkspaceRepository) Me(ctx context.Context) (*iam.User, error) {
+	return r.client.CurrentUser.Me(ctx)
 }
