@@ -50,6 +50,12 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
    databricks-account-id: <<Databricks account ID>>
    databricks-platform: <<Databricks platform>>
    
+   # SQL Warehouses (required for tag support, row-level filtering, and column masking)
+   databricks-sql-warehouses:
+     <<deployment-id>>:
+       workspace: <<databricks workspace ID>>
+       warehouse: <<databricks SQL Warehouse ID>>
+   
    # Native authentication
    databricks-client-id: <<Databricks client ID>>
    databricks-client-secret: <<Databricks client secret>>
@@ -130,6 +136,7 @@ The following configuration parameters are available
 | `databricks-google-credentials`     | GCP Service Account Credentials JSON or the location of these credentials on the local filesystem.                                                          | False     |               |
 | `databricks-google-service-account` | The Google Cloud Platform (GCP) service account e-mail used for impersonation in the Default Application Credentials Flow that does not require a password. | False     |               |
 | `databricks-data-usage-window`      | The maximum number of days of usage data to retrieve. Maximum is 90 days.                                                                                   | False     | 90            |
+| `databricks-sql-warehouses`         | A map of deployment IDs to workspace and warehouse IDs.                                                                                                     | False     | `{}`          | 
 
 ## Supported features
 
