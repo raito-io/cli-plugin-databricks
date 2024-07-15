@@ -58,6 +58,12 @@ func (d *DataSourceTagHandler) LoadTags(ctx context.Context, workspace *provisio
 		return fmt.Errorf("get sql client: %w", err)
 	}
 
+	if sqlRepo == nil {
+		logger.Warn(fmt.Sprintf("No warehouse found for metastore %s. Will ignore tags for catalog %q", c.MetastoreId, c.Name))
+
+		return nil
+	}
+
 	me, err := workspaceRepo.Me(ctx)
 	if err != nil {
 		return fmt.Errorf("get me: %w", err)
@@ -104,7 +110,11 @@ func (d *DataSourceTagHandler) getSqlClient(metastore string, workspace *provisi
 		return nil, nil, fmt.Errorf("create workspace repo: %w", err)
 	}
 
-	return workspaceRepo, workspaceRepo.SqlWarehouseRepository(d.warehouseIdMap[metastore].Warehouse), nil
+	if details, found := d.warehouseIdMap[metastore]; found {
+		return workspaceRepo, workspaceRepo.SqlWarehouseRepository(details.Warehouse), nil
+	}
+
+	return workspaceRepo, nil, nil
 }
 
 func (d *DataSourceTagHandler) setRequiredPermissions(ctx context.Context, workspaceRepo dataSourceWorkspaceRepository, me *iam.User, c *catalog.CatalogInfo) error {
