@@ -123,6 +123,63 @@ func TestDataSourceTagHandler_LoadTags(t *testing.T) {
 	}, dstg.tagCache)
 }
 
+func TestDataSourceTagHandler_LoadTags_WarehouseNotDefined(t *testing.T) {
+	// Given
+	deployment := "test-deployment"
+
+	c := catalog.CatalogInfo{
+		MetastoreId: "metastore1",
+		Name:        "catalog1",
+		FullName:    "catalog1",
+	}
+
+	workspaceMockRepos := make(map[string]*mockDataSourceWorkspaceRepository)
+	workspaceRepoMock := newMockDataSourceWorkspaceRepository(t)
+	workspaceMockRepos[deployment] = workspaceRepoMock
+	
+	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+		deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
+
+		deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
+
+		if workspaceMock, ok := workspaceMockRepos[deployment]; ok {
+			return workspaceMock, nil
+		}
+
+		return nil, errors.New("no workspace repository")
+	}
+
+	configMap := &config.ConfigMap{
+		Parameters: map[string]string{
+			constants.DatabricksAccountId: "AccountId",
+			constants.DatabricksUser:      "User",
+			constants.DatabricksPassword:  "Password",
+			constants.DatabricksPlatform:  "AWS",
+		},
+	}
+
+	dstg := DataSourceTagHandler{
+		tagCache:             make(map[string][]*tag.Tag),
+		configMap:            configMap,
+		workspaceRepoFactory: workspaceRepoFactory,
+		warehouseIdMap: map[string]types2.WarehouseDetails{"another": {
+			Workspace: "workspaceId",
+			Warehouse: "warehouseId",
+		}},
+	}
+
+	// when
+	err := dstg.LoadTags(context.Background(), &provisioning.Workspace{
+		WorkspaceName:  "workspaceId",
+		DeploymentName: "test-deployment",
+	}, &c)
+
+	// Then
+	require.NoError(t, err)
+
+	assert.Empty(t, dstg.tagCache)
+}
+
 func TestDataSourceTagHandler_GetTag(t *testing.T) {
 	type fields struct {
 		tagCache map[string][]*tag.Tag
