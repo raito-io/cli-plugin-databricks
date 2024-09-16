@@ -5,16 +5,16 @@ go 1.22
 toolchain go1.22.0
 
 require (
-	github.com/aws/smithy-go v1.20.3
-	github.com/databricks/databricks-sdk-go v0.43.2
+	github.com/aws/smithy-go v1.20.4
+	github.com/databricks/databricks-sdk-go v0.46.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/raito-io/bexpression v0.1.2
-	github.com/raito-io/cli v0.66.0
+	github.com/raito-io/cli v0.66.1
 	github.com/raito-io/enumer v0.1.4
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.9.0
-	github.com/vektra/mockery/v2 v2.43.2
+	github.com/vektra/mockery/v2 v2.45.1
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 )
 
