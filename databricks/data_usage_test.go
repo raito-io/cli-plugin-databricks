@@ -481,8 +481,8 @@ func TestDataUsageSyncer_SelectStatement(t *testing.T) {
 			whatItems, bytes, rows := duSyncer.selectStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
-			assert.Equal(t, rows, 1)
-			assert.Equal(t, bytes, 2)
+			assert.Equal(t, rows, int64(1))
+			assert.Equal(t, bytes, int64(2))
 			assert.ElementsMatch(t, array.Map(whatItems, func(i *data_usage.UsageDataObjectItem) string { return i.DataObject.FullName }), test.expectedTables)
 		})
 	}
@@ -573,8 +573,8 @@ func TestDataUsageSyncer_UpdateStatement(t *testing.T) {
 			whatItems, bytes, rows := duSyncer.updateStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
-			assert.Equal(t, rows, 1)
-			assert.Equal(t, bytes, 2)
+			assert.Equal(t, rows, int64(1))
+			assert.Equal(t, bytes, int64(2))
 			assert.ElementsMatch(t, whatItems, test.expectedWhatItems)
 		})
 	}
@@ -669,8 +669,8 @@ func TestDataUsageSyncer_MergeStatement(t *testing.T) {
 			whatItems, bytes, rows := duSyncer.mergeStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
-			assert.Equal(t, rows, 1)
-			assert.Equal(t, bytes, 2)
+			assert.Equal(t, rows, int64(1))
+			assert.Equal(t, bytes, int64(2))
 			assert.ElementsMatch(t, whatItems, test.expectedWhatItems)
 		})
 	}
@@ -795,8 +795,8 @@ func TestDataUsageSyncer_InsertStatement(t *testing.T) {
 			whatItems, bytes, rows := duSyncer.insertStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
-			assert.Equal(t, rows, 1)
-			assert.Equal(t, bytes, 2)
+			assert.Equal(t, rows, int64(1))
+			assert.Equal(t, bytes, int64(2))
 			assert.ElementsMatch(t, whatItems, test.expectedWhatItems)
 		})
 	}
@@ -886,8 +886,8 @@ func TestDataUsageSyncer_DeleteStatement(t *testing.T) {
 			whatItems, bytes, rows := duSyncer.deleteStatement(&queryInfo, queryInfo.QueryText, tableInfo, userLastUsage, &metastore)
 
 			// Then
-			assert.Equal(t, rows, 1)
-			assert.Equal(t, bytes, 2)
+			assert.Equal(t, rows, int64(1))
+			assert.Equal(t, bytes, int64(2))
 			assert.ElementsMatch(t, whatItems, test.expectedWhatItems)
 		})
 	}
