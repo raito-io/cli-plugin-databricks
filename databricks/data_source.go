@@ -80,11 +80,15 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	dataSourceHandler.SetDataSourceFullname(accountId)
 	dataSourceHandler.SetDataSourceName(accountId)
 
-	traverser := NewDataObjectTraverser(config, func() (accountRepository, error) {
+	traverser, err := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
 	}, createFullName)
+
+	if err != nil {
+		return fmt.Errorf("creating traverser: %w", err)
+	}
 
 	tags, err := NewDataSourceTagHandler(config.ConfigMap, d.workspaceRepoFactory)
 	if err != nil {

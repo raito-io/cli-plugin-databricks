@@ -148,3 +148,4 @@ module "group_data_engineer_sync" {
   workspace_id = [local.workspace_id]
   members      = { data_engineer : module.group_data_engineer.group.id }
 }
+

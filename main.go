@@ -53,6 +53,18 @@ func main() {
 					{Name: constants.DatabricksGoogleServiceAccount, Description: "The Google Cloud Platform (GCP) service account e-mail used for impersonation in the Default Application Credentials Flow that does not require a password.", Mandatory: false},
 
 					{Name: constants.DatabricksDataUsageWindow, Description: "The maximum number of days of usage data to retrieve. Default is 90. Maximum is 90 days.", Mandatory: false},
+
+					// Data Object selection
+					{Name: constants.DatabricksExcludeWorkspaces, Description: "Optional comma-separated list of workspaces to exclude. If specified, only these buckets will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
+					{Name: constants.DatabricksIncludeWorkspaces, Description: "Optional comma-separated list of workspaces to include. If specified, only these buckets will be handled. Wildcards (*) can be used.", Mandatory: false},
+					{Name: constants.DatabricksExcludeMetastores, Description: "Optional comma-separated list of metastores to exclude. If specified, only these metastores will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
+					{Name: constants.DatabricksIncludeMetastores, Description: "Optional comma-separated list of metastores to include. If specified, only these metastores will be handled. Wildcards (*) can be used.", Mandatory: false},
+					{Name: constants.DatabricksExcludeCatalogs, Description: "Optional comma-separated list of catalogs to exclude. If specified, only these catalogs will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
+					{Name: constants.DatabricksIncludeCatalogs, Description: "Optional comma-separated list of catalogs to include. If specified, only these catalogs will be handled. Wildcards (*) can be used.", Mandatory: false},
+					{Name: constants.DatabricksExcludeSchemas, Description: "Optional comma-separated list of schemas to exclude. If specified, only these schemas will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
+					{Name: constants.DatabricksIncludeSchemas, Description: "Optional comma-separated list of schemas to include. If specified, only these schemas will be handled. Wildcards (*) can be used.", Mandatory: false},
+					{Name: constants.DatabricksExcludeTables, Description: "Optional comma-separated list of tables to exclude. If specified, only these tables will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
+					{Name: constants.DatabricksIncludeTables, Description: "Optional comma-separated list of tables to include. If specified, only these tables will be handled. Wildcards (*) can be used.", Mandatory: false},
 				},
 			},
 		},

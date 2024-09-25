@@ -35,6 +35,12 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			constants.DatabricksUser:      "User",
 			constants.DatabricksPassword:  "Password",
 			constants.DatabricksPlatform:  "AWS",
+
+			constants.DatabricksExcludeMetastores: "excludeMetastore*",
+			constants.DatabricksExcludeWorkspaces: "excludeWorkspace*",
+			constants.DatabricksExcludeCatalogs:   "excludeCatalog*",
+			constants.DatabricksExcludeSchemas:    "excludeSchema*",
+			constants.DatabricksExcludeTables:     "excludeTable*",
 		},
 	}
 
@@ -75,6 +81,10 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			MetastoreId: "metastore-Id1",
 			Comment:     "comment on catalog-1",
 		},
+		{
+			Name:        "excludeCatalog-1",
+			MetastoreId: "metastore-Id1",
+		},
 	})).Once()
 	workspaceMocks[deployment].EXPECT().ListSchemas(mock.Anything, "catalog-1").Return(repo.ArrayToChannel([]catalog.SchemaInfo{
 		{
@@ -84,6 +94,13 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			Comment:     "comment on schema-1",
 			FullName:    "catalog-1.schema-1",
 		},
+		{
+			Name:        "excludeSchema-1",
+			MetastoreId: "metastore-Id1",
+			CatalogName: "catalog-1",
+			Comment:     "comment on schema-1",
+			FullName:    "catalog-1.excludeSchema-1",
+		},
 	})).Once()
 	workspaceMocks[deployment].EXPECT().ListAllTables(mock.Anything, "catalog-1", "schema-1").Return([]catalog.TableInfo{
 		{
@@ -91,6 +108,19 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			MetastoreId: "metastore-Id1",
 			Comment:     "comment on table-1",
 			FullName:    "catalog-1.schema-1.table-1",
+			TableType:   catalog.TableTypeManaged,
+			Columns: []catalog.ColumnInfo{
+				{
+					Name:    "column-1",
+					Comment: "comment on column-1",
+				},
+			},
+		},
+		{
+			Name:        "excludeTable-1",
+			MetastoreId: "metastore-Id1",
+			Comment:     "comment on table-1",
+			FullName:    "catalog-1.schema-1.excludeTable-1",
 			TableType:   catalog.TableTypeManaged,
 			Columns: []catalog.ColumnInfo{
 				{

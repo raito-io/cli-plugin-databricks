@@ -3,6 +3,7 @@ package databricks
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/catalog"
@@ -70,15 +71,52 @@ type DataObjectTraverser struct {
 	workspaceRepoFactory WorkspaceRepoFactory
 	createFullName       CreateFullName
 	config               *ds.DataSourceSyncConfig
+
+	workspaceFilter ObjectFilter
+	metastoreFilter ObjectFilter
+	catalogFilter   ObjectFilter
+	schemaFilter    ObjectFilter
+	tableFilter     ObjectFilter
 }
 
-func NewDataObjectTraverser(config *ds.DataSourceSyncConfig, accountFactory AccountRepoFactory, workspaceFactory WorkspaceRepoFactory, createFullName CreateFullName) *DataObjectTraverser {
+func NewDataObjectTraverser(config *ds.DataSourceSyncConfig, accountFactory AccountRepoFactory, workspaceFactory WorkspaceRepoFactory, createFullName CreateFullName) (*DataObjectTraverser, error) {
+	workspaceFilter, err := NewObjectFilter(config.GetConfigMap().GetString(constants.DatabricksExcludeWorkspaces), config.GetConfigMap().GetString(constants.DatabricksIncludeWorkspaces))
+	if err != nil {
+		return nil, fmt.Errorf("workspace filter: %w", err)
+	}
+
+	metastoreFilter, err := NewObjectFilter(config.GetConfigMap().GetString(constants.DatabricksExcludeMetastores), config.GetConfigMap().GetString(constants.DatabricksIncludeMetastores))
+	if err != nil {
+		return nil, fmt.Errorf("metastore filter: %w", err)
+	}
+
+	catalogFilter, err := NewObjectFilter(config.GetConfigMap().GetString(constants.DatabricksExcludeCatalogs), config.GetConfigMap().GetString(constants.DatabricksIncludeCatalogs))
+	if err != nil {
+		return nil, fmt.Errorf("catalog filter: %w", err)
+	}
+
+	schemaFilter, err := NewObjectFilter(config.GetConfigMap().GetString(constants.DatabricksExcludeSchemas), config.GetConfigMap().GetString(constants.DatabricksIncludeSchemas))
+	if err != nil {
+		return nil, fmt.Errorf("schema filter: %w", err)
+	}
+
+	tableFilter, err := NewObjectFilter(config.GetConfigMap().GetString(constants.DatabricksExcludeTables), config.GetConfigMap().GetString(constants.DatabricksIncludeTables))
+	if err != nil {
+		return nil, fmt.Errorf("table filter: %w", err)
+	}
+
 	return &DataObjectTraverser{
 		config:               config,
 		accountRepoFactory:   accountFactory,
 		workspaceRepoFactory: workspaceFactory,
 		createFullName:       createFullName,
-	}
+
+		workspaceFilter: workspaceFilter,
+		metastoreFilter: metastoreFilter,
+		catalogFilter:   catalogFilter,
+		schemaFilter:    schemaFilter,
+		tableFilter:     tableFilter,
+	}, nil
 }
 
 func (t *DataObjectTraverser) Traverse(ctx context.Context, visitor DataObjectVisitor, optionFunc ...func(traverserOptions *DataObjectTraverserOptions)) error {
@@ -140,7 +178,7 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, visitor DataO
 
 					logger.Debug(fmt.Sprintf("traversing catalog %s", fullName))
 
-					if t.shouldGoInto(fullName) {
+					if t.shouldGoInto(fullName) && t.catalogFilter.IncludeObject(catalogItem.I.Name) {
 						if options.SecurableTypesToReturn.Contains(constants.CatalogType) && t.shouldHandle(fullName) {
 							err = visitor.VisitCatalog(ctx, catalogItem.I, metastore, selectedWorkspace)
 							if err != nil {
@@ -177,7 +215,7 @@ func (t *DataObjectTraverser) traverseSchemas(ctx context.Context, options DataO
 			fullName := t.createFullName(ds.Schema, cat, schema)
 			logger.Debug(fmt.Sprintf("traversing schema %s", fullName))
 
-			if t.shouldGoInto(fullName) {
+			if t.shouldGoInto(fullName) && t.schemaFilter.IncludeObject(schema.Name) {
 				if options.SecurableTypesToReturn.Contains(ds.Schema) && t.shouldHandle(fullName) {
 					err := visitor.VisitSchema(ctx, schema, cat, selectedWorkspace)
 					if err != nil {
@@ -216,7 +254,7 @@ func (t *DataObjectTraverser) traverseTablesAndColumns(ctx context.Context, tabl
 
 		logger.Debug(fmt.Sprintf("traversing table %s", fullName))
 
-		if t.shouldGoInto(fullName) {
+		if t.shouldGoInto(fullName) && t.tableFilter.IncludeObject(tables[i].Name) {
 			if options.SecurableTypesToReturn.Contains(ds.Table) && t.shouldHandle(fullName) {
 				err := visitor.VisitTable(ctx, &tables[i], schema, selectedWorkspace)
 				if err != nil {
@@ -290,7 +328,7 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 	if options.SecurableTypesToReturn.Contains(constants.WorkspaceType) {
 		for i := range workspaces {
-			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
+			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) && t.workspaceFilter.IncludeObject(workspaces[i].WorkspaceName) {
 				err = visitor.VisitWorkspace(ctx, &workspaces[i])
 				if err != nil {
 					return nil, nil, err
@@ -379,4 +417,81 @@ func (t *DataObjectTraverser) shouldGoInto(fullName string) bool {
 	}
 
 	return false
+}
+
+type ObjectFilter struct {
+	excludeExpressions []*regexp.Regexp
+	includeExpressions []*regexp.Regexp
+}
+
+func NewObjectFilter(exclude, include string) (ObjectFilter, error) {
+	excludeList, err := getRegExList(exclude)
+	if err != nil {
+		return ObjectFilter{}, err
+	}
+
+	includeList, err := getRegExList(include)
+	if err != nil {
+		return ObjectFilter{}, err
+	}
+
+	return ObjectFilter{
+		excludeExpressions: excludeList,
+		includeExpressions: includeList,
+	}, nil
+}
+
+func (o *ObjectFilter) IncludeObject(name string) bool {
+	if len(o.excludeExpressions) > 0 {
+		for _, excludeExpression := range o.excludeExpressions {
+			if excludeExpression.MatchString(name) {
+				return false
+			}
+		}
+
+		return true
+	} else if len(o.includeExpressions) > 0 {
+		for _, includeExpression := range o.includeExpressions {
+			if includeExpression.MatchString(name) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	return true
+}
+
+func getRegExList(input string) ([]*regexp.Regexp, error) {
+	input = strings.TrimSpace(input)
+
+	if input == "" {
+		return []*regexp.Regexp{}, nil
+	}
+
+	inputSlice := strings.Split(input, ",")
+
+	ret := make([]*regexp.Regexp, 0, len(inputSlice))
+
+	for _, item := range inputSlice {
+		if item == "" {
+			continue
+		}
+
+		if strings.Contains(item, "*") {
+			item = strings.ReplaceAll(item, "*", ".*")
+		}
+
+		item = "^" + item + "$"
+
+		re, err := regexp.Compile(item)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse regular expression %s: %s", item, err.Error())
+		}
+
+		ret = append(ret, re)
+	}
+
+	return ret, nil
 }

@@ -993,7 +993,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 
 	var arguments []string
 
-	c := mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", mock.AnythingOfType("string")).RunAndReturn(func(_ context.Context, _ string, _ string, query string, _ ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error) {
+	c := mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", mock.AnythingOfType("string")).RunAndReturn(func(_ context.Context, _ string, _ string, query string, _ ...sql.StatementParameterListItem) (*sql.StatementResponse, error) {
 		query1 := "CREATE OR REPLACE FUNCTION raito_table-1_filter(refColumn string, column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
 		query2 := "CREATE OR REPLACE FUNCTION raito_table-1_filter(column1 float, refColumn string)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
 

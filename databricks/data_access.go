@@ -97,11 +97,15 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return fmt.Errorf("account repository factory: %w", err)
 	}
 
-	traverser := NewDataObjectTraverser(nil, func() (accountRepository, error) {
+	traverser, err := NewDataObjectTraverser(nil, func() (accountRepository, error) {
 		return accountRepo, nil
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, a.workspaceRepoFactory)
 	}, createFullName)
+
+	if err != nil {
+		return fmt.Errorf("data object traverser: %w", err)
+	}
 
 	groups, err := repo.ChannelToSet(func(ctx context.Context) <-chan repo.ChannelItem[iam.Group] {
 		return accountRepo.ListGroups(ctx)
