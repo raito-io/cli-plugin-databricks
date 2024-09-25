@@ -60,7 +60,7 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 
 	err = repository.SetPermissionsOnResource(context.Background(), catalog.SecurableTypeCatalog, _catalog, catalog.PermissionsChange{
 		Add:             []catalog.Privilege{catalog.PrivilegeCreateFunction, catalog.PrivilegeSelect, catalog.PrivilegeUseCatalog, catalog.PrivilegeUseSchema},
-		Principal:       me.Id,
+		Principal:       me.UserName,
 		Remove:          nil,
 		ForceSendFields: nil,
 	})
