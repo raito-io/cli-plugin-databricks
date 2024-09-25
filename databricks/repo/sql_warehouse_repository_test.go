@@ -156,19 +156,19 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Mask() {
 	ctx := context.Background()
 	schema := "humanresources"
 
-	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION IF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
+	_, err := s.repo.ExecuteStatement(ctx, _catalog, schema, "CREATE FUNCTION IF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
 	require.NoError(s.T(), err)
 
 	defer func() {
-		err = s.repo.DropFunction(ctx, catalog, schema, "mask_ssn")
+		err = s.repo.DropFunction(ctx, _catalog, schema, "mask_ssn")
 		assert.NoError(s.T(), err)
 	}()
 
-	err = s.repo.SetMask(ctx, catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
+	err = s.repo.SetMask(ctx, _catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
 	require.NoError(s.T(), err)
 
 	defer func() {
-		err = s.repo.DropMask(ctx, catalog, schema, "employee", "NationalIDNumber")
+		err = s.repo.DropMask(ctx, _catalog, schema, "employee", "NationalIDNumber")
 		assert.NoError(s.T(), err)
 	}()
 }
