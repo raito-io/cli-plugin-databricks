@@ -25,6 +25,17 @@ const (
 
 	DatabricksDataUsageWindow = "databricks-data-usage-window"
 
+	DatabricksExcludeWorkspaces = "databricks-exclude-workspaces"
+	DatabricksIncludeWorkspaces = "databricks-include-workspaces"
+	DatabricksExcludeMetastores = "databricks-exclude-metastores"
+	DatabricksIncludeMetastores = "databricks-include-metastores"
+	DatabricksExcludeCatalogs   = "databricks-exclude-catalogs"
+	DatabricksIncludeCatalogs   = "databricks-include-catalogs"
+	DatabricksExcludeSchemas    = "databricks-exclude-schemas"
+	DatabricksIncludeSchemas    = "databricks-include-schemas"
+	DatabricksExcludeTables     = "databricks-exclude-tables"
+	DatabricksIncludeTables     = "databricks-include-tables"
+
 	WorkspaceType = "workspace"
 	MetastoreType = "metastore"
 	CatalogType   = "catalog"

@@ -52,7 +52,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: go.mod
+          check-latest: true
           cache: true
 
       - name: Mod Tidy
@@ -64,17 +65,17 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.58.0
+          version: v1.61.0
 
       - name: Test
         run: make test
         env:
           DB_ACCOUNT_ID: ${{ secrets.DB_ACCOUNT_ID }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_CLIENT_ID: ${{ secrets.DB_CLIENT_ID }}
+          DB_CLIENT_SECRET: ${{ secrets.DB_CLIENT_SECRET }}
           DB_PLATFORM: ${{ secrets.DB_PLATFORM }}
           DB_TESTING_DEPLOYMENT: ${{ secrets.DB_DEPLOYMENT_ID }}
           DB_TESTING_METASTORE: ${{ secrets.DB_METASTORE_ID }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_SQL_WAREHOUSE_ID: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
           DB_TESTING_WORKSPACE: ${{ secrets.DB_TESTING_WORKSPACE }}
 
@@ -82,11 +83,11 @@ jobs:
         run: make test-sync
         env:
           DB_ACCOUNT_ID: ${{ secrets.DB_ACCOUNT_ID }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_CLIENT_ID: ${{ secrets.DB_CLIENT_ID }}
+          DB_CLIENT_SECRET: ${{ secrets.DB_CLIENT_SECRET }}
           DB_PLATFORM: ${{ secrets.DB_PLATFORM }}
           DB_TESTING_DEPLOYMENT: ${{ secrets.DB_DEPLOYMENT_ID }}
           DB_TESTING_METASTORE: ${{ secrets.DB_METASTORE_ID }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_SQL_WAREHOUSE_ID: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
           DB_TESTING_WORKSPACE: ${{ secrets.DB_TESTING_WORKSPACE }}
 

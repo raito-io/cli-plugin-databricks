@@ -22,7 +22,7 @@ var _ WarehouseRepository = (*SqlWarehouseRepository)(nil)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=WarehouseRepository --testonly=false
 type WarehouseRepository interface {
-	ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error)
+	ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.StatementResponse, error)
 	GetTableInformation(ctx context.Context, catalog, schema, tableName string) (map[string]*types.ColumnInformation, error)
 	DropMask(ctx context.Context, catalog, schema, table, column string) error
 	DropRowFilter(ctx context.Context, catalog, schema, table string) error
@@ -48,7 +48,7 @@ func NewSqlWarehouseRepository(client *databricks.WorkspaceClient, warehouseId s
 	}
 }
 
-func (r *SqlWarehouseRepository) ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.ExecuteStatementResponse, error) {
+func (r *SqlWarehouseRepository) ExecuteStatement(ctx context.Context, catalog, schema, statement string, parameters ...sql.StatementParameterListItem) (*sql.StatementResponse, error) {
 	err := r.waitForWarehouse(ctx)
 	if err != nil {
 		return nil, err

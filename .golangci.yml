@@ -70,13 +70,13 @@ linters:
     - asasalint
     - bodyclose
     - cyclop #To be enabled in the future
+    - copyloopvar
     # - depguard #We should create a correct config to enabe depguard
     - dogsled
     - dupl
     - dupword
     - durationcheck
     - errcheck
-    - exportloopref
     - exhaustive
     - forbidigo
     - goconst
@@ -112,8 +112,10 @@ run:
   tests: false
 
 output:
-  path-prefix: ""
+  path-prefix: ''
   sort-results: true
-  print-issued-lines: false
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
   print-linter-name: true
   uniq-by-line: false

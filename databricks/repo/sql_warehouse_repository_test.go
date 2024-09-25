@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/databricks/databricks-sdk-go/service/catalog"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,8 @@ import (
 	"cli-plugin-databricks/databricks/repo/types"
 	"cli-plugin-databricks/databricks/utils"
 )
+
+const _catalog = "raito_testing"
 
 type SqlWarehouseRepositoryTestSuite struct {
 	it.DatabricksTestSuite
@@ -51,6 +54,17 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 	repository, err := NewWorkspaceRepository(repoCredentials)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
+
+	me, err := repository.Me(context.Background())
+	require.NoError(t, err)
+
+	err = repository.SetPermissionsOnResource(context.Background(), catalog.SecurableTypeCatalog, _catalog, catalog.PermissionsChange{
+		Add:             []catalog.Privilege{catalog.PrivilegeCreateFunction, catalog.PrivilegeSelect, catalog.PrivilegeUseCatalog, catalog.PrivilegeUseSchema, catalog.PrivilegeModify},
+		Principal:       me.UserName,
+		Remove:          nil,
+		ForceSendFields: nil,
+	})
+	require.NoError(t, err)
 
 	testSuite.repo = repository.SqlWarehouseRepository(os.Getenv("DB_SQL_WAREHOUSE_ID"))
 
@@ -140,22 +154,21 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_GetTableInf
 
 func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Mask() {
 	ctx := context.Background()
-	catalog := "raito_testing"
 	schema := "humanresources"
 
-	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
+	_, err := s.repo.ExecuteStatement(ctx, _catalog, schema, "CREATE FUNCTION IF NOT EXISTS mask_ssn(ssn STRING) RETURN CASE WHEN is_member('HUMAN_RESOURCES') THEN ssn ELSE '***-**-****' END;")
 	require.NoError(s.T(), err)
 
 	defer func() {
-		err = s.repo.DropFunction(ctx, catalog, schema, "mask_ssn")
+		err = s.repo.DropFunction(ctx, _catalog, schema, "mask_ssn")
 		assert.NoError(s.T(), err)
 	}()
 
-	err = s.repo.SetMask(ctx, catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
+	err = s.repo.SetMask(ctx, _catalog, schema, "employee", "NationalIDNumber", "mask_ssn")
 	require.NoError(s.T(), err)
 
 	defer func() {
-		err = s.repo.DropMask(ctx, catalog, schema, "employee", "NationalIDNumber")
+		err = s.repo.DropMask(ctx, _catalog, schema, "employee", "NationalIDNumber")
 		assert.NoError(s.T(), err)
 	}()
 }
@@ -165,7 +178,7 @@ func (s *SqlWarehouseRepositoryTestSuite) TestSqlWarehouseRepository_Filter() {
 	catalog := "raito_testing"
 	schema := "person"
 
-	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION iF NOT EXISTS filter_state(id decimal(38,0)) RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admin'), true, id > 10)")
+	_, err := s.repo.ExecuteStatement(ctx, catalog, schema, "CREATE FUNCTION IF NOT EXISTS filter_state(id decimal(38,0)) RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admin'), true, id > 10)")
 	require.NoError(s.T(), err)
 
 	defer func() {
