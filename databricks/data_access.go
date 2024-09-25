@@ -97,7 +97,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return fmt.Errorf("account repository factory: %w", err)
 	}
 
-	traverser, err := NewDataObjectTraverser(nil, func() (accountRepository, error) {
+	traverser, err := NewDataObjectTraverser(&data_source.DataSourceSyncConfig{ConfigMap: configMap}, func() (accountRepository, error) {
 		return accountRepo, nil
 	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
 		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, a.workspaceRepoFactory)
