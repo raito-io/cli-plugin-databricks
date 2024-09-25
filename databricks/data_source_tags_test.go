@@ -136,7 +136,7 @@ func TestDataSourceTagHandler_LoadTags_WarehouseNotDefined(t *testing.T) {
 	workspaceMockRepos := make(map[string]*mockDataSourceWorkspaceRepository)
 	workspaceRepoMock := newMockDataSourceWorkspaceRepository(t)
 	workspaceMockRepos[deployment] = workspaceRepoMock
-	
+
 	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
 		deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 

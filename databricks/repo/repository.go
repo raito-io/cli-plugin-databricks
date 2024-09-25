@@ -327,25 +327,38 @@ func (r *WorkspaceRepository) QueryHistory(ctx context.Context, startTime *time.
 	}
 
 	if startTime != nil {
-		request.FilterBy = &sql.QueryFilter{QueryStartTimeRange: &sql.TimeRange{StartTimeMs: int(startTime.UnixMilli())}}
+		request.FilterBy = &sql.QueryFilter{QueryStartTimeRange: &sql.TimeRange{StartTimeMs: startTime.UnixMilli()}}
 	}
-
-	iterator := r.client.QueryHistory.List(ctx, request)
 
 	i := 0
 
-	for iterator.HasNext(ctx) && i < queryHistoryLimit {
-		it, err := iterator.Next(ctx)
+	for {
+		iterator, err := r.client.QueryHistory.List(ctx, request)
+
 		if err != nil {
-			return err
+			return fmt.Errorf("query history list: %w", err)
 		}
 
-		err = f(ctx, &it)
-		if err != nil {
-			return err
+		for itIdx := range iterator.Res {
+			it := iterator.Res[itIdx]
+
+			if i >= queryHistoryLimit {
+				break
+			}
+
+			err = f(ctx, &it)
+			if err != nil {
+				return err
+			}
+
+			i += 1
 		}
 
-		i += 1
+		if i >= queryHistoryLimit || !iterator.HasNextPage {
+			break
+		}
+
+		request.PageToken = iterator.NextPageToken
 	}
 
 	return nil
