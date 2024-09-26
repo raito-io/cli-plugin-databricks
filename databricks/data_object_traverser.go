@@ -326,9 +326,13 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 	logger.Debug(fmt.Sprintf("Found %d workspaces", len(workspaces)))
 
+	outputWorkspaces := make([]provisioning.Workspace, 0, len(workspaces))
+
 	if options.SecurableTypesToReturn.Contains(constants.WorkspaceType) {
 		for i := range workspaces {
 			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) && t.workspaceFilter.IncludeObject(workspaces[i].WorkspaceName) {
+				outputWorkspaces = append(outputWorkspaces, workspaces[i])
+
 				err = visitor.VisitWorkspace(ctx, &workspaces[i])
 				if err != nil {
 					return nil, nil, err
@@ -336,6 +340,8 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 			}
 		}
 	}
+
+	workspaces = outputWorkspaces
 
 	metastoreWorkspaceMap, _, err := accountRepo.GetWorkspaceMap(ctx, metastores, workspaces)
 	if err != nil {
