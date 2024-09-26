@@ -18,7 +18,6 @@ import (
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/repo"
 	"cli-plugin-databricks/databricks/repo/types"
-	types2 "cli-plugin-databricks/databricks/types"
 )
 
 func TestDataSourceTagHandler_LoadTags(t *testing.T) {
@@ -85,10 +84,7 @@ func TestDataSourceTagHandler_LoadTags(t *testing.T) {
 		tagCache:             make(map[string][]*tag.Tag),
 		configMap:            configMap,
 		workspaceRepoFactory: workspaceRepoFactory,
-		warehouseIdMap: map[string]types2.WarehouseDetails{"metastore1": {
-			Workspace: "workspaceId",
-			Warehouse: "warehouseId",
-		}},
+		warehouseIdMap:       map[string]string{"test-deployment": "warehouseId"},
 	}
 
 	// when
@@ -162,10 +158,7 @@ func TestDataSourceTagHandler_LoadTags_WarehouseNotDefined(t *testing.T) {
 		tagCache:             make(map[string][]*tag.Tag),
 		configMap:            configMap,
 		workspaceRepoFactory: workspaceRepoFactory,
-		warehouseIdMap: map[string]types2.WarehouseDetails{"another": {
-			Workspace: "workspaceId",
-			Warehouse: "warehouseId",
-		}},
+		warehouseIdMap:       map[string]string{"workspaceId": "warehouseId"},
 	}
 
 	// when

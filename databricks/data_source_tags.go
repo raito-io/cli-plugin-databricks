@@ -19,21 +19,24 @@ import (
 
 type DataSourceTagHandler struct {
 	configMap            *config.ConfigMap
-	warehouseIdMap       map[string]types.WarehouseDetails
+	warehouseIdMap       map[string]string //workspace -> warehouse id
 	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
 
 	tagCache map[string][]*tag.Tag
 }
 
 func NewDataSourceTagHandler(configMap *config.ConfigMap, workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataSourceWorkspaceRepository, error)) (*DataSourceTagHandler, error) {
-	warehouseIdMap := make(map[string]types.WarehouseDetails)
+	var warehouseIds []types.WarehouseDetails
 
-	if found, err := configMap.Unmarshal(constants.DatabricksSqlWarehouses, &warehouseIdMap); err != nil {
+	if found, err := configMap.Unmarshal(constants.DatabricksSqlWarehouses, &warehouseIds); err != nil {
 		return nil, fmt.Errorf("unmarshal %s: %w", constants.DatabricksSqlWarehouses, err)
 	} else if !found {
 		logger.Warn("No warehouse id map found in config. Tags will not be loaded.")
+	}
 
-		warehouseIdMap = nil
+	warehouseIdMap := make(map[string]string)
+	for _, details := range warehouseIds {
+		warehouseIdMap[details.Workspace] = details.Warehouse
 	}
 
 	return &DataSourceTagHandler{
@@ -53,7 +56,7 @@ func (d *DataSourceTagHandler) LoadTags(ctx context.Context, workspace *provisio
 
 	d.tagCache = make(map[string][]*tag.Tag)
 
-	workspaceRepo, sqlRepo, err := d.getSqlClient(c.MetastoreId, workspace)
+	workspaceRepo, sqlRepo, err := d.getSqlClient(workspace)
 	if err != nil {
 		return fmt.Errorf("get sql client: %w", err)
 	}
@@ -94,7 +97,7 @@ func (d *DataSourceTagHandler) GetTag(fullName string) []*tag.Tag {
 	return d.tagCache[fullName]
 }
 
-func (d *DataSourceTagHandler) getSqlClient(metastore string, workspace *provisioning.Workspace) (dataSourceWorkspaceRepository, repo.WarehouseRepository, error) {
+func (d *DataSourceTagHandler) getSqlClient(workspace *provisioning.Workspace) (dataSourceWorkspaceRepository, repo.WarehouseRepository, error) {
 	pltfrm, _, repoCredentials, err := utils.GetAndValidateParameters(d.configMap)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get credentials: %w", err)
@@ -110,8 +113,8 @@ func (d *DataSourceTagHandler) getSqlClient(metastore string, workspace *provisi
 		return nil, nil, fmt.Errorf("create workspace repo: %w", err)
 	}
 
-	if details, found := d.warehouseIdMap[metastore]; found {
-		return workspaceRepo, workspaceRepo.SqlWarehouseRepository(details.Warehouse), nil
+	if warehouseId, found := d.warehouseIdMap[workspace.DeploymentName]; found {
+		return workspaceRepo, workspaceRepo.SqlWarehouseRepository(warehouseId), nil
 	}
 
 	return workspaceRepo, nil, nil

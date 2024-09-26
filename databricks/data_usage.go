@@ -70,23 +70,46 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 		}
 	}()
 
+	workspaceFilter, err := NewObjectFilter(configParams.GetString(constants.DatabricksExcludeWorkspaces), configParams.GetString(constants.DatabricksIncludeWorkspaces))
+	if err != nil {
+		return fmt.Errorf("workspace filter: %w", err)
+	}
+
+	metastoreFilter, err := NewObjectFilter(configParams.GetString(constants.DatabricksExcludeMetastores), configParams.GetString(constants.DatabricksIncludeMetastores))
+	if err != nil {
+		return fmt.Errorf("metastore filter: %w", err)
+	}
+
 	metastores, workspaces, workspaceMetastoreMap, err := d.loadMetastores(ctx, configParams)
 	if err != nil {
 		return err
 	}
 
 	metastoreMap := make(map[string]catalog.MetastoreInfo)
+
 	for i := range metastores {
+		if !metastoreFilter.IncludeObject(metastores[i].Name) {
+			continue
+		}
+
 		metastoreMap[metastores[i].MetastoreId] = metastores[i]
 	}
 
 	for wi := range workspaces {
+		if !workspaceFilter.IncludeObject(workspaces[wi].WorkspaceName) {
+			continue
+		}
+
 		metastoreId := workspaceMetastoreMap[workspaces[wi].DeploymentName]
 
 		metastore, ok := metastoreMap[metastoreId]
 		if !ok {
-			return fmt.Errorf("metastore %s not found", metastoreId)
+			logger.Warn(fmt.Sprintf("metastore %s not found. Will ignore usage from workspace.", metastoreId))
+
+			continue
 		}
+
+		logger.Info(fmt.Sprintf("Syncing data usage for workspace %s", workspaces[wi].DeploymentName))
 
 		err = d.syncWorkspace(ctx, &workspaces[wi], &metastore, fileCreator, configParams)
 		if err != nil {

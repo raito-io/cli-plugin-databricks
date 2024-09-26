@@ -38,7 +38,7 @@ type DataObjectVisitor interface {
 
 	// VisitMetastore is called for each metastore found in the account.
 	// workspace argument may be nil if we were not able to find any active workspace for the metastore.
-	VisitMetastore(ctx context.Context, metastore *catalog.MetastoreInfo, workspace *provisioning.Workspace) error
+	VisitMetastore(ctx context.Context, metastore *catalog.MetastoreInfo, workspaces []*provisioning.Workspace) error
 
 	// VisitCatalog is called for each catalog found in a metastore with active workspace
 	VisitCatalog(ctx context.Context, catalog *catalog.CatalogInfo, parent *catalog.MetastoreInfo, workspace *provisioning.Workspace) error
@@ -62,7 +62,7 @@ type DataObjectTraverserOptions struct {
 
 type AccountRepoFactory func() (accountRepository, error)
 
-type WorkspaceRepoFactory func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error)
+type WorkspaceRepoFactory func(metastoreWorkspaces *provisioning.Workspace) (workspaceRepository, error)
 
 type CreateFullName func(securableType string, parent interface{}, object interface{}) string
 
@@ -158,39 +158,51 @@ func (t *DataObjectTraverser) traverseCatalog(ctx context.Context, visitor DataO
 			logger.Debug(fmt.Sprintf("Traversing catalogs for metastore %q", metastore.Name))
 
 			if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
-				workspaceClient, selectedWorkspace, err2 := t.workspaceRepoFactory(metastoreWorkspaces)
-				if err2 != nil {
-					logger.Warn(fmt.Sprintf("Failed to login for metastore %s: %s. Will skip all dataobjects in catalog.", metastore.MetastoreId, err2.Error()))
+				visitedCatalogs := set.NewSet[string]()
 
-					continue
-				}
+				for _, selectedWorkspace := range metastoreWorkspaces {
+					workspaceClient, err2 := t.workspaceRepoFactory(selectedWorkspace)
+					if err2 != nil {
+						logger.Warn(fmt.Sprintf("Failed to login for workspace %s for metastore %s: %s. Will skip all dataobjects in workspace.", selectedWorkspace.WorkspaceName, metastore.MetastoreId, err2))
 
-				catalogs := workspaceClient.ListCatalogs(ctx)
-
-				for catalogItem := range catalogs {
-					if catalogItem.HasError() {
-						logger.Warn(fmt.Sprintf("Unable to list catalogs for metastore %s: %s. Will skip all dataobjects in catalog.", metastore.MetastoreId, catalogItem.Err.Error()))
-
-						break
+						continue
 					}
 
-					fullName := t.createFullName(constants.CatalogType, metastore, catalogItem.I)
+					logger.Info(fmt.Sprintf("Traversing catalogs for metastore %q in workspace %q", metastore.Name, selectedWorkspace.WorkspaceName))
 
-					logger.Debug(fmt.Sprintf("traversing catalog %s", fullName))
+					catalogs := workspaceClient.ListCatalogs(ctx)
 
-					if t.shouldGoInto(fullName) && t.catalogFilter.IncludeObject(catalogItem.I.Name) {
-						if options.SecurableTypesToReturn.Contains(constants.CatalogType) && t.shouldHandle(fullName) {
-							err = visitor.VisitCatalog(ctx, catalogItem.I, metastore, selectedWorkspace)
-							if err != nil {
-								return fmt.Errorf("handle %s: %w", fullName, err)
-							}
+					for catalogItem := range catalogs {
+						if catalogItem.HasError() {
+							logger.Warn(fmt.Sprintf("Unable to list catalogs for metastore %s: %s. Will skip all dataobjects in catalog.", metastore.MetastoreId, catalogItem.Err.Error()))
+
+							break
 						}
 
-						err = t.traverseSchemas(ctx, options, workspaceClient, catalogItem.I, visitor, selectedWorkspace)
-						if err != nil {
-							logger.Warn(fmt.Sprintf("Unable to list schemas for catalog %s: %s. Will skip all dataobjects in catalog.", fullName, err.Error()))
-
+						if visitedCatalogs.Contains(catalogItem.I.FullName) {
 							continue
+						}
+
+						visitedCatalogs.Add(catalogItem.I.FullName)
+
+						fullName := t.createFullName(constants.CatalogType, metastore, catalogItem.I)
+
+						logger.Debug(fmt.Sprintf("traversing catalog %s", fullName))
+
+						if t.shouldGoInto(fullName) && t.catalogFilter.IncludeObject(catalogItem.I.Name) {
+							if options.SecurableTypesToReturn.Contains(constants.CatalogType) && t.shouldHandle(fullName) {
+								err = visitor.VisitCatalog(ctx, catalogItem.I, metastore, selectedWorkspace)
+								if err != nil {
+									return fmt.Errorf("handle %s: %w", fullName, err)
+								}
+							}
+
+							err = t.traverseSchemas(ctx, options, workspaceClient, catalogItem.I, visitor, selectedWorkspace)
+							if err != nil {
+								logger.Warn(fmt.Sprintf("Unable to list schemas for catalog %s: %s. Will skip all dataobjects in catalog.", fullName, err.Error()))
+
+								continue
+							}
 						}
 					}
 				}
@@ -330,13 +342,15 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 	if options.SecurableTypesToReturn.Contains(constants.WorkspaceType) {
 		for i := range workspaces {
-			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) && t.workspaceFilter.IncludeObject(workspaces[i].WorkspaceName) {
-				outputWorkspaces = append(outputWorkspaces, workspaces[i])
-
+			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
 				err = visitor.VisitWorkspace(ctx, &workspaces[i])
 				if err != nil {
 					return nil, nil, err
 				}
+			}
+
+			if t.workspaceFilter.IncludeObject(workspaces[i].WorkspaceName) {
+				outputWorkspaces = append(outputWorkspaces, workspaces[i])
 			}
 		}
 	}
@@ -354,26 +368,15 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 			logger.Debug(fmt.Sprintf("Traversing metastore %q", metastore.Name))
 
-			var selectedWorkspace *provisioning.Workspace
-
 			if metastoreWorkspaces, ok := metastoreWorkspaceMap[metastore.MetastoreId]; ok {
-				logger.Debug(fmt.Sprintf("Searching for workspace for metastore %q", metastore.Name))
-
-				_, selectedWorkspace, err = t.workspaceRepoFactory(metastoreWorkspaces)
-				if err != nil {
-					logger.Warn(fmt.Sprintf("Unable to get workspace for metastore %q. Will ignore metastore. Error: %s", metastore.Name, err))
-
-					continue
+				if t.shouldHandle(t.createFullName(constants.MetastoreType, nil, metastore)) {
+					err = visitor.VisitMetastore(ctx, &metastores[i], metastoreWorkspaces)
+					if err != nil {
+						return nil, nil, err
+					}
 				}
-
-				logger.Debug(fmt.Sprintf("Found workspace for metastore %q => %q", metastore.Name, selectedWorkspace.WorkspaceName))
-			}
-
-			if t.shouldHandle(t.createFullName(constants.MetastoreType, nil, metastore)) {
-				err = visitor.VisitMetastore(ctx, &metastores[i], selectedWorkspace)
-				if err != nil {
-					return nil, nil, err
-				}
+			} else {
+				logger.Warn(fmt.Sprintf("No active workspace found for metastore %q", metastore.Name))
 			}
 		}
 	}

@@ -82,8 +82,8 @@ func (d *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 
 	traverser, err := NewDataObjectTraverser(config, func() (accountRepository, error) {
 		return d.accountRepoFactory(pltfrm, accountId, &repoCredentials)
-	}, func(metastoreWorkspaces []*provisioning.Workspace) (workspaceRepository, *provisioning.Workspace, error) {
-		return utils.SelectWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspaces, d.workspaceRepoFactory)
+	}, func(metastoreWorkspace *provisioning.Workspace) (workspaceRepository, error) {
+		return utils.InitWorkspaceRepo(ctx, repoCredentials, pltfrm, metastoreWorkspace, d.workspaceRepoFactory)
 	}, createFullName)
 
 	if err != nil {
@@ -180,7 +180,7 @@ func (d DataSourceVisitor) VisitWorkspace(_ context.Context, workspace *provisio
 	})
 }
 
-func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.MetastoreInfo, _ *provisioning.Workspace) error {
+func (d DataSourceVisitor) VisitMetastore(_ context.Context, metastore *catalog.MetastoreInfo, _ []*provisioning.Workspace) error {
 	logger.Info(fmt.Sprintf("Found metastore %q: %+v", metastore.Name, metastore))
 
 	return d.dataSourceHandler.AddDataObjects(&ds.DataObject{

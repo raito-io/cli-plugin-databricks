@@ -74,7 +74,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		},
 	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
-	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
+	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",
@@ -198,7 +198,7 @@ func TestDataSourceSyncer_SyncDataSource_Partial(t *testing.T) {
 		},
 	}).Return(map[string][]*provisioning.Workspace{"metastore-Id1": {{DeploymentName: deployment}}}, nil, nil).Twice()
 
-	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
+	workspaceMocks[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
 	workspaceMocks[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			Name:        "catalog-1",

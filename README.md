@@ -52,8 +52,9 @@ To use the plugin, add the following snippet to your Raito CLI configuration fil
    
    # SQL Warehouses (required for tag support, row-level filtering, and column masking)
    databricks-sql-warehouses:
-     <<deployment-id>>:
-       workspace: <<databricks workspace ID>>
+     - workspace: <<databricks workspace ID>>
+       warehouse: <<databricks SQL Warehouse ID>>
+     - workspace: <<databricks workspace ID>>
        warehouse: <<databricks SQL Warehouse ID>>
    
    # Native authentication
