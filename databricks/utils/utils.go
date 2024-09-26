@@ -48,7 +48,7 @@ func InitializeWorkspaceRepoCredentials(repoCredentials repo.RepositoryCredentia
 		return nil, errors.New("unable to find workspace")
 	}
 
-	if pltfrm == platform.DatabricksPlatformAzure && workspace.AzureWorkspaceInfo != nil {
+	if pltfrm == platform.DatabricksPlatformAzure && workspace.AzureWorkspaceInfo != nil && repoCredentials.AzureClientId != "" {
 		repoCredentials.AzureResourceId = fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Databricks/workspaces/%s", workspace.AzureWorkspaceInfo.SubscriptionId, workspace.AzureWorkspaceInfo.ResourceGroup, workspace.WorkspaceName)
 	} else {
 		host, err := pltfrm.WorkspaceAddress(workspace.DeploymentName)
