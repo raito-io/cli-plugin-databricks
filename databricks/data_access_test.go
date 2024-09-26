@@ -98,7 +98,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 	}, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Twice()
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetPermissionsOnResource(mock.Anything, catalog.SecurableTypeMetastore, "metastore-id1").Return(nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
@@ -535,7 +535,19 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
+		{
+			FullName:    "catalog-1",
+			MetastoreId: "catalogId-1",
+			Name:        "catalog-1",
+		},
+		{
+			FullName:    "catalog-2",
+			MetastoreId: "catalogId-2",
+			Name:        "catalog-2",
+		},
+	})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
 		assert.Len(t, change, 3)
 
@@ -688,7 +700,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 			constants.DatabricksAccountId:     "AccountId",
 			constants.DatabricksUser:          "User",
 			constants.DatabricksPassword:      "Password",
-			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`[{"workspace": "%s", "warehouse": "sqlWarehouse1"}]`, deployment),
 			constants.DatabricksPlatform:      "AWS",
 		},
 	}
@@ -711,6 +723,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 
 	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
@@ -811,7 +825,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 			constants.DatabricksAccountId:     "AccountId",
 			constants.DatabricksUser:          "User",
 			constants.DatabricksPassword:      "Password",
-			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`[{"workspace": "%s", "warehouse": "sqlWarehouse1"}]`, deployment),
 			constants.DatabricksPlatform:      "AWS",
 		},
 	}
@@ -834,6 +848,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-2.table-1").Return("owner2@raito.io", nil).Once()
@@ -953,7 +969,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 			constants.DatabricksAccountId:     "AccountId",
 			constants.DatabricksUser:          "User",
 			constants.DatabricksPassword:      "Password",
-			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`[{"workspace": "%s", "warehouse": "sqlWarehouse1"}]`, deployment),
 			constants.DatabricksPlatform:      "AWS",
 		},
 	}
@@ -976,6 +992,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
@@ -1091,7 +1109,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 			constants.DatabricksAccountId:     "AccountId",
 			constants.DatabricksUser:          "User",
 			constants.DatabricksPassword:      "Password",
-			constants.DatabricksSqlWarehouses: fmt.Sprintf(`{"metastore-id1": {"workspace": "%s", "warehouse": "sqlWarehouse1"}}`, deployment),
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`[{"workspace": "%s", "warehouse": "sqlWarehouse1"}]`, deployment),
 			constants.DatabricksPlatform:      "AWS",
 		},
 	}
@@ -1114,6 +1132,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 
 	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
 
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 
 	mockWarehouseRepo.EXPECT().DropRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1").Return(nil)
@@ -1239,7 +1259,19 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
 	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
-	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
+		{
+			FullName:    "catalog-1",
+			MetastoreId: "catalogId-1",
+			Name:        "catalog-1",
+		},
+		{
+			FullName:    "catalog-2",
+			MetastoreId: "catalogId-2",
+			Name:        "catalog-2",
+		},
+	})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-1", mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
 		assert.Len(t, change, 3)
 

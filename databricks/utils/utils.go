@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
-	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
 
@@ -48,7 +47,7 @@ func InitializeWorkspaceRepoCredentials(repoCredentials repo.RepositoryCredentia
 		return nil, errors.New("unable to find workspace")
 	}
 
-	if pltfrm == platform.DatabricksPlatformAzure && workspace.AzureWorkspaceInfo != nil {
+	if pltfrm == platform.DatabricksPlatformAzure && workspace.AzureWorkspaceInfo != nil && repoCredentials.AzureClientId != "" {
 		repoCredentials.AzureResourceId = fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Databricks/workspaces/%s", workspace.AzureWorkspaceInfo.SubscriptionId, workspace.AzureWorkspaceInfo.ResourceGroup, workspace.WorkspaceName)
 	} else {
 		host, err := pltfrm.WorkspaceAddress(workspace.DeploymentName)
@@ -62,36 +61,23 @@ func InitializeWorkspaceRepoCredentials(repoCredentials repo.RepositoryCredentia
 	return &repoCredentials, nil
 }
 
-func SelectWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspaces []*provisioning.Workspace, repoFn func(*repo.RepositoryCredentials) (R, error)) (R, *provisioning.Workspace, error) {
-	var err error
-
-	for _, workspace := range workspaces {
-		credentials, werr := InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
-		if werr != nil {
-			err = multierror.Append(err, werr)
-			continue
-		}
-
-		repo, werr := repoFn(credentials)
-		if werr != nil {
-			err = multierror.Append(err, fmt.Errorf("generating repository for %q: %w", workspace.WorkspaceName, werr))
-			continue
-		}
-
-		werr = repo.Ping(ctx)
-		if werr != nil {
-			err = multierror.Append(err, fmt.Errorf("ping %q: %w", workspace.WorkspaceName, werr))
-			continue
-		}
-
-		return repo, workspace, nil
-	}
-
+func InitWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspace *provisioning.Workspace, repoFn func(*repo.RepositoryCredentials) (R, error)) (R, error) {
 	var r R
 
-	if err == nil {
-		return r, nil, fmt.Errorf("no workspace found for metastore")
+	credentials, err := InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
+	if err != nil {
+		return r, fmt.Errorf("load workspace credentials: %w", err)
 	}
 
-	return r, nil, fmt.Errorf("select workspace: %w", err)
+	repo, err := repoFn(credentials)
+	if err != nil {
+		return r, fmt.Errorf("generating repository for %q: %w", workspace.WorkspaceName, err)
+	}
+
+	err = repo.Ping(ctx)
+	if err != nil {
+		return r, fmt.Errorf("pinging workspace %q: %w", workspace.WorkspaceName, err)
+	}
+
+	return repo, nil
 }
