@@ -132,7 +132,7 @@ func (t *DataObjectTraverser) Traverse(ctx context.Context, visitor DataObjectVi
 
 	metastores, workspaces, err := t.traverseAccount(ctx, accountRepo, visitor, options)
 	if err != nil {
-		return fmt.Errorf("traverse acocunt: %w", err)
+		return fmt.Errorf("traverse account: %w", err)
 	}
 
 	err = t.traverseCatalog(ctx, visitor, options, accountRepo, metastores, workspaces)
@@ -342,14 +342,16 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 
 	if options.SecurableTypesToReturn.Contains(constants.WorkspaceType) {
 		for i := range workspaces {
-			if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
-				err = visitor.VisitWorkspace(ctx, &workspaces[i])
-				if err != nil {
-					return nil, nil, err
-				}
-			}
-
 			if t.workspaceFilter.IncludeObject(workspaces[i].WorkspaceName) {
+				if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
+					err = visitor.VisitWorkspace(ctx, &workspaces[i])
+					if err != nil {
+						logger.Error(fmt.Sprintf("Error visiting workspace %q: %s", workspaces[i].WorkspaceName, err.Error()))
+
+						continue
+					}
+				}
+
 				outputWorkspaces = append(outputWorkspaces, workspaces[i])
 			}
 		}

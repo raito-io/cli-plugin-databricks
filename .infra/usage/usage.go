@@ -11,6 +11,7 @@ import (
 	"github.com/databricks/databricks-sdk-go"
 	"github.com/databricks/databricks-sdk-go/service/sql"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 )
 
 var logger hclog.Logger
@@ -37,16 +38,22 @@ type InfrastructureInput struct {
 func CreateUsage(infraInput *InfrastructureInput, users []Persona, host string, warehouseId string) error {
 	ctx := context.Background()
 
-	for _, user := range users {
-		logger.Info(fmt.Sprintf("Executing queries for user %q", user.Name))
+	wg := multierror.Group{}
 
-		err := ExecuteQueriesForUser(ctx, infraInput, user.Name, user.ClientId, user.ClientSecret, host, warehouseId)
-		if err != nil {
-			return fmt.Errorf("execute queries for user %s: %w", user, err)
-		}
+	for _, user := range users {
+		wg.Go(func() error {
+			logger.Info(fmt.Sprintf("Executing queries for user %q", user.Name))
+
+			err := ExecuteQueriesForUser(ctx, infraInput, user.Name, user.ClientId, user.ClientSecret, host, warehouseId)
+			if err != nil {
+				return fmt.Errorf("execute queries for user %s: %w", user, err)
+			}
+
+			return nil
+		})
 	}
 
-	return nil
+	return wg.Wait().ErrorOrNil()
 }
 
 func ExecuteQueriesForUser(ctx context.Context, infraInput *InfrastructureInput, name, clientId, clientSecret, host string, warehouseId string) error {

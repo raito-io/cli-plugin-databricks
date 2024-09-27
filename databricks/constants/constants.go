@@ -36,6 +36,8 @@ const (
 	DatabricksExcludeTables     = "databricks-exclude-tables"
 	DatabricksIncludeTables     = "databricks-include-tables"
 
+	DatabricksIncludeMetastoreInGrantName = "databricks-include-metastore-in-grant-name"
+
 	WorkspaceType = "workspace"
 	MetastoreType = "metastore"
 	CatalogType   = "catalog"
