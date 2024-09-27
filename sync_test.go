@@ -133,7 +133,6 @@ func DataUsageSync(ctx context.Context, config *config.ConfigMap, t *testing.T) 
 	dataUsageSyncer := databricks.NewDataUsageSyncer()
 
 	dataUsageHandler := mocks.NewSimpleDataUsageStatementHandler(t)
-	dataUsageHandler.EXPECT().GetImportFileSize().Return(uint64(1024 ^ 10))
 
 	// When
 	err := dataUsageSyncer.SyncDataUsage(ctx, dataUsageHandler, config)

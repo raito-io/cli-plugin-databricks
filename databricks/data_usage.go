@@ -113,7 +113,7 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 		err = d.syncWorkspace(ctx, &workspaces[wi], &metastore, fileCreator, configParams)
 		if err != nil {
-			logger.Warn(fmt.Sprintf("Sync data usage for metastore %s failed: %s", metastore.Name, err.Error()))
+			logger.Warn(fmt.Sprintf("Sync data usage for metastore %s in workspace %s failed: %s", metastore.Name, workspaces[wi].WorkspaceName, err.Error()))
 		}
 	}
 

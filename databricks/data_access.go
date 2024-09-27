@@ -22,6 +22,8 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"cli-plugin-databricks/databricks/constants"
 	"cli-plugin-databricks/databricks/masks"
@@ -34,6 +36,7 @@ import (
 )
 
 var _ wrappers.AccessProviderSyncer = (*AccessSyncer)(nil)
+var TitleCaser = cases.Title(language.English)
 
 const (
 	raitoPrefix = "raito_"
@@ -132,8 +135,9 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		storedFunctions:       types.NewStoredFunctions(),
 		metaStoreIdMap:        map[string]string{},
 
-		groups:            groups,
-		servicePrincipals: servicePrincipals,
+		groups:                        groups,
+		servicePrincipals:             servicePrincipals,
+		includeMetastoreInExternalAps: configMap.GetBoolWithDefault(constants.DatabricksIncludeMetastoreInGrantName, false),
 	}
 
 	err = traverser.Traverse(ctx, &apDataObjectVisitor, func(traverserOptions *DataObjectTraverserOptions) {
@@ -1147,11 +1151,12 @@ type AccessProviderVisitor struct {
 	groups            set.Set[string]
 	servicePrincipals set.Set[string]
 
-	repoCredentials types2.RepositoryCredentials
-	accountId       string
-	pltfrm          platform.DatabricksPlatform
-	storedFunctions types.StoredFunctions
-	metaStoreIdMap  map[string]string
+	repoCredentials               types2.RepositoryCredentials
+	accountId                     string
+	pltfrm                        platform.DatabricksPlatform
+	storedFunctions               types.StoredFunctions
+	metaStoreIdMap                map[string]string
+	includeMetastoreInExternalAps bool
 }
 
 func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *provisioning.Workspace) error {
@@ -1195,7 +1200,8 @@ func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *p
 	}
 
 	for privilege, principleList := range privilegesToSync {
-		apName := fmt.Sprintf("%s_%s", workspace.WorkspaceName, privilege)
+		apExternalId := fmt.Sprintf("%s_%s", workspace.WorkspaceName, privilege)
+		apName := fmt.Sprintf("%s %s - %s", TitleCaser.String(constants.WorkspaceType), workspace.WorkspaceName, privilege)
 
 		whoItems := sync_from_target.WhoItem{}
 
@@ -1210,7 +1216,7 @@ func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *p
 
 		err2 := a.accessProviderHandler.AddAccessProviders(
 			&sync_from_target.AccessProvider{
-				ExternalId: apName,
+				ExternalId: apExternalId,
 				Action:     sync_from_target.Grant,
 				Name:       apName,
 				NamingHint: apName,
@@ -1271,7 +1277,7 @@ func (a *AccessProviderVisitor) VisitMetastore(ctx context.Context, metastore *c
 
 	logger.Debug(fmt.Sprintf("Process permission on metastore %q", metastore.Name))
 
-	err = a.addPermissionIfNotSetByRaito(metastore.Name, &data_source.DataObjectReference{FullName: metastore.Name, Type: constants.MetastoreType}, permissionsList)
+	err = a.addPermissionIfNotSetByRaito(fmt.Sprintf("%s %s", TitleCaser.String(constants.MetastoreType), metastore.Name), &data_source.DataObjectReference{FullName: metastore.Name, Type: constants.MetastoreType}, permissionsList)
 	if err != nil {
 		return err
 	}
@@ -1427,7 +1433,7 @@ func (a *AccessProviderVisitor) syncAccessProviderObjectFromTarget(ctx context.C
 		return err
 	}
 
-	return a.addPermissionIfNotSetByRaito(createUniqueId(metastoreName, fullName), &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
+	return a.addPermissionIfNotSetByRaito(createAccessProviderNamePrefix(metastoreName, fullName, doType, a.includeMetastoreInExternalAps), &data_source.DataObjectReference{FullName: createUniqueId(metastoreId, fullName), Type: doType}, permissionsList)
 }
 
 func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string, do *data_source.DataObjectReference, assignments *catalog.PermissionsList) error {
@@ -1492,6 +1498,15 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 	}
 
 	return nil
+}
+
+func createAccessProviderNamePrefix(metastoreId string, fullName string, doType string, includeMetastore bool) string {
+	objectName := fullName
+	if includeMetastore {
+		objectName = fmt.Sprintf("%s.%s", metastoreId, fullName)
+	}
+
+	return fmt.Sprintf("%s %s", TitleCaser.String(doType), objectName)
 }
 
 type metastoreRepoCacheItem struct {

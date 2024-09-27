@@ -216,9 +216,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	assert.ElementsMatch(t, accessProviderHandlerMock.AccessProviders, []sync_from_target.AccessProvider{
 		{
 			ExternalId: "test-workspace_USER",
-			Name:       "test-workspace_USER",
-			NamingHint: "test-workspace_USER",
-			ActualName: "test-workspace_USER",
+			Name:       "Workspace test-workspace - USER",
+			NamingHint: "Workspace test-workspace - USER",
+			ActualName: "Workspace test-workspace - USER",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -236,9 +236,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "test-workspace_ADMIN",
-			Name:       "test-workspace_ADMIN",
-			NamingHint: "test-workspace_ADMIN",
-			ActualName: "test-workspace_ADMIN",
+			Name:       "Workspace test-workspace - ADMIN",
+			NamingHint: "Workspace test-workspace - ADMIN",
+			ActualName: "Workspace test-workspace - ADMIN",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -256,9 +256,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_SELECT",
-			Name:       "metastore1.catalog-1_SELECT",
-			NamingHint: "metastore1.catalog-1_SELECT",
-			ActualName: "metastore1.catalog-1_SELECT",
+			Name:       "Catalog catalog-1_SELECT",
+			NamingHint: "Catalog catalog-1_SELECT",
+			ActualName: "Catalog catalog-1_SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -276,9 +276,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_USE_CATALOG",
-			Name:       "metastore1.catalog-1_USE_CATALOG",
-			NamingHint: "metastore1.catalog-1_USE_CATALOG",
-			ActualName: "metastore1.catalog-1_USE_CATALOG",
+			Name:       "Catalog catalog-1_USE_CATALOG",
+			NamingHint: "Catalog catalog-1_USE_CATALOG",
+			ActualName: "Catalog catalog-1_USE_CATALOG",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -297,9 +297,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_EXECUTE",
-			Name:       "metastore1.catalog-1_EXECUTE",
-			NamingHint: "metastore1.catalog-1_EXECUTE",
-			ActualName: "metastore1.catalog-1_EXECUTE",
+			Name:       "Catalog catalog-1_EXECUTE",
+			NamingHint: "Catalog catalog-1_EXECUTE",
+			ActualName: "Catalog catalog-1_EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -317,9 +317,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_EXECUTE",
-			Name:       "metastore1.catalog-1.schema-1_EXECUTE",
-			NamingHint: "metastore1.catalog-1.schema-1_EXECUTE",
-			ActualName: "metastore1.catalog-1.schema-1_EXECUTE",
+			Name:       "Schema catalog-1.schema-1_EXECUTE",
+			NamingHint: "Schema catalog-1.schema-1_EXECUTE",
+			ActualName: "Schema catalog-1.schema-1_EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -337,9 +337,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_SELECT",
-			Name:       "metastore1.catalog-1.schema-1_SELECT",
-			NamingHint: "metastore1.catalog-1.schema-1_SELECT",
-			ActualName: "metastore1.catalog-1.schema-1_SELECT",
+			Name:       "Schema catalog-1.schema-1_SELECT",
+			NamingHint: "Schema catalog-1.schema-1_SELECT",
+			ActualName: "Schema catalog-1.schema-1_SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -357,9 +357,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_MODIFY",
-			Name:       "metastore1.catalog-1.schema-1_MODIFY",
-			NamingHint: "metastore1.catalog-1.schema-1_MODIFY",
-			ActualName: "metastore1.catalog-1.schema-1_MODIFY",
+			Name:       "Schema catalog-1.schema-1_MODIFY",
+			NamingHint: "Schema catalog-1.schema-1_MODIFY",
+			ActualName: "Schema catalog-1.schema-1_MODIFY",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -377,9 +377,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
-			Name:       "metastore1.catalog-1.schema-1.table-1_SELECT",
-			NamingHint: "metastore1.catalog-1.schema-1.table-1_SELECT",
-			ActualName: "metastore1.catalog-1.schema-1.table-1_SELECT",
+			Name:       "Table catalog-1.schema-1.table-1_SELECT",
+			NamingHint: "Table catalog-1.schema-1.table-1_SELECT",
+			ActualName: "Table catalog-1.schema-1.table-1_SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -395,9 +395,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
-			Name:       "metastore1.catalog-1.schema-1.function-1_EXECUTE",
-			NamingHint: "metastore1.catalog-1.schema-1.function-1_EXECUTE",
-			ActualName: "metastore1.catalog-1.schema-1.function-1_EXECUTE",
+			Name:       "Function catalog-1.schema-1.function-1_EXECUTE",
+			NamingHint: "Function catalog-1.schema-1.function-1_EXECUTE",
+			ActualName: "Function catalog-1.schema-1.function-1_EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -1412,4 +1412,44 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 
 		privilegeCache: types.NewPrivilegeCache(),
 	}, accountRepo, workspaceMockRepos
+}
+
+func Test_createAccessProviderNamePrefix(t *testing.T) {
+	type args struct {
+		metastoreId      string
+		fullName         string
+		doType           string
+		includeMetastore bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "no metastore",
+			args: args{
+				metastoreId:      "MetastoreId",
+				fullName:         "catalog1.schema1.table",
+				doType:           "table",
+				includeMetastore: false,
+			},
+			want: "Table catalog1.schema1.table",
+		},
+		{
+			name: "with metastore",
+			args: args{
+				metastoreId:      "MetastoreId",
+				fullName:         "catalog1.schema1.table",
+				doType:           "table",
+				includeMetastore: true,
+			},
+			want: "Table MetastoreId.catalog1.schema1.table",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, createAccessProviderNamePrefix(tt.args.metastoreId, tt.args.fullName, tt.args.doType, tt.args.includeMetastore), "createAccessProviderNamePrefix(%v, %v, %v, %v)", tt.args.metastoreId, tt.args.fullName, tt.args.doType, tt.args.includeMetastore)
+		})
+	}
 }

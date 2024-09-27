@@ -65,6 +65,9 @@ func main() {
 					{Name: constants.DatabricksIncludeSchemas, Description: "Optional comma-separated list of schemas to include. If specified, only these schemas will be handled. Wildcards (*) can be used.", Mandatory: false},
 					{Name: constants.DatabricksExcludeTables, Description: "Optional comma-separated list of tables to exclude. If specified, only these tables will not be handled. Wildcards (*) can be used. Excludes have preference over includes.", Mandatory: false},
 					{Name: constants.DatabricksIncludeTables, Description: "Optional comma-separated list of tables to include. If specified, only these tables will be handled. Wildcards (*) can be used.", Mandatory: false},
+
+					// Grant naming
+					{Name: constants.DatabricksIncludeMetastoreInGrantName, Description: "Prefix the grant name with the metastore name.", Mandatory: false},
 				},
 			},
 		},
