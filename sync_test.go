@@ -35,6 +35,8 @@ func TestSync(t *testing.T) {
 
 	t.Run("AccessSync", testMethod(AccessSync))
 
+	t.Run("DataUsageSync", testMethod(DataUsageSync))
+
 }
 
 func DataSourceSync(ctx context.Context, cfg *config.ConfigMap, t *testing.T) {

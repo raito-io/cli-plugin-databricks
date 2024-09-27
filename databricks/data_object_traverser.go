@@ -346,7 +346,9 @@ func (t *DataObjectTraverser) traverseAccount(ctx context.Context, accountRepo a
 				if t.shouldHandle(t.createFullName(constants.WorkspaceType, nil, &workspaces[i])) {
 					err = visitor.VisitWorkspace(ctx, &workspaces[i])
 					if err != nil {
-						return nil, nil, err
+						logger.Error(fmt.Sprintf("Error visiting workspace %q: %s", workspaces[i].WorkspaceName, err.Error()))
+
+						continue
 					}
 				}
 

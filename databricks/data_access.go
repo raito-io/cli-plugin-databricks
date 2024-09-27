@@ -1157,12 +1157,12 @@ type AccessProviderVisitor struct {
 func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *provisioning.Workspace) error {
 	accountClient, err := a.syncer.accountRepoFactory(a.pltfrm, a.accountId, &a.repoCredentials)
 	if err != nil {
-		return err
+		return fmt.Errorf("create account repository: %w", err)
 	}
 
 	assignments, err := accountClient.ListWorkspaceAssignments(ctx, workspace.WorkspaceId)
 	if err != nil {
-		return err
+		return fmt.Errorf("list workspace assignments: %w", err)
 	}
 
 	privilegesToSync := make(map[string][]string)
