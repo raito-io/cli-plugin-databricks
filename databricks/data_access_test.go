@@ -256,9 +256,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_SELECT",
-			Name:       "Catalog catalog-1_SELECT",
-			NamingHint: "Catalog catalog-1_SELECT",
-			ActualName: "Catalog catalog-1_SELECT",
+			Name:       "Catalog catalog-1 - SELECT",
+			NamingHint: "Catalog catalog-1 - SELECT",
+			ActualName: "Catalog catalog-1 - SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -276,9 +276,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_USE_CATALOG",
-			Name:       "Catalog catalog-1_USE_CATALOG",
-			NamingHint: "Catalog catalog-1_USE_CATALOG",
-			ActualName: "Catalog catalog-1_USE_CATALOG",
+			Name:       "Catalog catalog-1 - USE CATALOG",
+			NamingHint: "Catalog catalog-1 - USE CATALOG",
+			ActualName: "Catalog catalog-1 - USE CATALOG",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -297,9 +297,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1_EXECUTE",
-			Name:       "Catalog catalog-1_EXECUTE",
-			NamingHint: "Catalog catalog-1_EXECUTE",
-			ActualName: "Catalog catalog-1_EXECUTE",
+			Name:       "Catalog catalog-1 - EXECUTE",
+			NamingHint: "Catalog catalog-1 - EXECUTE",
+			ActualName: "Catalog catalog-1 - EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -317,9 +317,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_EXECUTE",
-			Name:       "Schema catalog-1.schema-1_EXECUTE",
-			NamingHint: "Schema catalog-1.schema-1_EXECUTE",
-			ActualName: "Schema catalog-1.schema-1_EXECUTE",
+			Name:       "Schema catalog-1.schema-1 - EXECUTE",
+			NamingHint: "Schema catalog-1.schema-1 - EXECUTE",
+			ActualName: "Schema catalog-1.schema-1 - EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -337,9 +337,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_SELECT",
-			Name:       "Schema catalog-1.schema-1_SELECT",
-			NamingHint: "Schema catalog-1.schema-1_SELECT",
-			ActualName: "Schema catalog-1.schema-1_SELECT",
+			Name:       "Schema catalog-1.schema-1 - SELECT",
+			NamingHint: "Schema catalog-1.schema-1 - SELECT",
+			ActualName: "Schema catalog-1.schema-1 - SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -357,9 +357,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1_MODIFY",
-			Name:       "Schema catalog-1.schema-1_MODIFY",
-			NamingHint: "Schema catalog-1.schema-1_MODIFY",
-			ActualName: "Schema catalog-1.schema-1_MODIFY",
+			Name:       "Schema catalog-1.schema-1 - MODIFY",
+			NamingHint: "Schema catalog-1.schema-1 - MODIFY",
+			ActualName: "Schema catalog-1.schema-1 - MODIFY",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -377,9 +377,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1.table-1_SELECT",
-			Name:       "Table catalog-1.schema-1.table-1_SELECT",
-			NamingHint: "Table catalog-1.schema-1.table-1_SELECT",
-			ActualName: "Table catalog-1.schema-1.table-1_SELECT",
+			Name:       "Table catalog-1.schema-1.table-1 - SELECT",
+			NamingHint: "Table catalog-1.schema-1.table-1 - SELECT",
+			ActualName: "Table catalog-1.schema-1.table-1 - SELECT",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
@@ -395,9 +395,9 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		},
 		{
 			ExternalId: "metastore-id1.catalog-1.schema-1.function-1_EXECUTE",
-			Name:       "Function catalog-1.schema-1.function-1_EXECUTE",
-			NamingHint: "Function catalog-1.schema-1.function-1_EXECUTE",
-			ActualName: "Function catalog-1.schema-1.function-1_EXECUTE",
+			Name:       "Function catalog-1.schema-1.function-1 - EXECUTE",
+			NamingHint: "Function catalog-1.schema-1.function-1 - EXECUTE",
+			ActualName: "Function catalog-1.schema-1.function-1 - EXECUTE",
 			Action:     sync_from_target.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{

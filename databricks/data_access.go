@@ -1457,8 +1457,10 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 	}
 
 	for privilege, principleList := range privilegeToPrincipleMap {
+		humanReadablePrivilege := strings.ToUpper(strings.ReplaceAll(privilege.String(), "_", " "))
+
 		externalId := fmt.Sprintf("%s_%s", do.FullName, privilege.String())
-		apName := fmt.Sprintf("%s_%s", apNamePrefix, privilege.String())
+		apName := fmt.Sprintf("%s - %s", apNamePrefix, humanReadablePrivilege)
 
 		whoItems := sync_from_target.WhoItem{}
 
@@ -1486,7 +1488,7 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject:  do,
-						Permissions: []string{strings.ToUpper(strings.ReplaceAll(privilege.String(), "_", " "))},
+						Permissions: []string{humanReadablePrivilege},
 					},
 				},
 				Who: &whoItems,
