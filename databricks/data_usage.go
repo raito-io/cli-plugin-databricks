@@ -89,16 +89,25 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 	for i := range metastores {
 		if !metastoreFilter.IncludeObject(metastores[i].Name) {
+			logger.Info(fmt.Sprintf("Metastore %s is excluded", metastores[i].Name))
+
 			continue
 		}
 
 		metastoreMap[metastores[i].MetastoreId] = metastores[i]
 	}
 
+	logger.Debug(fmt.Sprintf("Metastore map: %v", metastoreMap))
+	logger.Info(fmt.Sprintf("Sync usage from %d workspaces", len(workspaces)))
+
 	for wi := range workspaces {
 		if !workspaceFilter.IncludeObject(workspaces[wi].WorkspaceName) {
+			logger.Info(fmt.Sprintf("Workspace %s is excluded", workspaces[wi].WorkspaceName))
+
 			continue
 		}
+
+		logger.Debug(fmt.Sprintf("Include workspace %s", workspaces[wi].WorkspaceName))
 
 		metastoreId := workspaceMetastoreMap[workspaces[wi].DeploymentName]
 
@@ -109,7 +118,7 @@ func (d *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Syncing data usage for workspace %s", workspaces[wi].DeploymentName))
+		logger.Info(fmt.Sprintf("Syncing data usage for workspace %s:%s", workspaces[wi].DeploymentName, workspaces[wi].WorkspaceName))
 
 		err = d.syncWorkspace(ctx, &workspaces[wi], &metastore, fileCreator, configParams)
 		if err != nil {

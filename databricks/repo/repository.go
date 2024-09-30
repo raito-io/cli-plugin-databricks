@@ -100,6 +100,7 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 	}
 
 	logger.Debug(fmt.Sprintf("Metastore map: %+v", metastoreToWorkspaceMap))
+	logger.Debug(fmt.Sprintf("Workspace map: %+v", workspaceToMetastoreMap))
 
 	return metastoreToWorkspaceMap, workspaceToMetastoreMap, nil
 }
