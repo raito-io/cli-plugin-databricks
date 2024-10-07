@@ -5,8 +5,8 @@ go 1.23.0
 toolchain go1.23.1
 
 require (
-	github.com/aws/smithy-go v1.21.0
-	github.com/databricks/databricks-sdk-go v0.46.0
+	github.com/aws/smithy-go v1.22.0
+	github.com/databricks/databricks-sdk-go v0.48.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/raito-io/bexpression v0.1.2
@@ -14,8 +14,9 @@ require (
 	github.com/raito-io/enumer v0.1.4
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.9.0
-	github.com/vektra/mockery/v2 v2.46.0
+	github.com/vektra/mockery/v2 v2.46.2
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+	golang.org/x/text v0.18.0
 )
 
 require (
@@ -93,7 +94,6 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/term v0.24.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.25.0 // indirect
 	google.golang.org/api v0.188.0 // indirect
