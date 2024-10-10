@@ -49,7 +49,7 @@ resource "databricks_sql_table" "department" {
 resource "databricks_sql_table" "department_view" {
   catalog_name = databricks_schema.humanresources.catalog_name
   schema_name  = databricks_schema.humanresources.name
-  name         = "department"
+  name         = "department_view"
   table_type   = "VIEW"
   comment      = "Lookup table containing the departments within the Adventure Works Cycles company where department ID is bigger than 100."
 
