@@ -165,7 +165,8 @@ The following configuration parameters are available
 - Workspace
 - Catalog
 - Schema
-- Table
+- (Managed, Streaming, External) Table
+- (Materialized) View
 - Column
 - Function
 

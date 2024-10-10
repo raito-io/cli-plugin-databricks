@@ -38,10 +38,11 @@ const (
 
 	DatabricksIncludeMetastoreInGrantName = "databricks-include-metastore-in-grant-name"
 
-	WorkspaceType = "workspace"
-	MetastoreType = "metastore"
-	CatalogType   = "catalog"
-	FunctionType  = "function"
+	WorkspaceType        = "workspace"
+	MetastoreType        = "metastore"
+	CatalogType          = "catalog"
+	FunctionType         = "function"
+	MaterializedViewType = "materializedView"
 
 	TagSource = "Databricks"
 )
