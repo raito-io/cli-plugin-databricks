@@ -45,6 +45,17 @@ resource "databricks_sql_table" "department" {
   }
 }
 
+// -- -- View department_view
+resource "databricks_sql_table" "department_view" {
+  catalog_name = databricks_schema.humanresources.catalog_name
+  schema_name  = databricks_schema.humanresources.name
+  name         = "department"
+  table_type   = "VIEW"
+  comment      = "Lookup table containing the departments within the Adventure Works Cycles company where department ID is bigger than 100."
+
+  view_definition = "SELECT * FROM department WHERE DepartmentID > 100"
+}
+
 // -- -- Table EMPLOYEE
 resource "databricks_sql_table" "employee" {
   catalog_name = databricks_schema.humanresources.catalog_name
