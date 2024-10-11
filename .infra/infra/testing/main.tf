@@ -53,7 +53,7 @@ resource "databricks_sql_table" "department_view" {
   table_type   = "VIEW"
   comment      = "Lookup table containing the departments within the Adventure Works Cycles company where department ID is bigger than 100."
 
-  view_definition = "SELECT * FROM department WHERE DepartmentID > 100"
+  view_definition = format("SELECT * FROM %s WHERE DepartmentID > 100", databricks_sql_table.department.id)
 }
 
 // -- -- Table EMPLOYEE
