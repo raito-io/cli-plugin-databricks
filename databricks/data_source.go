@@ -226,6 +226,15 @@ func (d DataSourceVisitor) VisitSchema(_ context.Context, schema *catalog.Schema
 }
 
 func (d DataSourceVisitor) VisitTable(_ context.Context, table *catalog.TableInfo, schema *catalog.SchemaInfo, _ *provisioning.Workspace) error {
+	databricksTableType := table.TableType
+	raitoTableType, found := TableTypeMap[databricksTableType]
+
+	if !found {
+		logger.Warn(fmt.Sprintf("Unsupported table type %q found for table %q", databricksTableType, table.FullName))
+
+		return nil
+	}
+
 	if table.RowFilter != nil {
 		if table.RowFilter.FunctionName == "" {
 			// Currently all row filters are unknown due to a bug in Databricks
@@ -245,7 +254,7 @@ func (d DataSourceVisitor) VisitTable(_ context.Context, table *catalog.TableInf
 		ParentExternalId: parentId,
 		Description:      table.Comment,
 		FullName:         uniqueId,
-		Type:             ds.Table,
+		Type:             raitoTableType,
 		Tags:             d.tagHandler.GetTag(table.FullName),
 	})
 }

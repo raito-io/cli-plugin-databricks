@@ -343,7 +343,7 @@ func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListTables() {
 		tableNames = append(tableNames, t.Name)
 	}
 
-	assert.ElementsMatch(s.T(), tableNames, []string{"department", "employee", "employeedepartmenthistory", "jobcandidate", "shift"})
+	assert.ElementsMatch(s.T(), tableNames, []string{"department", "department_view", "employee", "employeedepartmenthistory", "jobcandidate", "shift"})
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_GetTable() {

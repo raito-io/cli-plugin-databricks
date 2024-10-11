@@ -1003,6 +1003,10 @@ func typeToSecurableType(t string) (catalog.SecurableType, error) {
 		return catalog.SecurableTypeTable, nil
 	case constants.FunctionType:
 		return catalog.SecurableTypeFunction, nil
+	case constants.MaterializedViewType:
+		return catalog.SecurableTypeTable, nil
+	case data_source.View:
+		return catalog.SecurableTypeTable, nil
 	default:
 		return "", fmt.Errorf("unknown type %q", t)
 	}
@@ -1315,7 +1319,14 @@ func (a *AccessProviderVisitor) VisitSchema(ctx context.Context, schema *catalog
 	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, schema.MetastoreId, schema.FullName, data_source.Schema, catalog.SecurableTypeSchema)
 }
 
-func (a *AccessProviderVisitor) VisitTable(ctx context.Context, table *catalog.TableInfo, parent *catalog.SchemaInfo, workspace *provisioning.Workspace) error {
+func (a *AccessProviderVisitor) VisitTable(ctx context.Context, table *catalog.TableInfo, _ *catalog.SchemaInfo, workspace *provisioning.Workspace) error {
+	databricksTableType := table.TableType
+	raitoTableType, found := TableTypeMap[databricksTableType]
+
+	if !found {
+		return nil
+	}
+
 	workspaceClient, err := a.getWorkspaceRepository(workspace)
 	if err != nil {
 		return fmt.Errorf("unable to get workspace repository: %w", err)
@@ -1332,7 +1343,7 @@ func (a *AccessProviderVisitor) VisitTable(ctx context.Context, table *catalog.T
 		a.storedFunctions.AddFilter(functionId, createUniqueId(table.MetastoreId, table.FullName))
 	}
 
-	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, table.MetastoreId, table.FullName, data_source.Table, catalog.SecurableTypeTable)
+	return a.syncAccessProviderObjectFromTarget(ctx, workspaceClient, metastoreName, table.MetastoreId, table.FullName, raitoTableType, catalog.SecurableTypeTable)
 }
 
 func (a *AccessProviderVisitor) VisitColumn(_ context.Context, column *catalog.ColumnInfo, table *catalog.TableInfo, _ *provisioning.Workspace) error {

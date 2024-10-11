@@ -84,6 +84,10 @@ jobs:
           AWS_S3_TERRAFORM_KEY: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
           AWS_DYNAMODB_TERRAFORM_TABLE: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
+      - name: Test terraform output
+        run: terraform output
+        working-directory: .infra/infra
+
       - name: Generate usage
         run: make gen-test-usage
         env:
