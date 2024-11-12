@@ -1575,7 +1575,6 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 		t.loadMetastore(ctx, metastoreId)
 
 		if possibleRepos, found = t.metastoreCatalogRepoCache[metastoreId]; !found {
-
 			logger.Warn(fmt.Sprintf("Not able to load metastore %q to access data access workspace repo", metastoreId))
 
 			return nil, ""
