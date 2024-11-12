@@ -269,7 +269,7 @@ func (a *AccessSyncer) syncFiltersToTarget(ctx context.Context, filters []*sync_
 			AccessProvider: filter.Id,
 		}
 
-		if len(filter.What) != 1 || filter.What[0].DataObject.Type != data_source.Table {
+		if len(filter.What) != 1 || !(filter.What[0].DataObject.Type == data_source.Table || filter.What[0].DataObject.Type == data_source.View) {
 			feedbackElement.Errors = append(feedbackElement.Errors, "Unsupported what item(s)")
 			a.apFeedbackObjects[filter.Id] = feedbackElement
 
