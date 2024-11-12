@@ -1570,15 +1570,22 @@ func (t *MetastoreRepoCache) GetMetastoreRepo(ctx context.Context, metastoreId s
 func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId string, catalogId string, preferredWorkspaces ...string) (dataAccessWorkspaceRepository, string) {
 	possibleRepos, found := t.metastoreCatalogRepoCache[metastoreId]
 	if !found {
+		logger.Debug(fmt.Sprintf("Metastore %q not found in cache", metastoreId))
+
 		t.loadMetastore(ctx, metastoreId)
 
 		if possibleRepos, found = t.metastoreCatalogRepoCache[metastoreId]; !found {
+
+			logger.Warn(fmt.Sprintf("Not able to load metastore %q to access data access workspace repo", metastoreId))
+
 			return nil, ""
 		}
 	}
 
 	r, found := possibleRepos[catalogId]
 	if !found {
+		logger.Warn(fmt.Sprintf("Catalog %q not found in cache for metastore %q", catalogId, metastoreId))
+
 		return nil, ""
 	}
 
@@ -1607,6 +1614,8 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 			return possibleRepo, possibleRepo.workspaceDeploymentName
 		}
 	}
+
+	logger.Warn(fmt.Sprintf("Not able to find workspace repo for %q.%q", metastoreId, catalogId))
 
 	return nil, ""
 }
