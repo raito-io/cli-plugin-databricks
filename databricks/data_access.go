@@ -1596,6 +1596,11 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 	}
 
 	r = slices.Concat(possiblePreferedRepos, possibleUnpreferedRepos)
+	rWorkspaceNames := array.Map(r, func(i *metastoreRepoCacheItem) string {
+		return i.workspaceDeploymentName
+	})
+
+	logger.Debug(fmt.Sprintf("Looking for available workspace for %q.%q in ordered list of workspaces: %+v. Preferred workspaces: %+v", metastoreId, catalogId, rWorkspaceNames, preferredWorkspacesSet.Slice()))
 
 	for _, possibleRepo := range r {
 		if err := possibleRepo.Ping(ctx); err == nil {
