@@ -354,14 +354,18 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 		return filterName, externalId, err
 	}
 
-	// delete ond row filters
+	// delete old row filters
+	deletedFunctionNames := set.NewSet[string]()
+
 	for _, ap := range aps {
-		if ap.ActualName != nil {
+		if ap.ActualName != nil && !deletedFunctionNames.Contains(*ap.ActualName) {
 			err = sqlClient.DropFunction(ctx, catalogName, schemaName, *ap.ActualName)
 
 			if err != nil {
 				logger.Warn(fmt.Sprintf("Failed to delete row filter %s: %s", *ap.ActualName, err.Error()))
 			}
+
+			deletedFunctionNames.Add(*ap.ActualName)
 		}
 	}
 
