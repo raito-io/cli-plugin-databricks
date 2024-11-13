@@ -853,8 +853,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-2.table-1").Return("owner2@raito.io", nil).Once()
-	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
-	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-2.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner2@raito.io"}).Return(nil)
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter_someid", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-2.raito_table-1_filter_someid", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner2@raito.io"}).Return(nil)
 
 	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
 		"column1": {
@@ -870,10 +870,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 		},
 	}, nil)
 
-	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_table-1_filter(column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000)));").Return(nil, nil).Once()
-	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-2", "CREATE OR REPLACE FUNCTION raito_table-1_filter(refColumn string)\n RETURN ((is_account_group_member('group2')) AND (refColumn = 'NJ'));").Return(nil, nil).Once()
-	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1", "raito_table-1_filter", []string{"column1"}).Return(nil)
-	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-2", "table-1", "raito_table-1_filter", []string{"refColumn"}).Return(nil)
+	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000)));").Return(nil, nil).Once()
+	mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-2", "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(refColumn string)\n RETURN ((is_account_group_member('group2')) AND (refColumn = 'NJ'));").Return(nil, nil).Once()
+	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1", "raito_table-1_filter_someid", []string{"column1"}).Return(nil)
+	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-2", "table-1", "raito_table-1_filter_someid", []string{"refColumn"}).Return(nil)
 
 	// When
 	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
@@ -885,12 +885,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
 		{
 			AccessProvider: "filter-ap-id1",
-			ActualName:     "raito_table-1_filter",
+			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
 		},
 		{
 			AccessProvider: "filter-ap-id2",
-			ActualName:     "raito_table-1_filter",
+			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-2.table-1.filter"),
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
@@ -996,7 +996,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
-	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter_someid", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
 
 	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
 		"column1": {
@@ -1012,8 +1012,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 	var arguments []string
 
 	c := mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", mock.AnythingOfType("string")).RunAndReturn(func(_ context.Context, _ string, _ string, query string, _ ...sql.StatementParameterListItem) (*sql.StatementResponse, error) {
-		query1 := "CREATE OR REPLACE FUNCTION raito_table-1_filter(refColumn string, column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
-		query2 := "CREATE OR REPLACE FUNCTION raito_table-1_filter(column1 float, refColumn string)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
+		query1 := "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(refColumn string, column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
+		query2 := "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(column1 float, refColumn string)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
 
 		if query == query1 {
 			arguments = append(arguments, "refColumn", "column1")
@@ -1026,7 +1026,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 		return nil, nil
 	}).Once()
 
-	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1", "raito_table-1_filter", mock.AnythingOfType("[]string")).RunAndReturn(func(_ context.Context, _ string, _ string, _ string, _ string, actualArgs []string) error {
+	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1", "raito_table-1_filter_someid", mock.AnythingOfType("[]string")).RunAndReturn(func(_ context.Context, _ string, _ string, _ string, _ string, actualArgs []string) error {
 		assert.Equal(t, arguments, actualArgs)
 
 		return nil
@@ -1042,12 +1042,172 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
 		{
 			AccessProvider: "filter-ap-id1",
-			ActualName:     "raito_table-1_filter",
+			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
 		},
 		{
 			AccessProvider: "filter-ap-id2",
-			ActualName:     "raito_table-1_filter",
+			ActualName:     "raito_table-1_filter_someid",
+			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+		},
+	}, accessProviderHandlerMock.AccessProviderFeedback)
+}
+
+func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_updateFilter(t *testing.T) {
+	// Given
+	deployment := "test-deployment"
+	workspace := "test-workspace"
+	accessSyncer, mockAccountRepo, mockWorkspaceRepoMap := createAccessSyncer(t, deployment)
+
+	accessProviderHandlerMock := mocks.NewSimpleAccessProviderFeedbackHandler(t)
+
+	accessProviders := sync_to_target.AccessProviderImport{
+		AccessProviders: []*sync_to_target.AccessProvider{
+			{
+				Id:         "filter-ap-id1",
+				Name:       "filter-ap-1",
+				NamingHint: "filter-ap-1",
+				ActualName: ptr.String("old-filter"),
+				Action:     sync_to_target.Filtered,
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-1.schema-1.table-1",
+							Type:     data_source.Table,
+						},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+				DeletedWho: &sync_to_target.WhoItem{
+					Users: []string{"dieter@raito.io"},
+				},
+				FilterCriteria: &bexpression.DataComparisonExpression{
+					Comparison: &datacomparison.DataComparison{
+						LeftOperand: datacomparison.Operand{
+							Reference: &datacomparison.Reference{
+								EntityType: datacomparison.EntityTypeDataObject,
+								EntityID:   `{"fullName":"metastore-id1.catalog-1.schema-1.table-1.column1","id":"LXDVAhFywOe9hfIRC4ubm","type":"column"}`,
+							},
+						},
+						Operator: datacomparison.ComparisonOperatorGreaterThanOrEqual,
+						RightOperand: datacomparison.Operand{
+							Literal: &datacomparison.Literal{
+								Float: ptr.Float64(3.14),
+							},
+						},
+					},
+				},
+			},
+			{
+				Id:         "filter-ap-id2",
+				Name:       "filter-ap-2",
+				NamingHint: "filter-ap-2",
+				Action:     sync_to_target.Filtered,
+				What: []sync_to_target.WhatItem{
+					{
+						DataObject: &data_source.DataObjectReference{
+							FullName: "metastore-id1.catalog-1.schema-1.table-1",
+							Type:     data_source.Table,
+						},
+					},
+				},
+				Who: sync_to_target.WhoItem{
+					Groups: []string{"group2"},
+				},
+				PolicyRule: ptr.String("{refColumn} = 'NJ'"),
+			},
+		},
+	}
+
+	configMap := &config.ConfigMap{
+		Parameters: map[string]string{
+			constants.DatabricksAccountId:     "AccountId",
+			constants.DatabricksUser:          "User",
+			constants.DatabricksPassword:      "Password",
+			constants.DatabricksSqlWarehouses: fmt.Sprintf(`[{"workspace": "%s", "warehouse": "sqlWarehouse1"}]`, deployment),
+			constants.DatabricksPlatform:      "AWS",
+		},
+	}
+
+	metastore1 := catalog.MetastoreInfo{
+		Name:        "metastore1",
+		MetastoreId: "metastore-id1",
+	}
+
+	workspaceObject := provisioning.Workspace{
+		WorkspaceId:     42,
+		DeploymentName:  deployment,
+		WorkspaceName:   workspace,
+		WorkspaceStatus: "RUNNING",
+	}
+
+	mockAccountRepo.EXPECT().ListMetastores(mock.Anything).Return([]catalog.MetastoreInfo{metastore1}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaces(mock.Anything).Return([]provisioning.Workspace{workspaceObject}, nil).Once()
+	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
+
+	mockWarehouseRepo := repo.NewMockWarehouseRepository(t)
+
+	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{{Name: "catalog-1", FullName: "catalog-1"}})).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
+	mockWorkspaceRepoMap[deployment].EXPECT().GetOwner(mock.Anything, catalog.SecurableTypeTable, "catalog-1.schema-1.table-1").Return("owner@raito.io", nil).Once()
+	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeFunction, "catalog-1.schema-1.raito_table-1_filter_someid", catalog.PermissionsChange{Add: []catalog.Privilege{catalog.PrivilegeExecute}, Principal: "owner@raito.io"}).Return(nil)
+
+	mockWarehouseRepo.EXPECT().GetTableInformation(mock.Anything, "catalog-1", "schema-1", "table-1").Return(map[string]*types2.ColumnInformation{
+		"column1": {
+			Type: "float",
+			Name: "column1",
+		},
+		"refColumn": {
+			Name: "refColumn",
+			Type: "string",
+		},
+	}, nil)
+
+	var arguments []string
+
+	c := mockWarehouseRepo.EXPECT().ExecuteStatement(mock.Anything, "catalog-1", "schema-1", mock.AnythingOfType("string")).RunAndReturn(func(_ context.Context, _ string, _ string, query string, _ ...sql.StatementParameterListItem) (*sql.StatementResponse, error) {
+		query1 := "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(refColumn string, column1 float)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
+		query2 := "CREATE OR REPLACE FUNCTION raito_table-1_filter_someid(column1 float, refColumn string)\n RETURN ((current_user() IN ('ruben@raito.io') OR is_account_group_member('group1')) AND ((column1 >= 3.140000))) OR ((is_account_group_member('group2')) AND (refColumn = 'NJ'));"
+
+		if query == query1 {
+			arguments = append(arguments, "refColumn", "column1")
+		} else if query == query2 {
+			arguments = append(arguments, "column1", "refColumn")
+		} else {
+			assert.Failf(t, "Unexpected query: %s NOT IN %v", query, []string{query1, query2})
+		}
+
+		return nil, nil
+	}).Once()
+
+	mockWarehouseRepo.EXPECT().SetRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1", "raito_table-1_filter_someid", mock.AnythingOfType("[]string")).RunAndReturn(func(_ context.Context, _ string, _ string, _ string, _ string, actualArgs []string) error {
+		assert.Equal(t, arguments, actualArgs)
+
+		return nil
+	}).NotBefore(c)
+
+	mockWarehouseRepo.EXPECT().DropFunction(mock.Anything, "catalog-1", "schema-1", "old-filter").Return(nil)
+
+	// When
+	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
+
+	// Then
+	require.NoError(t, err)
+
+	assert.Len(t, accessProviderHandlerMock.AccessProviderFeedback, 2)
+	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
+		{
+			AccessProvider: "filter-ap-id1",
+			ActualName:     "raito_table-1_filter_someid",
+			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+		},
+		{
+			AccessProvider: "filter-ap-id2",
+			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
@@ -1137,7 +1297,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 	mockWorkspaceRepoMap[deployment].EXPECT().SqlWarehouseRepository("sqlWarehouse1").Return(mockWarehouseRepo)
 
 	mockWarehouseRepo.EXPECT().DropRowFilter(mock.Anything, "catalog-1", "schema-1", "table-1").Return(nil)
-	mockWarehouseRepo.EXPECT().DropFunction(mock.Anything, "catalog-1", "schema-1", "raito_table-1_filter").Return(nil)
+	mockWarehouseRepo.EXPECT().DropFunction(mock.Anything, "catalog-1", "schema-1", "raito_table-1_filter_someid").Return(nil)
 
 	// When
 	err := accessSyncer.SyncAccessProviderToTarget(context.Background(), &accessProviders, accessProviderHandlerMock, configMap)
@@ -1149,7 +1309,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 	assert.ElementsMatch(t, []sync_to_target.AccessProviderSyncFeedback{
 		{
 			AccessProvider: "filter-ap-id1",
-			ActualName:     "raito_table-1_filter",
+			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
@@ -1408,6 +1568,10 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 			}
 
 			return nil, errors.New("no workspace repository")
+		},
+
+		idGenerator: func() string {
+			return "someId"
 		},
 
 		privilegeCache: types.NewPrivilegeCache(),

@@ -14,6 +14,7 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/hashicorp/go-multierror"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/raito-io/bexpression"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
@@ -40,6 +41,7 @@ var TitleCaser = cases.Title(language.English)
 
 const (
 	raitoPrefix = "raito_"
+	idAlphabet  = "0123456789abcdefghijklmnopqrstuvwxyz"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=dataAccessAccountRepository
@@ -66,6 +68,8 @@ type AccessSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types2.RepositoryCredentials) (dataAccessAccountRepository, error)
 	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error)
 
+	idGenerator func() string
+
 	privilegeCache types.PrivilegeCache
 
 	apFeedbackObjects map[string]sync_to_target.AccessProviderSyncFeedback // Cache apFeedback objects
@@ -79,6 +83,8 @@ func NewAccessSyncer() *AccessSyncer {
 		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
 			return repo.NewWorkspaceRepository(repoCredentials)
 		},
+
+		idGenerator: func() string { return gonanoid.MustGenerate(idAlphabet, 8) },
 
 		privilegeCache: types.NewPrivilegeCache(),
 	}
@@ -306,7 +312,9 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 	schemaName := schemaNameSplit[2]
 	tableName := schemaNameSplit[3]
 
-	filterName = raitoPrefixName(tableName + "_filter")
+	randomPostFix := a.idGenerator()
+
+	filterName = raitoPrefixName(types.TrimName(tableName) + "_filter_" + randomPostFix)
 	externalId = do + ".filter"
 
 	var warehouseIdMap []types.WarehouseDetails
@@ -346,6 +354,21 @@ func (a *AccessSyncer) syncFilterToTarget(ctx context.Context, do string, aps []
 		return filterName, externalId, err
 	}
 
+	// delete old row filters
+	deletedFunctionNames := set.NewSet[string]()
+
+	for _, ap := range aps {
+		if ap.ActualName != nil && !deletedFunctionNames.Contains(*ap.ActualName) {
+			err = sqlClient.DropFunction(ctx, catalogName, schemaName, *ap.ActualName)
+
+			if err != nil {
+				logger.Warn(fmt.Sprintf("Failed to delete row filter %s: %s", *ap.ActualName, err.Error()))
+			}
+
+			deletedFunctionNames.Add(*ap.ActualName)
+		}
+	}
+
 	return filterName, externalId, nil
 }
 
@@ -378,9 +401,9 @@ func (a *AccessSyncer) getSqlClient(ctx context.Context, metastore string, catal
 	return repository, sqlClient, nil
 }
 
-func (a *AccessSyncer) parseFilterAccessProvidersForDo(ctx context.Context, aps []*sync_to_target.AccessProvider) ([]string, set.Set[string], int, error) {
+func (a *AccessSyncer) parseFilterAccessProvidersForDo(ctx context.Context, aps []*sync_to_target.AccessProvider) ([]string, set.Set[types.ColumnReference], int, error) {
 	filterExpressionParts := make([]string, 0, len(aps))
-	filterArguments := set.NewSet[string]()
+	filterArguments := set.NewSet[types.ColumnReference]()
 
 	deletedAps := 0
 
@@ -400,12 +423,12 @@ func (a *AccessSyncer) parseFilterAccessProvidersForDo(ctx context.Context, aps 
 		var queryPart string
 
 		if ap.PolicyRule != nil {
-			var arguments []string
+			var arguments []types.ColumnReference
 
 			queryPart, arguments = parsePolicyRuleAsFilterCriteria(*ap.PolicyRule)
 			filterArguments.Add(arguments...)
 		} else if ap.FilterCriteria != nil {
-			var arguments set.Set[string]
+			var arguments set.Set[types.ColumnReference]
 			var err error
 
 			queryPart, arguments, err = parseFilterCriteria(ctx, ap.FilterCriteria)
@@ -422,7 +445,7 @@ func (a *AccessSyncer) parseFilterAccessProvidersForDo(ctx context.Context, aps 
 	return filterExpressionParts, filterArguments, deletedAps, nil
 }
 
-func (a *AccessSyncer) createOrUpdateRowFilter(ctx context.Context, repository dataAccessWorkspaceRepository, sqlClient repo.WarehouseRepository, catalogName string, schemaName string, tableName string, filterName string, filterArguments set.Set[string], filterExpressionParts []string) error {
+func (a *AccessSyncer) createOrUpdateRowFilter(ctx context.Context, repository dataAccessWorkspaceRepository, sqlClient repo.WarehouseRepository, catalogName string, schemaName string, tableName string, filterName string, filterArguments set.Set[types.ColumnReference], filterExpressionParts []string) (err error) {
 	tableOwner, err := repository.GetOwner(ctx, catalog.SecurableTypeTable, fmt.Sprintf("%s.%s.%s", catalogName, schemaName, tableName))
 	if err != nil {
 		return fmt.Errorf("get table owner: %w", err)
@@ -437,12 +460,14 @@ func (a *AccessSyncer) createOrUpdateRowFilter(ctx context.Context, repository d
 	arguments := filterArguments.Slice()
 
 	for _, argument := range arguments {
-		columnInfo, found := columnInformation[argument]
+		columnInfo, found := columnInformation[string(argument)]
 		if !found || columnInfo == nil {
 			return fmt.Errorf("column %q not found in table %q", argument, tableName)
 		}
 
-		argumentsWithType = append(argumentsWithType, fmt.Sprintf("%s %s", argument, columnInfo.Type))
+		argumentsWithType = append(argumentsWithType, fmt.Sprintf("%s %s", argument.Trimmed(), columnInfo.Type))
+
+		logger.Debug(fmt.Sprintf("Used argument %s %s", argument.Trimmed(), columnInfo.Type))
 	}
 
 	var functionBody string
@@ -460,6 +485,15 @@ func (a *AccessSyncer) createOrUpdateRowFilter(ctx context.Context, repository d
 		return fmt.Errorf("create or replace function: %w", err)
 	}
 
+	defer func() {
+		if err != nil {
+			dropErr := sqlClient.DropFunction(ctx, catalogName, schemaName, filterName)
+			if dropErr != nil {
+				logger.Error(fmt.Sprintf("Failed to drop function %s in revert operation: %s", filterName, dropErr.Error()))
+			}
+		}
+	}()
+
 	err = repository.SetPermissionsOnResource(ctx, catalog.SecurableTypeFunction, fmt.Sprintf("%s.%s.%s", catalogName, schemaName, filterName), catalog.PermissionsChange{
 		Principal: tableOwner,
 		Add: []catalog.Privilege{
@@ -470,7 +504,10 @@ func (a *AccessSyncer) createOrUpdateRowFilter(ctx context.Context, repository d
 		return fmt.Errorf("grant table owner permission on row filter function: %w", err)
 	}
 
-	err = sqlClient.SetRowFilter(ctx, catalogName, schemaName, tableName, filterName, arguments)
+	err = sqlClient.SetRowFilter(ctx, catalogName, schemaName, tableName, filterName, array.Map(arguments, func(i *types.ColumnReference) string {
+		return string(*i)
+	}))
+
 	if err != nil {
 		return fmt.Errorf("set row filter: %w", err)
 	}
@@ -1069,7 +1106,7 @@ func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.S
 	}
 }
 
-func parseFilterCriteria(ctx context.Context, filterCriteria *bexpression.DataComparisonExpression) (string, set.Set[string], error) {
+func parseFilterCriteria(ctx context.Context, filterCriteria *bexpression.DataComparisonExpression) (string, set.Set[types.ColumnReference], error) {
 	filterParser := NewFilterCriteriaBuilder()
 
 	err := filterCriteria.Accept(ctx, filterParser)
@@ -1082,15 +1119,15 @@ func parseFilterCriteria(ctx context.Context, filterCriteria *bexpression.DataCo
 	return query, args, nil
 }
 
-func parsePolicyRuleAsFilterCriteria(policyRule string) (string, []string) {
+func parsePolicyRuleAsFilterCriteria(policyRule string) (string, []types.ColumnReference) {
 	argumentRegexp := regexp.MustCompile(`\{([a-zA-Z0-9]+)\}`)
 
 	argumentsSubMatches := argumentRegexp.FindAllStringSubmatch(policyRule, -1)
 	query := argumentRegexp.ReplaceAllString(policyRule, "$1")
 
-	arguments := make([]string, 0, len(argumentsSubMatches))
+	arguments := make([]types.ColumnReference, 0, len(argumentsSubMatches))
 	for _, match := range argumentsSubMatches {
-		arguments = append(arguments, match[1])
+		arguments = append(arguments, types.ColumnReference(match[1]))
 	}
 
 	return query, arguments
@@ -1610,6 +1647,8 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 
 	for _, possibleRepo := range r {
 		if err := possibleRepo.Ping(ctx); err == nil {
+			logger.Debug(fmt.Sprintf("Found workspace repo for %q.%q in workspace %q", metastoreId, catalogId, possibleRepo.workspaceDeploymentName))
+
 			return possibleRepo, possibleRepo.workspaceDeploymentName
 		}
 	}
@@ -1633,6 +1672,8 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 		if werr != nil {
 			continue
 		}
+
+		logger.Debug(fmt.Sprintf("Load workspace %q for metastore %q: %+v", metastoreWorkspace.WorkspaceName, metastoreId, *metastoreWorkspace))
 
 		item := metastoreRepoCacheItem{
 			dataAccessWorkspaceRepository: r,

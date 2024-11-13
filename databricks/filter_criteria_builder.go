@@ -13,23 +13,25 @@ import (
 	"github.com/raito-io/bexpression/datacomparison"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
+
+	"cli-plugin-databricks/databricks/types"
 )
 
 var _ base.Visitor = (*FilterCriteriaBuilder)(nil)
 
 type FilterCriteriaBuilder struct {
 	stringBuilder strings.Builder
-	arguments     set.Set[string]
+	arguments     set.Set[types.ColumnReference]
 }
 
 func NewFilterCriteriaBuilder() *FilterCriteriaBuilder {
 	return &FilterCriteriaBuilder{
 		stringBuilder: strings.Builder{},
-		arguments:     set.NewSet[string](),
+		arguments:     set.NewSet[types.ColumnReference](),
 	}
 }
 
-func (f *FilterCriteriaBuilder) GetQueryAndArguments() (string, set.Set[string]) {
+func (f *FilterCriteriaBuilder) GetQueryAndArguments() (string, set.Set[types.ColumnReference]) {
 	return f.stringBuilder.String(), f.arguments
 }
 
@@ -120,11 +122,15 @@ func (f *FilterCriteriaBuilder) visitReference(ref *datacomparison.Reference) er
 			return fmt.Errorf("unsupported reference entity id: %s", object.FullName)
 		}
 
-		f.stringBuilder.WriteString(parsedDataObject[4])
-		f.arguments.Add(parsedDataObject[4])
+		entity := types.ColumnReference(parsedDataObject[4])
+
+		f.stringBuilder.WriteString(entity.Trimmed())
+		f.arguments.Add(entity)
 	case datacomparison.EntityTypeColumnReferenceByName:
-		f.stringBuilder.WriteString(ref.EntityID)
-		f.arguments.Add(ref.EntityID)
+		entity := types.ColumnReference(ref.EntityID)
+
+		f.stringBuilder.WriteString(entity.Trimmed())
+		f.arguments.Add(entity)
 	default:
 		return fmt.Errorf("unsupported reference entity type: %s", ref.EntityType)
 	}

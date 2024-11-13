@@ -9,12 +9,14 @@ import (
 	"github.com/raito-io/bexpression/base"
 	"github.com/raito-io/bexpression/datacomparison"
 	"github.com/stretchr/testify/assert"
+
+	"cli-plugin-databricks/databricks/types"
 )
 
 func TestFilterCriteriaBuilder(t *testing.T) {
 	type want struct {
 		query     string
-		arguments []string
+		arguments []types.ColumnReference
 	}
 	tests := []struct {
 		name      string
@@ -53,7 +55,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 			},
 			want: want{
 				query:     "(QUANTITY > 2020)",
-				arguments: []string{"QUANTITY"},
+				arguments: []types.ColumnReference{"QUANTITY"},
 			},
 			wantError: assert.NoError,
 		},
@@ -77,7 +79,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 			},
 			want: want{
 				query:     "(QUANTITY > 2020)",
-				arguments: []string{"QUANTITY"},
+				arguments: []types.ColumnReference{"QUANTITY"},
 			},
 			wantError: assert.NoError,
 		},
@@ -139,7 +141,7 @@ func TestFilterCriteriaBuilder(t *testing.T) {
 			},
 			want: want{
 				query: "(TRUE AND ((STATE = 'CA') OR (NOT (QUANTITY < 2000))))",
-				arguments: []string{
+				arguments: []types.ColumnReference{
 					"STATE",
 					"QUANTITY",
 				},
