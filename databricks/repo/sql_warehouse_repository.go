@@ -12,6 +12,7 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/sql"
 
 	"cli-plugin-databricks/databricks/repo/types"
+	"cli-plugin-databricks/utils/array"
 )
 
 const (
@@ -114,13 +115,13 @@ func (r *SqlWarehouseRepository) GetTableInformation(ctx context.Context, catalo
 }
 
 func (r *SqlWarehouseRepository) DropMask(ctx context.Context, catalog, schema, table, column string) error {
-	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP MASK", table, column))
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP MASK", escapeName(table), escapeName(column)))
 
 	return err
 }
 
 func (r *SqlWarehouseRepository) DropRowFilter(ctx context.Context, catalog, schema, table string) error {
-	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s DROP ROW FILTER", table))
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s DROP ROW FILTER", escapeName(table)))
 
 	return err
 }
@@ -132,15 +133,27 @@ func (r *SqlWarehouseRepository) DropFunction(ctx context.Context, catalog, sche
 }
 
 func (r *SqlWarehouseRepository) SetMask(ctx context.Context, catalog, schema, table, column, function string) error {
-	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET MASK %s", table, column, function))
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET MASK %s", escapeName(table), escapeName(column), function))
 
 	return err
 }
 
 func (r *SqlWarehouseRepository) SetRowFilter(ctx context.Context, catalog, schema, table, functionName string, arguments []string) error {
-	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s SET ROW FILTER %s ON (%s);", table, functionName, strings.Join(arguments, ", ")))
+	logger.Debug(fmt.Sprintf("Setting row filter %q on %s.%s.%s with arguments %v", functionName, catalog, schema, table, arguments))
+
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("ALTER TABLE %s SET ROW FILTER %s ON (%s);", escapeName(table), functionName, strings.Join(escapeColumnNames(arguments...), ", ")))
 
 	return err
+}
+
+func escapeColumnNames(columnNames ...string) []string {
+	return array.Map(columnNames, func(s *string) string {
+		return escapeName(*s)
+	})
+}
+
+func escapeName(columnName string) string {
+	return fmt.Sprintf("`%s`", columnName)
 }
 
 func (r *SqlWarehouseRepository) GetTags(ctx context.Context, catalog string, fn func(ctx context.Context, fullName string, key string, value string) error) error {

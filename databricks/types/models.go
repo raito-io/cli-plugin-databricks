@@ -1,9 +1,15 @@
 package types
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 )
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9-_]+`)
 
 type SecurableItemKey struct {
 	Type     string
@@ -128,4 +134,24 @@ func (s *StoredFunctions) AddMask(functionId string, columnId string) {
 
 func (s *StoredFunctions) AddFilter(functionId string, tableId string) {
 	s.Filters[functionId] = append(s.Filters[functionId], tableId)
+}
+
+type ColumnReference string
+
+func (c ColumnReference) Escaped() string {
+	escapedString := string(c)
+
+	if !(strings.HasPrefix(escapedString, "`") && strings.HasSuffix(escapedString, "`")) {
+		escapedString = fmt.Sprintf("`%s`", escapedString)
+	}
+
+	return escapedString
+}
+
+func (c ColumnReference) Trimmed() string {
+	return TrimName(string(c))
+}
+
+func TrimName(name string) string {
+	return nonAlphanumericRegex.ReplaceAllString(name, "")
 }
