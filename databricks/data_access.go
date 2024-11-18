@@ -687,7 +687,7 @@ func (a *AccessSyncer) storePrivilegesInDataplane(ctx context.Context, item type
 
 	err = repo.SetPermissionsOnResource(ctx, securableType, fullname, changes...)
 	if err != nil {
-		err = fmt.Errorf("set permissions on %s %q: %w", securableType.String(), fullname, err)
+		err = fmt.Errorf("set permissions on %s %q via workspace %q: %w", securableType.String(), fullname, workspaceDeploymentName, err)
 		return
 	}
 }
