@@ -1645,7 +1645,7 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 				continue
 			}
 
-			if binding.BindingType == catalog.WorkspaceBindingBindingTypeBindingTypeReadOnly {
+			if binding != nil && binding.BindingType == catalog.WorkspaceBindingBindingTypeBindingTypeReadOnly {
 				possibleUnpreferredReadRepos = append(possibleUnpreferredReadRepos, possibleRepo)
 			} else {
 				possibleUnpreferredWriteRepos = append(possibleUnpreferredWriteRepos, possibleRepo)
