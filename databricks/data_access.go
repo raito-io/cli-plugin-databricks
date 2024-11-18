@@ -1681,6 +1681,10 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if _, found := t.metastoreCatalogRepoCache[metastoreId]; !found {
+		t.metastoreCatalogRepoCache[metastoreId] = make(map[string][]metastoreRepoCacheItem)
+	}
+
 	for i := range t.metastoreWorkspaceMap[metastoreId] {
 		metastoreWorkspace := t.metastoreWorkspaceMap[metastoreId][i]
 
@@ -1702,7 +1706,6 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 		}
 
 		t.metastoreRepoCache[metastoreId] = append(t.metastoreRepoCache[metastoreId], item)
-		t.metastoreCatalogRepoCache[metastoreId] = make(map[string][]metastoreRepoCacheItem)
 
 		catalogChannel := r.ListCatalogs(cancelCtx)
 
@@ -1720,6 +1723,6 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 			t.metastoreCatalogRepoCache[metastoreId][c.I.Name] = append(t.metastoreCatalogRepoCache[metastoreId][c.I.Name], item)
 		}
 
-		logger.Debug(fmt.Sprintf("Found %d catalogs for metastore %q: %+v", len(t.metastoreCatalogRepoCache[metastoreId]), metastoreId, array.Keys(t.metastoreCatalogRepoCache[metastoreId])))
+		logger.Debug(fmt.Sprintf("Found %d catalogs for in workspace %q for metastore %q: %+v", len(t.metastoreCatalogRepoCache[metastoreId]), metastoreWorkspace.WorkspaceName, metastoreId, array.Keys(t.metastoreCatalogRepoCache[metastoreId])))
 	}
 }
