@@ -1710,6 +1710,8 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 
 		for c := range catalogChannel {
 			if c.Err != nil {
+				logger.Warn(fmt.Sprintf("Not able to load catalog for metastore %q: %v", metastoreId, c.Err))
+
 				continue
 			}
 
