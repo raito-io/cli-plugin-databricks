@@ -1626,6 +1626,10 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 		return nil, ""
 	}
 
+	logger.Debug(fmt.Sprintf("Found %d (%+v) workspace repos for metastore %q and catalog %q", len(r), array.Map(r, func(i *metastoreRepoCacheItem) string {
+		return i.workspaceDeploymentName
+	}), metastoreId, catalogId))
+
 	preferredWorkspacesSet := set.NewSet(preferredWorkspaces...)
 
 	possiblePreferredRepos := make([]metastoreRepoCacheItem, 0, len(preferredWorkspaces))
@@ -1677,7 +1681,13 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for _, metastoreWorkspace := range t.metastoreWorkspaceMap[metastoreId] {
+	if _, found := t.metastoreCatalogRepoCache[metastoreId]; !found {
+		t.metastoreCatalogRepoCache[metastoreId] = make(map[string][]metastoreRepoCacheItem)
+	}
+
+	for i := range t.metastoreWorkspaceMap[metastoreId] {
+		metastoreWorkspace := t.metastoreWorkspaceMap[metastoreId][i]
+
 		r, werr := utils.InitWorkspaceRepo(ctx, t.repoCredentials, t.pltfrm, metastoreWorkspace, t.repoFn)
 		if werr != nil {
 			continue
@@ -1696,7 +1706,6 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 		}
 
 		t.metastoreRepoCache[metastoreId] = append(t.metastoreRepoCache[metastoreId], item)
-		t.metastoreCatalogRepoCache[metastoreId] = make(map[string][]metastoreRepoCacheItem)
 
 		catalogChannel := r.ListCatalogs(cancelCtx)
 
@@ -1704,12 +1713,16 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 
 		for c := range catalogChannel {
 			if c.Err != nil {
+				logger.Warn(fmt.Sprintf("Not able to load catalog for metastore %q: %v", metastoreId, c.Err))
+
 				continue
 			}
+
+			logger.Debug(fmt.Sprintf("Add catalog %q for metastore %q", c.I.Name, metastoreId))
 
 			t.metastoreCatalogRepoCache[metastoreId][c.I.Name] = append(t.metastoreCatalogRepoCache[metastoreId][c.I.Name], item)
 		}
 
-		logger.Debug(fmt.Sprintf("Found %d catalogs for metastore %q: %+v", len(t.metastoreCatalogRepoCache[metastoreId]), metastoreId, array.Keys(t.metastoreCatalogRepoCache[metastoreId])))
+		logger.Debug(fmt.Sprintf("Found %d catalogs for in workspace %q for metastore %q: %+v", len(t.metastoreCatalogRepoCache[metastoreId]), metastoreWorkspace.WorkspaceName, metastoreId, array.Keys(t.metastoreCatalogRepoCache[metastoreId])))
 	}
 }

@@ -127,7 +127,7 @@ func (r *SqlWarehouseRepository) DropRowFilter(ctx context.Context, catalog, sch
 }
 
 func (r *SqlWarehouseRepository) DropFunction(ctx context.Context, catalog, schema, functionName string) error {
-	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("DROP FUNCTION %s", functionName))
+	_, err := r.ExecuteStatement(ctx, catalog, schema, fmt.Sprintf("DROP FUNCTION IF EXISTS %s", functionName))
 
 	return err
 }

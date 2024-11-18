@@ -68,7 +68,7 @@ func (r *AccountRepository) GetWorkspaceMap(ctx context.Context, metastores []ca
 			continue
 		}
 
-		logger.Debug(fmt.Sprintf("Found running workspace %s with deployment name %s", workspace.WorkspaceName, workspace.DeploymentName))
+		logger.Debug(fmt.Sprintf("Found running workspace %s (%d) with deployment name %s", workspace.WorkspaceName, workspace.WorkspaceId, workspace.DeploymentName))
 		workspacesMap[workspace.WorkspaceId] = workspace
 	}
 
