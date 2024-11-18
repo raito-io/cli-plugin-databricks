@@ -1546,7 +1546,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			AccessProvider: "multiple-do-ap-id",
 			ActualName:     "multiple-do-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
-			Errors:         []string{"set permissions on schema \"catalog-1.schema-1\": boom"},
+			Errors:         []string{"set permissions on schema \"catalog-1.schema-1\" via workspace \"test-deployment\": boom"},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
