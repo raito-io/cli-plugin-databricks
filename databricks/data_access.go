@@ -1626,6 +1626,10 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 		return nil, ""
 	}
 
+	logger.Debug(fmt.Sprintf("Found %d (%+v) workspace repos for metastore %q and catalog %q", len(r), array.Map(r, func(i *metastoreRepoCacheItem) string {
+		return i.workspaceDeploymentName
+	}), metastoreId, catalogId))
+
 	preferredWorkspacesSet := set.NewSet(preferredWorkspaces...)
 
 	possiblePreferredRepos := make([]metastoreRepoCacheItem, 0, len(preferredWorkspaces))
@@ -1677,7 +1681,9 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for _, metastoreWorkspace := range t.metastoreWorkspaceMap[metastoreId] {
+	for i := range t.metastoreWorkspaceMap[metastoreId] {
+		metastoreWorkspace := t.metastoreWorkspaceMap[metastoreId][i]
+
 		r, werr := utils.InitWorkspaceRepo(ctx, t.repoCredentials, t.pltfrm, metastoreWorkspace, t.repoFn)
 		if werr != nil {
 			continue
@@ -1706,6 +1712,8 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 			if c.Err != nil {
 				continue
 			}
+
+			logger.Debug(fmt.Sprintf("Add catalog %q for metastore %q", c.I.Name, metastoreId))
 
 			t.metastoreCatalogRepoCache[metastoreId][c.I.Name] = append(t.metastoreCatalogRepoCache[metastoreId][c.I.Name], item)
 		}
