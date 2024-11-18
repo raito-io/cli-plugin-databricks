@@ -61,7 +61,7 @@ func InitializeWorkspaceRepoCredentials(repoCredentials repo.RepositoryCredentia
 	return &repoCredentials, nil
 }
 
-func InitWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspace *provisioning.Workspace, repoFn func(*repo.RepositoryCredentials) (R, error)) (R, error) {
+func InitWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials repo.RepositoryCredentials, pltfrm platform.DatabricksPlatform, workspace *provisioning.Workspace, repoFn func(*repo.RepositoryCredentials, int64) (R, error)) (R, error) {
 	var r R
 
 	credentials, err := InitializeWorkspaceRepoCredentials(repoCredentials, pltfrm, workspace)
@@ -69,7 +69,7 @@ func InitWorkspaceRepo[R workspaceRepo](ctx context.Context, repoCredentials rep
 		return r, fmt.Errorf("load workspace credentials: %w", err)
 	}
 
-	repo, err := repoFn(credentials)
+	repo, err := repoFn(credentials, workspace.WorkspaceId)
 	if err != nil {
 		return r, fmt.Errorf("generating repository for %q: %w", workspace.WorkspaceName, err)
 	}

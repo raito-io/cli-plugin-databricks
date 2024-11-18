@@ -36,7 +36,7 @@ type dataSourceWorkspaceRepository interface {
 
 type DataSourceSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, user string, repoCredentials *types.RepositoryCredentials) (accountRepository, error)
-	workspaceRepoFactory func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	workspaceRepoFactory func(repoCredentials *types.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error)
 
 	functionUsedAsMaskOrFilter set.Set[string]
 
@@ -48,8 +48,8 @@ func NewDataSourceSyncer() *DataSourceSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (accountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(repoCredentials)
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(repoCredentials, workspaceId)
 		},
 
 		functionUsedAsMaskOrFilter: set.NewSet[string](),

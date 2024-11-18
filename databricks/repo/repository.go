@@ -11,6 +11,7 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/iam"
 	"github.com/databricks/databricks-sdk-go/service/provisioning"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+	"github.com/hashicorp/go-multierror"
 
 	"cli-plugin-databricks/databricks/platform"
 	"cli-plugin-databricks/databricks/repo/types"
@@ -182,10 +183,11 @@ func (r *AccountRepository) UpdateWorkspaceAssignment(ctx context.Context, works
 }
 
 type WorkspaceRepository struct {
-	client *databricks.WorkspaceClient
+	client      *databricks.WorkspaceClient
+	workspaceId int64
 }
 
-func NewWorkspaceRepository(credentials *types.RepositoryCredentials) (*WorkspaceRepository, error) {
+func NewWorkspaceRepository(credentials *types.RepositoryCredentials, workspaceId int64) (*WorkspaceRepository, error) {
 	config := credentials.DatabricksConfig()
 
 	client, err := databricks.NewWorkspaceClient(config)
@@ -194,7 +196,8 @@ func NewWorkspaceRepository(credentials *types.RepositoryCredentials) (*Workspac
 	}
 
 	return &WorkspaceRepository{
-		client: client,
+		client:      client,
+		workspaceId: workspaceId,
 	}, nil
 }
 
@@ -251,6 +254,32 @@ func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName str
 			SchemaName:  schemaName,
 		})
 	})
+}
+
+func (r *WorkspaceRepository) GetCatalogWorkspaceBinding(ctx context.Context, catalogName string) (*catalog.WorkspaceBinding, error) {
+	iterator := r.client.WorkspaceBindings.GetBindings(ctx, catalog.GetBindingsRequest{
+		SecurableName: catalogName,
+		SecurableType: catalog.GetBindingsSecurableTypeCatalog,
+	})
+
+	var err error
+
+	for iterator.HasNext(ctx) {
+		i, iErr := iterator.Next(ctx)
+		if iErr != nil {
+			err = multierror.Append(err, iErr)
+		}
+
+		if i.WorkspaceId == r.workspaceId {
+			return &i, nil
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (r *WorkspaceRepository) GetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string) (*catalog.PermissionsList, error) {

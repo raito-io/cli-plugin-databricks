@@ -59,7 +59,7 @@ func TestDataSourceTagHandler_LoadTags(t *testing.T) {
 		Principal: "raito-user",
 	}).Return(nil).Once()
 
-	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error) {
 		deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 		deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")
@@ -133,7 +133,7 @@ func TestDataSourceTagHandler_LoadTags_WarehouseNotDefined(t *testing.T) {
 	workspaceRepoMock := newMockDataSourceWorkspaceRepository(t)
 	workspaceMockRepos[deployment] = workspaceRepoMock
 
-	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials) (dataSourceWorkspaceRepository, error) {
+	workspaceRepoFactory := func(repoCredentials *types.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error) {
 		deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 		deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")

@@ -579,6 +579,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 		return nil
 	}).Once()
+
+	mockWorkspaceRepoMap[deployment].EXPECT().GetCatalogWorkspaceBinding(mock.Anything, "catalog-1").Return(&catalog.WorkspaceBinding{WorkspaceId: 1234, BindingType: catalog.WorkspaceBindingBindingTypeBindingTypeReadWrite}, nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().GetCatalogWorkspaceBinding(mock.Anything, "catalog-2").Return(&catalog.WorkspaceBinding{WorkspaceId: 1234, BindingType: catalog.WorkspaceBindingBindingTypeBindingTypeReadWrite}, nil).Once()
+
 	mockWorkspaceRepoMap[deployment].EXPECT().SetPermissionsOnResource(mock.Anything, catalog.SecurableTypeCatalog, "catalog-2", mock.Anything).RunAndReturn(func(_ context.Context, securableType catalog.SecurableType, s string, change ...catalog.PermissionsChange) error {
 		assert.ElementsMatch(t, []catalog.Privilege{catalog.PrivilegeCreateTable, catalog.PrivilegeUseCatalog}, change[0].Add)
 
@@ -1420,6 +1424,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 	mockAccountRepo.EXPECT().GetWorkspaceMap(mock.Anything, []catalog.MetastoreInfo{metastore1}, []provisioning.Workspace{workspaceObject}).Return(map[string][]*provisioning.Workspace{metastore1.MetastoreId: {{DeploymentName: deployment}}}, nil, nil).Once()
 
 	mockWorkspaceRepoMap[deployment].EXPECT().Ping(mock.Anything).Return(nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().GetCatalogWorkspaceBinding(mock.Anything, "catalog-1").Return(&catalog.WorkspaceBinding{WorkspaceId: 1234, BindingType: catalog.WorkspaceBindingBindingTypeBindingTypeReadWrite}, nil).Maybe()
+	mockWorkspaceRepoMap[deployment].EXPECT().GetCatalogWorkspaceBinding(mock.Anything, "catalog-2").Return(&catalog.WorkspaceBinding{WorkspaceId: 1234, BindingType: catalog.WorkspaceBindingBindingTypeBindingTypeReadWrite}, nil).Once()
 	mockWorkspaceRepoMap[deployment].EXPECT().ListCatalogs(mock.Anything).Return(repo.ArrayToChannel([]catalog.CatalogInfo{
 		{
 			FullName:    "catalog-1",
@@ -1558,7 +1564,7 @@ func createAccessSyncer(t *testing.T, deployments ...string) (*AccessSyncer, *mo
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types2.RepositoryCredentials) (dataAccessAccountRepository, error) {
 			return accountRepo, nil
 		},
-		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
+		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials, workspaceId int64) (dataAccessWorkspaceRepository, error) {
 			deploymentRegex := regexp.MustCompile("https://([a-zA-Z0-9_-]*).cloud.databricks.com")
 
 			deployment := deploymentRegex.ReplaceAllString(repoCredentials.Host, "${1}")

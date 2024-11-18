@@ -61,12 +61,13 @@ type dataAccessWorkspaceRepository interface {
 	SetPermissionsOnResource(ctx context.Context, securableType catalog.SecurableType, fullName string, changes ...catalog.PermissionsChange) error
 	SqlWarehouseRepository(warehouseId string) repo.WarehouseRepository
 	GetOwner(ctx context.Context, securableType catalog.SecurableType, fullName string) (string, error)
+	GetCatalogWorkspaceBinding(ctx context.Context, catalogName string) (*catalog.WorkspaceBinding, error)
 	workspaceRepository
 }
 
 type AccessSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types2.RepositoryCredentials) (dataAccessAccountRepository, error)
-	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error)
+	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials, workspaceId int64) (dataAccessWorkspaceRepository, error)
 
 	idGenerator func() string
 
@@ -80,8 +81,8 @@ func NewAccessSyncer() *AccessSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types2.RepositoryCredentials) (dataAccessAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(repoCredentials)
+		workspaceRepoFactory: func(repoCredentials *types2.RepositoryCredentials, workspaceId int64) (dataAccessWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(repoCredentials, workspaceId)
 		},
 
 		idGenerator: func() string { return gonanoid.MustGenerate(idAlphabet, 8) },
@@ -1467,7 +1468,7 @@ func (a *AccessProviderVisitor) getWorkspaceRepository(workspace *provisioning.W
 		return nil, fmt.Errorf("workspace address: %w", err2)
 	}
 
-	client, err2 := a.syncer.workspaceRepoFactory(credentials)
+	client, err2 := a.syncer.workspaceRepoFactory(credentials, workspace.WorkspaceId)
 	if err2 != nil {
 		return nil, err2
 	}
@@ -1567,14 +1568,14 @@ type metastoreRepoCacheItem struct {
 type MetastoreRepoCache struct {
 	pltfrm                platform.DatabricksPlatform
 	repoCredentials       types2.RepositoryCredentials
-	repoFn                func(*types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error)
+	repoFn                func(*types2.RepositoryCredentials, int64) (dataAccessWorkspaceRepository, error)
 	metastoreWorkspaceMap map[string][]*provisioning.Workspace
 
 	metastoreCatalogRepoCache map[string]map[string][]metastoreRepoCacheItem
 	metastoreRepoCache        map[string][]metastoreRepoCacheItem
 }
 
-func NewMetastoreRepoCache(pltfrm platform.DatabricksPlatform, repoCredentials types2.RepositoryCredentials, repoFn func(*types2.RepositoryCredentials) (dataAccessWorkspaceRepository, error), metastoreWorkspaceMap map[string][]*provisioning.Workspace) MetastoreRepoCache {
+func NewMetastoreRepoCache(pltfrm platform.DatabricksPlatform, repoCredentials types2.RepositoryCredentials, repoFn func(*types2.RepositoryCredentials, int64) (dataAccessWorkspaceRepository, error), metastoreWorkspaceMap map[string][]*provisioning.Workspace) MetastoreRepoCache {
 	return MetastoreRepoCache{
 		pltfrm:                    pltfrm,
 		repoCredentials:           repoCredentials,
@@ -1627,23 +1628,37 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 
 	preferredWorkspacesSet := set.NewSet(preferredWorkspaces...)
 
-	possiblePreferedRepos := make([]metastoreRepoCacheItem, 0, len(preferredWorkspaces))
-	possibleUnpreferedRepos := make([]metastoreRepoCacheItem, 0, len(r))
+	possiblePreferredRepos := make([]metastoreRepoCacheItem, 0, len(preferredWorkspaces))
+	possibleUnpreferredWriteRepos := make([]metastoreRepoCacheItem, 0, len(r))
+	possibleUnpreferredReadRepos := make([]metastoreRepoCacheItem, 0, len(r))
 
 	for _, possibleRepo := range r {
 		if preferredWorkspacesSet.Contains(possibleRepo.workspaceDeploymentName) {
-			possiblePreferedRepos = append(possiblePreferedRepos, possibleRepo)
+			possiblePreferredRepos = append(possiblePreferredRepos, possibleRepo)
 		} else {
-			possibleUnpreferedRepos = append(possibleUnpreferedRepos, possibleRepo)
+			binding, bindingErr := possibleRepo.GetCatalogWorkspaceBinding(ctx, catalogId)
+			if bindingErr != nil {
+				logger.Warn(fmt.Sprintf("Not able to get workspace binding for %q.%q in workspace %q", metastoreId, catalogId, possibleRepo.workspaceDeploymentName))
+
+				possibleUnpreferredReadRepos = append(possibleUnpreferredReadRepos, possibleRepo)
+
+				continue
+			}
+
+			if binding.BindingType == catalog.WorkspaceBindingBindingTypeBindingTypeReadOnly {
+				possibleUnpreferredReadRepos = append(possibleUnpreferredReadRepos, possibleRepo)
+			} else {
+				possibleUnpreferredWriteRepos = append(possibleUnpreferredWriteRepos, possibleRepo)
+			}
 		}
 	}
 
-	r = slices.Concat(possiblePreferedRepos, possibleUnpreferedRepos)
+	r = slices.Concat(possiblePreferredRepos, possibleUnpreferredWriteRepos, possibleUnpreferredReadRepos)
 	rWorkspaceNames := array.Map(r, func(i *metastoreRepoCacheItem) string {
 		return i.workspaceDeploymentName
 	})
 
-	logger.Debug(fmt.Sprintf("Looking for available workspace for %q.%q in ordered list of workspaces: %+v. Preferred workspaces: %+v", metastoreId, catalogId, rWorkspaceNames, preferredWorkspacesSet.Slice()))
+	logger.Debug(fmt.Sprintf("Looking for available workspace for %q.%q in ordered list of workspaces: %+v. Preferred workspaces: %+v. Read-Write workspaces: %+v, Read-only workspaces: %+v", metastoreId, catalogId, rWorkspaceNames, preferredWorkspacesSet.Slice(), possibleUnpreferredReadRepos, possibleUnpreferredWriteRepos))
 
 	for _, possibleRepo := range r {
 		if err := possibleRepo.Ping(ctx); err == nil {
@@ -1685,6 +1700,8 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 
 		catalogChannel := r.ListCatalogs(cancelCtx)
 
+		logger.Debug(fmt.Sprintf("Start loading catalogs for metastore %q", metastoreId))
+
 		for c := range catalogChannel {
 			if c.Err != nil {
 				continue
@@ -1692,5 +1709,7 @@ func (t *MetastoreRepoCache) loadMetastore(ctx context.Context, metastoreId stri
 
 			t.metastoreCatalogRepoCache[metastoreId][c.I.Name] = append(t.metastoreCatalogRepoCache[metastoreId][c.I.Name], item)
 		}
+
+		logger.Debug(fmt.Sprintf("Found %d catalogs for metastore %q: %+v", len(t.metastoreCatalogRepoCache[metastoreId]), metastoreId, array.Keys(t.metastoreCatalogRepoCache[metastoreId])))
 	}
 }
