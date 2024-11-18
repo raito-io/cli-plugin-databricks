@@ -49,7 +49,7 @@ var _ wrappers.DataUsageSyncer = (*DataUsageSyncer)(nil)
 
 type DataUsageSyncer struct {
 	accountRepoFactory   func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (dataUsageAccountRepository, error)
-	workspaceRepoFactory func(*types.RepositoryCredentials) (dataUsageWorkspaceRepository, error)
+	workspaceRepoFactory func(*types.RepositoryCredentials, int64) (dataUsageWorkspaceRepository, error)
 }
 
 func NewDataUsageSyncer() *DataUsageSyncer {
@@ -57,8 +57,8 @@ func NewDataUsageSyncer() *DataUsageSyncer {
 		accountRepoFactory: func(pltfrm platform.DatabricksPlatform, accountId string, repoCredentials *types.RepositoryCredentials) (dataUsageAccountRepository, error) {
 			return repo.NewAccountRepository(pltfrm, repoCredentials, accountId)
 		},
-		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials) (dataUsageWorkspaceRepository, error) {
-			return repo.NewWorkspaceRepository(repoCredentials)
+		workspaceRepoFactory: func(repoCredentials *types.RepositoryCredentials, workspaceId int64) (dataUsageWorkspaceRepository, error) {
+			return repo.NewWorkspaceRepository(repoCredentials, workspaceId)
 		},
 	}
 }
@@ -133,7 +133,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 		return fmt.Errorf("initialize workspace repo credentials: %w", err)
 	}
 
-	repo, err := d.workspaceRepoFactory(credentials)
+	repo, err := d.workspaceRepoFactory(credentials, workspace.WorkspaceId)
 	if err != nil {
 		return fmt.Errorf("get workspace repository: %w", err)
 	}

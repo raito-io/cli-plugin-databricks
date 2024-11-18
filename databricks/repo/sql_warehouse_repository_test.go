@@ -51,7 +51,7 @@ func TestSqlWarehouseRepositoryTestSuite(t *testing.T) {
 	repoCredentials, err := utils.InitializeWorkspaceRepoCredentials(credentials, pltfrm, workspace)
 	require.NoError(t, err)
 
-	repository, err := NewWorkspaceRepository(repoCredentials)
+	repository, err := NewWorkspaceRepository(repoCredentials, workspace.WorkspaceId)
 	require.NoError(t, err)
 	require.NoError(t, repository.Ping(context.Background()))
 

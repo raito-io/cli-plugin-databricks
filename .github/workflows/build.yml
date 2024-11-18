@@ -91,7 +91,7 @@ jobs:
           DB_SQL_WAREHOUSE_ID: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
           DB_TESTING_WORKSPACE: ${{ secrets.DB_TESTING_WORKSPACE }}
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt,./coverage-sync.txt

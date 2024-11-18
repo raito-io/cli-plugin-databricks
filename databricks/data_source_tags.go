@@ -20,12 +20,12 @@ import (
 type DataSourceTagHandler struct {
 	configMap            *config.ConfigMap
 	warehouseIdMap       map[string]string //workspace -> warehouse id
-	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataSourceWorkspaceRepository, error)
+	workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error)
 
 	tagCache map[string][]*tag.Tag
 }
 
-func NewDataSourceTagHandler(configMap *config.ConfigMap, workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials) (dataSourceWorkspaceRepository, error)) (*DataSourceTagHandler, error) {
+func NewDataSourceTagHandler(configMap *config.ConfigMap, workspaceRepoFactory func(repoCredentials *types2.RepositoryCredentials, workspaceId int64) (dataSourceWorkspaceRepository, error)) (*DataSourceTagHandler, error) {
 	var warehouseIds []types.WarehouseDetails
 
 	if found, err := configMap.Unmarshal(constants.DatabricksSqlWarehouses, &warehouseIds); err != nil {
@@ -108,7 +108,7 @@ func (d *DataSourceTagHandler) getSqlClient(workspace *provisioning.Workspace) (
 		return nil, nil, fmt.Errorf("initialize workspace credentials: %w", err)
 	}
 
-	workspaceRepo, err := d.workspaceRepoFactory(workspaceCredentials)
+	workspaceRepo, err := d.workspaceRepoFactory(workspaceCredentials, workspace.WorkspaceId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create workspace repo: %w", err)
 	}
