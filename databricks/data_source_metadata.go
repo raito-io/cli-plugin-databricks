@@ -241,6 +241,10 @@ var databricks_metadata = ds.MetaData{
 			},
 		},
 		DefaultMaskExternalName: masks.DefaultMaskId,
+		ApplicableTypes:         []string{ds.Table},
+	},
+	FilterMetadata: &ds.FilterMetadata{
+		ApplicableTypes: []string{ds.Table},
 	},
 }
 
