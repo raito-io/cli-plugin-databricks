@@ -15,7 +15,7 @@ require (
 	github.com/raito-io/enumer v0.1.4
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.49.0
+	github.com/vektra/mockery/v2 v2.49.1
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/net v0.31.0
 	golang.org/x/text v0.20.0
