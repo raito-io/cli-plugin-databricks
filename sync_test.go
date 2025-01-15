@@ -9,6 +9,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
@@ -79,7 +80,7 @@ func AccessSync(ctx context.Context, cfg *config.ConfigMap, t *testing.T) {
 				{
 					Name:   "Simple AP",
 					Id:     "simple-ap-id",
-					Action: sync_to_target.Grant,
+					Action: types.Grant,
 					Who: sync_to_target.WhoItem{
 						Users:  []string{"c_harris+databricks@raito.io", "5f239a72-c050-47b4-947c-f329f8e2e8f2"},
 						Groups: []string{"HUMAN_RESOURCES"},
