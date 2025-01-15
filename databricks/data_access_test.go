@@ -17,6 +17,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	types3 "github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
@@ -219,7 +220,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Workspace test-workspace - USER",
 			NamingHint: "Workspace test-workspace - USER",
 			ActualName: "Workspace test-workspace - USER",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
@@ -239,7 +240,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Workspace test-workspace - ADMIN",
 			NamingHint: "Workspace test-workspace - ADMIN",
 			ActualName: "Workspace test-workspace - ADMIN",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"dieter@raito.io"},
@@ -259,7 +260,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Catalog catalog-1 - SELECT",
 			NamingHint: "Catalog catalog-1 - SELECT",
 			ActualName: "Catalog catalog-1 - SELECT",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Groups: []string{"group1"},
@@ -279,7 +280,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Catalog catalog-1 - USE CATALOG",
 			NamingHint: "Catalog catalog-1 - USE CATALOG",
 			ActualName: "Catalog catalog-1 - USE CATALOG",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users:  []string{"ruben@raito.io"},
@@ -300,7 +301,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Catalog catalog-1 - EXECUTE",
 			NamingHint: "Catalog catalog-1 - EXECUTE",
 			ActualName: "Catalog catalog-1 - EXECUTE",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
@@ -320,7 +321,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Schema catalog-1.schema-1 - EXECUTE",
 			NamingHint: "Schema catalog-1.schema-1 - EXECUTE",
 			ActualName: "Schema catalog-1.schema-1 - EXECUTE",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2"},
@@ -340,7 +341,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Schema catalog-1.schema-1 - SELECT",
 			NamingHint: "Schema catalog-1.schema-1 - SELECT",
 			ActualName: "Schema catalog-1.schema-1 - SELECT",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"5f239a72-c050-47b4-947c-f329f8e2e8f2", "ruben@raito.io"},
@@ -360,7 +361,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Schema catalog-1.schema-1 - MODIFY",
 			NamingHint: "Schema catalog-1.schema-1 - MODIFY",
 			ActualName: "Schema catalog-1.schema-1 - MODIFY",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"ruben@raito.io"},
@@ -380,7 +381,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Table catalog-1.schema-1.table-1 - SELECT",
 			NamingHint: "Table catalog-1.schema-1.table-1 - SELECT",
 			ActualName: "Table catalog-1.schema-1.table-1 - SELECT",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"bart@raito.io"},
@@ -398,7 +399,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			Name:       "Function catalog-1.schema-1.function-1 - EXECUTE",
 			NamingHint: "Function catalog-1.schema-1.function-1 - EXECUTE",
 			ActualName: "Function catalog-1.schema-1.function-1 - EXECUTE",
-			Action:     sync_from_target.Grant,
+			Action:     types3.Grant,
 			Type:       ptr.String(access_provider.AclSet),
 			Who: &sync_from_target.WhoItem{
 				Users: []string{"bart@raito.io"},
@@ -414,7 +415,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			ExternalId:        "metastore-id1.catalog-1.schema-1.function-2",
 			Name:              "function-2",
-			Action:            sync_from_target.Mask,
+			Action:            types3.Mask,
 			Policy:            "CASE username() IN ('ruben@raito.io') THEN val else '****'",
 			NotInternalizable: true,
 			ActualName:        "metastore-id1.catalog-1.schema-1.function-2",
@@ -444,7 +445,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			{
 				Id:     "workspace-ap-id",
 				Name:   "workspace-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -465,7 +466,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			{
 				Id:     "catalog-ap-id",
 				Name:   "catalog-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -485,7 +486,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			{
 				Id:     "multiple-do-ap-id",
 				Name:   "multiple-do-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -678,7 +679,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 				Id:         "workspace-ap-id",
 				Name:       "workspace-ap",
 				NamingHint: "workspace-ap",
-				Action:     sync_to_target.Mask,
+				Action:     types3.Mask,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -770,7 +771,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 				Id:         "filter-ap-id1",
 				Name:       "filter-ap-1",
 				NamingHint: "filter-ap-1",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -807,7 +808,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 				Id:         "filter-ap-id2",
 				Name:       "filter-ap-2",
 				NamingHint: "filter-ap-2",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -914,7 +915,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 				Id:         "filter-ap-id1",
 				Name:       "filter-ap-1",
 				NamingHint: "filter-ap-1",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -951,7 +952,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 				Id:         "filter-ap-id2",
 				Name:       "filter-ap-2",
 				NamingHint: "filter-ap-2",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -1072,7 +1073,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_updateFilter(t *tes
 				Name:       "filter-ap-1",
 				NamingHint: "filter-ap-1",
 				ActualName: ptr.String("old-filter"),
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -1109,7 +1110,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_updateFilter(t *tes
 				Id:         "filter-ap-id2",
 				Name:       "filter-ap-2",
 				NamingHint: "filter-ap-2",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -1231,7 +1232,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 				Id:         "filter-ap-id1",
 				Name:       "filter-ap-1",
 				NamingHint: "filter-ap-1",
-				Action:     sync_to_target.Filtered,
+				Action:     types3.Filtered,
 				Delete:     true,
 				What: []sync_to_target.WhatItem{
 					{
@@ -1332,7 +1333,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			{
 				Id:     "workspace-ap-id",
 				Name:   "workspace-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -1353,7 +1354,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			{
 				Id:     "catalog-ap-id",
 				Name:   "catalog-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -1373,7 +1374,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			{
 				Id:     "multiple-do-ap-id",
 				Name:   "multiple-do-ap",
-				Action: sync_to_target.Grant,
+				Action: types3.Grant,
 				What: []sync_to_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{

@@ -19,6 +19,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	aptypes "github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -186,11 +187,11 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 	for i := range accessProviders.AccessProviders {
 		switch accessProviders.AccessProviders[i].Action {
-		case sync_to_target.Grant, sync_to_target.Purpose:
+		case aptypes.Grant, aptypes.Purpose:
 			grants = append(grants, accessProviders.AccessProviders[i])
-		case sync_to_target.Mask:
+		case aptypes.Mask:
 			masksAps = append(masksAps, accessProviders.AccessProviders[i])
-		case sync_to_target.Filtered:
+		case aptypes.Filtered:
 			filters = append(filters, accessProviders.AccessProviders[i])
 		default:
 			err2 := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
@@ -1261,7 +1262,7 @@ func (a *AccessProviderVisitor) VisitWorkspace(ctx context.Context, workspace *p
 		err2 := a.accessProviderHandler.AddAccessProviders(
 			&sync_from_target.AccessProvider{
 				ExternalId: apExternalId,
-				Action:     sync_from_target.Grant,
+				Action:     aptypes.Grant,
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
@@ -1416,7 +1417,7 @@ func (a *AccessProviderVisitor) VisitFunction(ctx context.Context, function *cat
 			Name:              function.Name,
 			ActualName:        functionId,
 			Policy:            function.RoutineDefinition,
-			Action:            sync_from_target.Mask,
+			Action:            aptypes.Mask,
 			What:              what,
 			NotInternalizable: true,
 			Incomplete:        ptr.Bool(true),
@@ -1429,7 +1430,7 @@ func (a *AccessProviderVisitor) VisitFunction(ctx context.Context, function *cat
 				Name:       function.Name,
 				ActualName: functionId,
 				Policy:     function.RoutineDefinition,
-				Action:     sync_from_target.Filtered,
+				Action:     aptypes.Filtered,
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{FullName: table, Type: data_source.Table},
@@ -1531,7 +1532,7 @@ func (a *AccessProviderVisitor) addPermissionIfNotSetByRaito(apNamePrefix string
 		err := a.accessProviderHandler.AddAccessProviders(
 			&sync_from_target.AccessProvider{
 				ExternalId: externalId,
-				Action:     sync_from_target.Grant,
+				Action:     aptypes.Grant,
 				Name:       apName,
 				NamingHint: apName,
 				ActualName: apName,
