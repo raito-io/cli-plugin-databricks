@@ -220,7 +220,9 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		a.apFeedbackObjects = nil
 	}()
 
-	for item, principlePrivilegesMap := range permissionsChanges.M {
+	for item, principlePrivilegesMap := range permissionsChanges.Iterator() {
+		utils.MemoryUsage(logger.Debug)
+
 		if item.Type == constants.WorkspaceType {
 			a.storePrivilegesInComputePlane(ctx, item, principlePrivilegesMap, accountRepo)
 		} else {
@@ -1637,9 +1639,14 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 	possibleUnpreferredReadRepos := make([]metastoreRepoCacheItem, 0, len(r))
 
 	for _, possibleRepo := range r {
+		logger.Debug(fmt.Sprintf("Checking workspace %q for %q.%q", possibleRepo.workspaceDeploymentName, metastoreId, catalogId))
+
 		if preferredWorkspacesSet.Contains(possibleRepo.workspaceDeploymentName) {
+			logger.Debug("Workspace is prefered workspace")
+
 			possiblePreferredRepos = append(possiblePreferredRepos, possibleRepo)
 		} else {
+			logger.Debug(fmt.Sprintf("Workspace is not prefered workspace. Check catalog bindings"))
 			binding, bindingErr := possibleRepo.GetCatalogWorkspaceBinding(ctx, catalogId)
 			if bindingErr != nil {
 				logger.Warn(fmt.Sprintf("Not able to get workspace binding for %q.%q in workspace %q", metastoreId, catalogId, possibleRepo.workspaceDeploymentName))
@@ -1650,8 +1657,10 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 			}
 
 			if binding != nil && binding.BindingType == catalog.WorkspaceBindingBindingTypeBindingTypeReadOnly {
+				logger.Debug(fmt.Sprintf("Workspace is read-only workspace"))
 				possibleUnpreferredReadRepos = append(possibleUnpreferredReadRepos, possibleRepo)
 			} else {
+				logger.Debug(fmt.Sprintf("Workspace is read-write workspace"))
 				possibleUnpreferredWriteRepos = append(possibleUnpreferredWriteRepos, possibleRepo)
 			}
 		}

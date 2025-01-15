@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"iter"
 	"regexp"
 	"strings"
 
@@ -30,6 +31,16 @@ type PrivilegesChangeCollection struct {
 func NewPrivilegesChangeCollection() PrivilegesChangeCollection {
 	return PrivilegesChangeCollection{
 		M: make(map[SecurableItemKey]map[string]*PrivilegesChanges),
+	}
+}
+
+func (c *PrivilegesChangeCollection) Iterator() iter.Seq2[SecurableItemKey, map[string]*PrivilegesChanges] {
+	return func(yield func(SecurableItemKey, map[string]*PrivilegesChanges) bool) {
+		for k, v := range c.M {
+			if !yield(k, v) {
+				return
+			}
+		}
 	}
 }
 
