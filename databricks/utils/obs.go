@@ -5,11 +5,11 @@ import (
 	"runtime"
 )
 
-func MemoryUsage(print func(msg string, args ...interface{})) {
+func MemoryUsage(printFn func(msg string, args ...interface{})) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	print(fmt.Sprintf("Heap: %v MiB; System memory: %v MiB", bToMb(m.Alloc), bToMb(m.Sys)))
+	printFn(fmt.Sprintf("Heap: %v MiB; System memory: %v MiB", bToMb(m.Alloc), bToMb(m.Sys)))
 }
 
 func bToMb(b uint64) uint64 {

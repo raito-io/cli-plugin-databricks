@@ -1643,11 +1643,12 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 		logger.Debug(fmt.Sprintf("Checking workspace %q for %q.%q", possibleRepo.workspaceDeploymentName, metastoreId, catalogId))
 
 		if preferredWorkspacesSet.Contains(possibleRepo.workspaceDeploymentName) {
-			logger.Debug("Workspace is prefered workspace")
+			logger.Debug("Workspace is preferred workspace")
 
 			possiblePreferredRepos = append(possiblePreferredRepos, possibleRepo)
 		} else {
-			logger.Debug(fmt.Sprintf("Workspace is not prefered workspace. Check catalog bindings"))
+			logger.Debug("Workspace is not preferred workspace. Check catalog bindings")
+
 			binding, bindingErr := possibleRepo.GetCatalogWorkspaceBinding(ctx, catalogId)
 			if bindingErr != nil {
 				logger.Warn(fmt.Sprintf("Not able to get workspace binding for %q.%q in workspace %q", metastoreId, catalogId, possibleRepo.workspaceDeploymentName))
@@ -1658,10 +1659,12 @@ func (t *MetastoreRepoCache) GetCatalogRepo(ctx context.Context, metastoreId str
 			}
 
 			if binding != nil && binding.BindingType == catalog.WorkspaceBindingBindingTypeBindingTypeReadOnly {
-				logger.Debug(fmt.Sprintf("Workspace is read-only workspace"))
+				logger.Debug("Workspace is read-only workspace")
+
 				possibleUnpreferredReadRepos = append(possibleUnpreferredReadRepos, possibleRepo)
 			} else {
-				logger.Debug(fmt.Sprintf("Workspace is read-write workspace"))
+				logger.Debug("Workspace is read-write workspace")
+
 				possibleUnpreferredWriteRepos = append(possibleUnpreferredWriteRepos, possibleRepo)
 			}
 		}

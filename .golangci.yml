@@ -111,6 +111,9 @@ run:
   issues-exit-code: 1
   tests: false
 
+issues:
+  uniq-by-line: false
+
 output:
   path-prefix: ''
   sort-results: true
@@ -118,4 +121,3 @@ output:
     - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
-  uniq-by-line: false
