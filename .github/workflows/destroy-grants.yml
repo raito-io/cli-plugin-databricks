@@ -46,10 +46,10 @@ jobs:
       - name: Mod Tidy
         run: go mod tidy
 
-      - name: Destroy infrastructure
-        run: make destroy-grants
-        env:
-          dbClientId: ${{ secrets.DB_CLIENT_ID }}
-          dbClientSecret: ${{ secrets.DB_CLIENT_SECRET }}
+      - name: Destroy grants
+        uses: ./.github/actions/destroy-grants
+        with:
+          catalogs: ${{ inputs.catalogs }}
+          clientId: ${{ secrets.DB_CLIENT_ID }}
+          clientSecret: ${{ secrets.DB_CLIENT_SECRET }}
           dbHost: ${{ secrets.DB_HOST }}
-          dbCatalogs: ${{ inputs.catalogs }}

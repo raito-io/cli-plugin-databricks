@@ -1,0 +1,28 @@
+name: "Destroy grants"
+description: "Destroy grants"
+inputs:
+  catalogs:
+    description: "Comma seperated list of catalogs"
+    required: false
+    default: ""
+  clientId:
+    description: "Databricks client ID"
+    required: true
+  clientSecret:
+    description: "Databricks client secret"
+    required: true
+  dbHost:
+    description: "Databricks host"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Destroy grants
+      shell: bash
+      run: make destroy-grants
+      env:
+        dbClientId: ${{ inputs.clientId }}
+        dbClientSecret: ${{ inputs.clientSecret }}
+        dbHost: ${{ inputs.dbHost }}
+        dbCatalogs: ${{ inputs.catalogs }}
