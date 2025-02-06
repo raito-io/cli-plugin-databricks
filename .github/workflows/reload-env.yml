@@ -1,0 +1,81 @@
+name: "Raito CLI - Databricks - Reload"
+on:
+  workflow_dispatch:
+    inputs:
+      targetEnvironment:
+        type: string
+        required: true
+        description: ""
+      secretArn:
+        required: true
+        type: string
+        description: "The ARN of the secret to load"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  reload:
+    name: Reload
+    environment: ${{ inputs.targetEnvironment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Mod Tidy
+        run: go mod tidy
+
+      - name: Assume role using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_DEPLOY_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Load secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: ",${{ inputs.secretArn }}"
+          parse-json-secrets: true
+
+      - name: Initiate Terraform
+        uses: ./.github/actions/terraform-init
+        with:
+          S3TerraformBucket: ${AWS_S3_TERRAFORM_BUCKET}
+          S3TerraformKey: ${AWS_S3_TERRAFORM_KEY}
+          DynamoDBTerraformTable: ${AWS_DYNAMODB_TERRAFORM_TABLE}
+
+      - name: Remove old infrastructure
+        uses: ./.github/actions/destroy-grants
+        with:
+          catalogs: ${{ env.DB_CATALOGS }}
+          clientId: ${{ env.DB_CLIENT_ID }}
+          clientSecret: ${{ env.DB_CLIENT_SECRET }}
+          dbHost: ${{ env.DB_HOST }}
+
+      - name: Setup infrastructure
+        uses: ./.github/actions/generate-infra
+        with:
+          dbClientId: ${{ env.DB_CLIENT_ID }}
+          dbClientSecret: ${{ env.DB_CLIENT_SECRET }}
+          dbAccountID: ${{ env.DB_ACCOUNT_ID }}
+          dbHost: ${{ env.DB_HOST }}
+          dbMetastoreID: ${{ env.DB_METASTORE_ID }}
+          dbSqlWarehouseId: ${{ env.DB_SQL_WAREHOUSE_ID }}
+          dbWorkspaceName: ${{ env.DB_WORKSPACE_NAME }}
+          ownerGroupName: ${{ env.DB_OWNER_GROUP_NAME }}
+          target: ${{ env.DB_TARGET }}
+
+      - name: Generate usage
+        uses: ./.github/actions/generate-usage
+        with:
+          dbHost: ${{ env.DB_HOST }}
+          dbSqlWarehouseId: ${{ env.DB_SQL_WAREHOUSE_ID }}

@@ -72,47 +72,22 @@ jobs:
           role-to-assume: ${{ secrets.AWS_OIDC_DEPLOY_ROLE }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Format terraform
-        run: terraform fmt -check -recursive
-        working-directory: .infra/infra
-
-      - name: Terraform backend
-        run: |
-          cat <<EOF > .infra/infra/backend_override.tf
-          terraform {
-            backend "s3" {
-            }
-          }
-          EOF
-
-      - name: Terraform init
-        run: |
-          terraform init \
-            -backend-config=bucket=${AWS_S3_TERRAFORM_BUCKET} \
-            -backend-config=key=${AWS_S3_TERRAFORM_KEY} \
-            -backend-config=region=${AWS_REGION} \
-            -backend-config=access_key=${AWS_ACCESS_KEY_ID} \
-            -backend-config=secret_key=${AWS_SECRET_ACCESS_KEY} \
-            -backend-config=token=${AWS_SESSION_TOKEN} \
-            -backend-config=dynamodb_table=${AWS_DYNAMODB_TERRAFORM_TABLE}
-        working-directory: .infra/infra
-        env:
-          AWS_S3_TERRAFORM_BUCKET: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
-          AWS_S3_TERRAFORM_KEY: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
-          AWS_DYNAMODB_TERRAFORM_TABLE: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
+      - name: Initiate Terraform
+        uses: ./.github/actions/terraform-init
+        with:
+          S3TerraformBucket: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
+          S3TerraformKey: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          DynamoDBTerraformTable: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Generate infra
-        run: make gen-test-infra
-        env:
-          TF_VAR_databricks_client_id: ${{ secrets.DB_CLIENT_ID }}
-          TF_VAR_databricks_client_secret: ${{ secrets.DB_CLIENT_SECRET }}
-          TF_VAR_databricks_account_id: ${{ secrets.DB_ACCOUNT_ID }}
-          TF_VAR_databricks_workspace_host: ${{ secrets.DB_HOST }}
-          TF_VAR_databricks_metastore_id: ${{ secrets.DB_METASTORE_ID }}
-          TF_VAR_databricks_sql_warehouse_id: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
-          TF_VAR_databricks_workspace_name: ${{ secrets.DB_WORKSPACE_NAME }}
-          TF_VAR_owner_group_name: ${{ secrets.DB_OWNER_GROUP_NAME }}
-          TARGET: ${{ inputs.target }}
+        uses: ./.github/actions/generate-infra
+        with:
+          dbClientId: ${{ secrets.DB_CLIENT_ID }}
+          dbClientSecret: ${{ secrets.DB_CLIENT_SECRET }}
+          dbAccountID: ${{ secrets.DB_ACCOUNT_ID }}
+          dbHost: ${{ secrets.DB_HOST }}
+          dbMetastoreID: ${{ secrets.DB_METASTORE_ID }}
+          dbSqlWarehouseId: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
+          dbWorkspaceName: ${{ secrets.DB_WORKSPACE_NAME }}
+          ownerGroupName: ${{ secrets.DB_OWNER_GROUP_NAME }}
+          target: ${{ inputs.target }}

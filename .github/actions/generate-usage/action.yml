@@ -1,0 +1,24 @@
+name: "Generate usage"
+description: "Generate usage"
+inputs:
+  dbHost:
+    description: "Databricks host"
+    required: true
+  dbSqlWarehouseId:
+    description: "Databricks SQL warehouse ID"
+    required: true
+
+runs:
+    using: composite
+    steps:
+      - name: Test terraform output
+        shell: bash
+        run: terraform output
+        working-directory: .infra/infra
+
+      - name: Generate usage
+        shell: bash
+        run: make generate-usage
+        env:
+          dbHost: ${{ inputs.dbHost }}
+          dbWarehouseId: ${{ inputs.dbSqlWarehouseId }}
