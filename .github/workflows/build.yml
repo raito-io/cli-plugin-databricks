@@ -8,6 +8,38 @@ permissions:
   id-token: write
   contents: read
 jobs:
+  lint:
+    name: "Linting"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Mod Tidy
+        run: go mod tidy
+
+      - name: Generate
+        run: make generate
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.63.4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform lint
+        run: terraform fmt -check=true -recursive
+        working-directory: .infra/infra
+
   remove-old-infra:
     uses: ./.github/workflows/destroy-grants.yml
     with:
@@ -40,6 +72,7 @@ jobs:
     needs:
       - setup-infra
       - generate-usage
+      - lint
     if: needs.generate-usage.result == 'success'
 
     runs-on: ubuntu-latest
@@ -61,11 +94,6 @@ jobs:
 
       - name: Build
         run: make build
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.63.4
 
       - name: Test
         run: make test
