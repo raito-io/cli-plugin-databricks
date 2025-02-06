@@ -64,7 +64,7 @@ jobs:
           DynamoDBTerraformTable: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Generate usage
-        run: make gen-test-usage
-        env:
+        uses: ./.github/actions/generate-usage
+        with:
           dbHost: ${{ secrets.DB_HOST }}
-          dbWarehouseId: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
+          dbSqlWarehouseId: ${{ secrets.DB_SQL_WAREHOUSE_ID }}

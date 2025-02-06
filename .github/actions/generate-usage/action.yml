@@ -18,7 +18,7 @@ runs:
 
       - name: Generate usage
         shell: bash
-        run: make generate-usage
+        run: make gen-test-usage
         env:
           dbHost: ${{ inputs.dbHost }}
           dbWarehouseId: ${{ inputs.dbSqlWarehouseId }}
