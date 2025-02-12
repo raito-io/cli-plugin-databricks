@@ -48,7 +48,7 @@ runs:
           -backend-config=secret_key=${AWS_SECRET_ACCESS_KEY} \
           -backend-config=token=${AWS_SESSION_TOKEN} \
           -backend-config=dynamodb_table=${{ inputs.DynamoDBTerraformTable }}
-      working-directory: .infra/personas
+      working-directory: .infra/infra
 
     - name: Terraform init - Personas
       shell: bash
