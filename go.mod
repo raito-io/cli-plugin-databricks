@@ -1,6 +1,8 @@
 module cli-plugin-databricks
 
-go 1.24
+go 1.23
+
+toolchain go1.23.1
 
 require (
 	github.com/aws/smithy-go v1.22.2

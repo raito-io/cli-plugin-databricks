@@ -51,6 +51,7 @@ jobs:
         with:
           S3TerraformBucket: ${{ env.AWS_S3_TERRAFORM_BUCKET }}
           S3TerraformKey: ${{ env.AWS_S3_TERRAFORM_KEY }}
+          S3TerraformPersonasKey: ${{ secrets.AWS_S3_TERRAFORM_PERSONAS_KEY }}
           DynamoDBTerraformTable: ${{ env.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Remove old infrastructure
