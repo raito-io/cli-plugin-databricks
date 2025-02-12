@@ -2,8 +2,6 @@ module cli-plugin-databricks
 
 go 1.24
 
-toolchain go1.24.0
-
 require (
 	github.com/aws/smithy-go v1.22.2
 	github.com/databricks/databricks-sdk-go v0.58.1
