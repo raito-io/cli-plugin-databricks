@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/smithy-go/ptr"
+	"github.com/raito-io/cli/base"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/access_provider/types"
@@ -23,6 +24,8 @@ import (
 func TestSync(t *testing.T) {
 	ctx := context.Background()
 	cfg := it.ReadDatabaseConfig()
+
+	logger = base.Logger()
 
 	testMethod := func(tf func(ctx context.Context, cfg *config.ConfigMap, t *testing.T)) func(t *testing.T) {
 		return func(t *testing.T) {

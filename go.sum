@@ -44,8 +44,8 @@ github.com/coder/websocket v1.8.12 h1:5bUXkEPPIbewrnkU8LTCLVaxi4N4J8ahufH2vlo4NA
 github.com/coder/websocket v1.8.12/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
-github.com/databricks/databricks-sdk-go v0.55.0 h1:ReziD6spzTDltM0ml80LggKo27F3oUjgTinCFDJDnak=
-github.com/databricks/databricks-sdk-go v0.55.0/go.mod h1:JpLizplEs+up9/Z4Xf2x++o3sM9eTTWFGzIXAptKJzI=
+github.com/databricks/databricks-sdk-go v0.58.1 h1:dUs9ZmFi7hYiL3NwLSAbxqQu66E3BzwM8EU/wcCTJ10=
+github.com/databricks/databricks-sdk-go v0.58.1/go.mod h1:JpLizplEs+up9/Z4Xf2x++o3sM9eTTWFGzIXAptKJzI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
