@@ -20,10 +20,17 @@ runs:
     - name: Install Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform backend - infra
+    - name: Terraform backend
       shell: bash
       run: |
         cat <<EOF > .infra/infra/backend_override.tf
+        terraform {
+          backend "s3" {
+          }
+        }
+        EOF
+        
+        cat <<EOF > .infra/personas/backend_override.tf
         terraform {
           backend "s3" {
           }
@@ -42,17 +49,6 @@ runs:
           -backend-config=token=${AWS_SESSION_TOKEN} \
           -backend-config=dynamodb_table=${{ inputs.DynamoDBTerraformTable }}
       working-directory: .infra/personas
-
-
-    - name: Terraform backend - Personas
-      shell: bash
-      run: |
-        cat <<EOF > .infra/infra/backend_override.tf
-        terraform {
-          backend "s3" {
-          }
-        }
-        EOF
 
     - name: Terraform init - Personas
       shell: bash
