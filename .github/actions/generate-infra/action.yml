@@ -52,7 +52,16 @@ runs:
       shell: bash
       run: |
         terraform_output=$(terraform output -json)
-        echo $terraform_output
+        
+        echo $terraform_output | jq -r '.personas.value[] | "TF_VAR_\(.username)_client_id=\(.name)"' | 
+        while IFS= read -r line; do
+          echo "$line" >> $GITHUB_ENV
+        done
+        
+        echo $terraform_output | jq -r '.groups.value[] | "TF_VAR_\(.groupname)_group_name=\(.name)"' |
+        while IFS= read -r line; do
+          echo "$line" >> $GITHUB_ENV
+        done
 
       working-directory: .infra/personas
 
