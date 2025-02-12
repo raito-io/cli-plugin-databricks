@@ -25,21 +25,21 @@ module "demo" {
 
   master_owner_group_name = var.owner_group_name
 
-  benjamin_user_name = module.benjamin.application_id
-  carla_user_name    = module.carla.application_id
-  dustin_user_name   = module.dustin.application_id
-  mary_user_name     = module.mary.application_id
-  nick_user_name     = module.nick.application_id
+  benjamin_user_name = var.benjamin_user_name
+  carla_user_name    = var.carla_user_name
+  dustin_user_name   = var.dustin_user_name
+  mary_user_name     = var.mary_user_name
+  nick_user_name     = var.nick_user_name
 
-  finance_group_name            = module.group_finance.group.display_name
-  data_analyst_group_name       = module.group_data_analyst.group.display_name
-  human_resources_group_name    = module.group_human_resources.group.display_name
-  marketing_group_name          = module.group_marketing.group.display_name
-  sales_group_name              = module.group_sales.group.display_name
-  sales_analysis_group_name     = module.group_sales_analysis.group.display_name
-  sales_ext_group_name          = module.group_sales_ext.group.display_name
-  data_engineer_group_name      = module.group_data_engineer.group.display_name
-  data_engineer_sync_group_name = module.group_data_engineer_sync.group.display_name
+  finance_group_name            = var.finance_group_name
+  data_analyst_group_name       = var.data_analyst_group_name
+  human_resources_group_name    = var.human_resources_group_name
+  marketing_group_name          = var.marketing_group_name
+  sales_group_name              = var.sales_group_name
+  sales_analysis_group_name     = var.sales_analysis_group_name
+  sales_ext_group_name          = var.sales_ext_group_name
+  data_engineer_group_name      = var.data_analyst_group_name
+  data_engineer_sync_group_name = var.data_engineer_sync_group_name
 }
 
 module "testing" {
@@ -51,19 +51,19 @@ module "testing" {
 
   master_owner_group_name = var.owner_group_name
 
-  benjamin_user_name = module.benjamin.application_id
-  carla_user_name    = module.carla.application_id
-  dustin_user_name   = module.dustin.application_id
-  mary_user_name     = module.mary.application_id
-  nick_user_name     = module.nick.application_id
+  benjamin_user_name = var.benjamin_user_name
+  carla_user_name    = var.carla_user_name
+  dustin_user_name   = var.dustin_user_name
+  mary_user_name     = var.mary_user_name
+  nick_user_name     = var.nick_user_name
 
-  finance_group_name            = module.group_finance.group.display_name
-  data_analyst_group_name       = module.group_data_analyst.group.display_name
-  human_resources_group_name    = module.group_human_resources.group.display_name
-  marketing_group_name          = module.group_marketing.group.display_name
-  sales_group_name              = module.group_sales.group.display_name
-  sales_analysis_group_name     = module.group_sales_analysis.group.display_name
-  sales_ext_group_name          = module.group_sales_ext.group.display_name
-  data_engineer_group_name      = module.group_data_engineer.group.display_name
-  data_engineer_sync_group_name = module.group_data_engineer_sync.group.display_name
+  finance_group_name            = var.finance_group_name
+  data_analyst_group_name       = var.data_analyst_group_name
+  human_resources_group_name    = var.human_resources_group_name
+  marketing_group_name          = var.marketing_group_name
+  sales_group_name              = var.sales_group_name
+  sales_analysis_group_name     = var.sales_analysis_group_name
+  sales_ext_group_name          = var.sales_ext_group_name
+  data_engineer_group_name      = var.data_analyst_group_name
+  data_engineer_sync_group_name = var.data_engineer_sync_group_name
 }

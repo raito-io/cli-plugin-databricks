@@ -1,5 +1,5 @@
-name: "Generate infrastructure"
-description: "Generate infrastructure"
+name: "Destroy personas infrastructure"
+description: "Destroy personas infrastructure"
 inputs:
   dbClientId:
     description: "Databricks client ID"
@@ -36,7 +36,7 @@ runs:
     - name: Generate personas
       id: generate-personas
       shell: bash
-      run: make gen-test-personas-infra
+      run: make destroy-test-personas-infra
       env:
         TF_VAR_databricks_client_id: ${{ inputs.dbClientId }}
         TF_VAR_databricks_client_secret: ${{ inputs.dbClientSecret }}
@@ -46,27 +46,3 @@ runs:
         TF_VAR_databricks_sql_warehouse_id: ${{ inputs.dbSqlWarehouseId }}
         TF_VAR_databricks_workspace_name: ${{ inputs.dbWorkspaceName }}
         TF_VAR_owner_group_name: ${{ inputs.ownerGroupName }}
-
-    - name: Parse persona output
-      id: parse-persona-output
-      shell: bash
-      run: |
-        terraform_output=$(terraform output -json)
-        echo $terraform_output
-
-      working-directory: .infra/personas
-
-    - name: Generate infrastructure
-      id: generate-infra
-      shell: bash
-      run: make gen-test-infra
-      env:
-        TF_VAR_databricks_client_id: ${{ inputs.dbClientId }}
-        TF_VAR_databricks_client_secret: ${{ inputs.dbClientSecret }}
-        TF_VAR_databricks_account_id: ${{ inputs.dbAccountID }}
-        TF_VAR_databricks_workspace_host: ${{ inputs.dbHost }}
-        TF_VAR_databricks_metastore_id: ${{ inputs.dbMetastoreID }}
-        TF_VAR_databricks_sql_warehouse_id: ${{ inputs.dbSqlWarehouseId }}
-        TF_VAR_databricks_workspace_name: ${{ inputs.dbWorkspaceName }}
-        TF_VAR_owner_group_name: ${{ inputs.ownerGroupName }}
-        TARGET: ${{ inputs.target }}
