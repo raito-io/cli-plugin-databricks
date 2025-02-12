@@ -53,7 +53,7 @@ runs:
       run: |
         terraform_output=$(terraform output -json)
         
-        echo $terraform_output | jq -r '.personas.value[] | "TF_VAR_\(.username)_client_id=\(.name)"' | 
+        echo $terraform_output | jq -r '.personas.value[] | "TF_VAR_\(.username)_user_name=\(.client_id)"' | 
         while IFS= read -r line; do
           echo "$line" >> $GITHUB_ENV
         done
