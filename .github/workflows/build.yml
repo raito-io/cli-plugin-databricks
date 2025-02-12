@@ -40,6 +40,10 @@ jobs:
         run: terraform fmt -check=true -recursive
         working-directory: .infra/infra
 
+      - name: Terraform lint
+        run: terraform fmt -check=true -recursive
+        working-directory: .infra/personas
+
   remove-old-infra:
     uses: ./.github/workflows/destroy-grants.yml
     with:
