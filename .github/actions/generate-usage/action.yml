@@ -14,7 +14,7 @@ runs:
       - name: Test terraform output
         shell: bash
         run: terraform output
-        working-directory: .infra/infra
+        working-directory: .infra/personas
 
       - name: Generate usage
         shell: bash

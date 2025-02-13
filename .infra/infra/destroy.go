@@ -8,6 +8,7 @@ import (
 
 	"github.com/databricks/databricks-sdk-go"
 	catalog2 "github.com/databricks/databricks-sdk-go/service/catalog"
+	"github.com/raito-io/golang-set/set"
 )
 
 var dbClientId, dbClientSecret, dbHost string
@@ -24,7 +25,23 @@ func dropAllGrantsOfCatalogs(ctx context.Context, catalogs []string) error {
 		return fmt.Errorf("create workspace client: %w", err)
 	}
 
+	existingCatalogs, err := client.Catalogs.ListAll(ctx, catalog2.ListCatalogsRequest{})
+	if err != nil {
+		return fmt.Errorf("list catalogs: %w", err)
+	}
+
+	existingCatalogNames := set.NewSet[string]()
+
+	for _, catalog := range existingCatalogs {
+		existingCatalogNames.Add(catalog.Name)
+	}
+
 	for _, catalog := range catalogs {
+		if !existingCatalogNames.Contains(catalog) {
+			fmt.Printf("Catalog %s not found\n", catalog)
+			continue
+		}
+
 		err = dropAllGrantsInCatalog(ctx, client, catalog)
 		if err != nil {
 			return fmt.Errorf("drop grants in catalog %s: %w", catalog, err)
@@ -34,9 +51,9 @@ func dropAllGrantsOfCatalogs(ctx context.Context, catalogs []string) error {
 	return nil
 }
 
-func dropAllGrantsInCatalog(ctx context.Context, client *databricks.WorkspaceClient, catalog string) error {
+func dropAllGrantsInCatalog(ctx context.Context, client *databricks.WorkspaceClient, catalogName string) error {
 	schemaInfo, err := client.Schemas.ListAll(ctx, catalog2.ListSchemasRequest{
-		CatalogName: catalog,
+		CatalogName: catalogName,
 	})
 	if err != nil {
 		return fmt.Errorf("list schemas: %w", err)
@@ -50,14 +67,14 @@ func dropAllGrantsInCatalog(ctx context.Context, client *databricks.WorkspaceCli
 	}
 
 	grants, err := client.Grants.Get(ctx, catalog2.GetGrantRequest{
-		FullName:      catalog,
+		FullName:      catalogName,
 		SecurableType: catalog2.SecurableTypeCatalog,
 	})
 	if err != nil {
 		return fmt.Errorf("get grants: %w", err)
 	}
 
-	err = removeGrants(ctx, client, catalog, catalog2.SecurableTypeCatalog, grants)
+	err = removeGrants(ctx, client, catalogName, catalog2.SecurableTypeCatalog, grants)
 	if err != nil {
 		return fmt.Errorf("remove grants: %w", err)
 	}

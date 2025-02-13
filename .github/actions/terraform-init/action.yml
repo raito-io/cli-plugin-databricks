@@ -7,6 +7,9 @@ inputs:
   S3TerraformKey:
     description: "S3 key of terraform tfstate file"
     required: true
+  S3TerraformPersonasKey:
+    description: "S3 key of terraform tfstate file that created the personas. This could be shared across different (Raito) environments"
+    required: true
   DynamoDBTerraformTable:
     description: "DynamoDB table name to use for locking"
     required: true
@@ -26,8 +29,15 @@ runs:
           }
         }
         EOF
+        
+        cat <<EOF > .infra/personas/backend_override.tf
+        terraform {
+          backend "s3" {
+          }
+        }
+        EOF
 
-    - name: Terraform init
+    - name: Terraform init - infra
       shell: bash
       run: |
         terraform init \
@@ -39,5 +49,18 @@ runs:
           -backend-config=token=${AWS_SESSION_TOKEN} \
           -backend-config=dynamodb_table=${{ inputs.DynamoDBTerraformTable }}
       working-directory: .infra/infra
+
+    - name: Terraform init - Personas
+      shell: bash
+      run: |
+        terraform init \
+          -backend-config=bucket=${{ inputs.S3TerraformBucket }} \
+          -backend-config=key=${{ inputs.S3TerraformPersonasKey }}  \
+          -backend-config=region=${AWS_REGION} \
+          -backend-config=access_key=${AWS_ACCESS_KEY_ID} \
+          -backend-config=secret_key=${AWS_SECRET_ACCESS_KEY} \
+          -backend-config=token=${AWS_SESSION_TOKEN} \
+          -backend-config=dynamodb_table=${{ inputs.DynamoDBTerraformTable }}
+      working-directory: .infra/personas
 
 

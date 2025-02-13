@@ -38,13 +38,14 @@ func ReadDatabaseConfig() *config.ConfigMap {
 
 	return &config.ConfigMap{
 		Parameters: map[string]string{
-			constants.DatabricksAccountId:     dbAccountId,
-			constants.DatabricksUser:          dbUsername,
-			constants.DatabricksPassword:      dbPassword,
-			constants.DatabricksClientId:      dbClientID,
-			constants.DatabricksClientSecret:  dbClientSecret,
-			constants.DatabricksSqlWarehouses: dbSqlWarehouses,
-			constants.DatabricksPlatform:      dbPlatform,
+			constants.DatabricksAccountId:       dbAccountId,
+			constants.DatabricksUser:            dbUsername,
+			constants.DatabricksPassword:        dbPassword,
+			constants.DatabricksClientId:        dbClientID,
+			constants.DatabricksClientSecret:    dbClientSecret,
+			constants.DatabricksSqlWarehouses:   dbSqlWarehouses,
+			constants.DatabricksPlatform:        dbPlatform,
+			constants.DatabricksIncludeCatalogs: "raito_testing",
 		},
 	}
 }

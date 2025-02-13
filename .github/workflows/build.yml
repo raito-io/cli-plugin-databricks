@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.63.4
+          version: v1.64.2
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
@@ -39,6 +39,10 @@ jobs:
       - name: Terraform lint
         run: terraform fmt -check=true -recursive
         working-directory: .infra/infra
+
+      - name: Terraform lint
+        run: terraform fmt -check=true -recursive
+        working-directory: .infra/personas
 
   remove-old-infra:
     uses: ./.github/workflows/destroy-grants.yml

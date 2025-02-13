@@ -9,6 +9,10 @@ on:
         required: false
         type: string
         default: ""
+      destroy_personas:
+        required: false
+        type: boolean
+        default: false
     secrets:
       AWS_OIDC_DEPLOY_ROLE:
         required: true
@@ -17,6 +21,8 @@ on:
       AWS_S3_TERRAFORM_BUCKET:
         required: true
       AWS_S3_TERRAFORM_KEY:
+        required: true
+      AWS_S3_TERRAFORM_PERSONAS_KEY:
         required: true
       AWS_DYNAMODB_TERRAFORM_TABLE:
         required: true
@@ -87,10 +93,25 @@ jobs:
         with:
           S3TerraformBucket: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
           S3TerraformKey: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          S3TerraformPersonasKey: ${{ secrets.AWS_S3_TERRAFORM_PERSONAS_KEY }}
           DynamoDBTerraformTable: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Destroy infrastructure
         uses: ./.github/actions/destroy-infra
+        with:
+          dbClientId: ${{ secrets.DB_CLIENT_ID }}
+          dbClientSecret: ${{ secrets.DB_CLIENT_SECRET }}
+          dbAccountID: ${{ secrets.DB_ACCOUNT_ID }}
+          dbHost: ${{ secrets.DB_HOST }}
+          dbMetastoreID: ${{ secrets.DB_METASTORE_ID }}
+          dbSqlWarehouseId: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
+          dbWorkspaceName: ${{ secrets.DB_WORKSPACE_NAME }}
+          ownerGroupName: ${{ secrets.DB_OWNER_GROUP_NAME }}
+          target: ${{ inputs.target }}
+
+      - name: Destroy personas
+        if: inputs.destroy_personas == true
+        uses: ./.github/actions/destroy-personas
         with:
           dbClientId: ${{ secrets.DB_CLIENT_ID }}
           dbClientSecret: ${{ secrets.DB_CLIENT_SECRET }}

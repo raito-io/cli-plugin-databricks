@@ -25,9 +25,14 @@ test-sync:
 gen-test-infra:
 	if [ -z "${TARGET}" ]; then cd .infra/infra; terraform apply -auto-approve; else cd .infra/infra; terraform apply -auto-approve -target=${TARGET}; fi
 
+gen-test-personas-infra:
+	cd .infra/personas; terraform apply -auto-approve
 
 destroy-test-infra:
 	if [ -z "${TARGET}" ]; then cd .infra/infra;  terraform apply -destroy -auto-approve; else cd .infra/infra; terraform apply -destroy -auto-approve -target=${TARGET}; fi
+
+destroy-test-personas-infra:
+	cd .infra/personas; terraform apply -destroy -auto-approve
 
 destroy-grants:
 	cd .infra/infra; go run destroy.go --dbClientId "${dbClientId}" --dbClientSecret "${dbClientSecret}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop

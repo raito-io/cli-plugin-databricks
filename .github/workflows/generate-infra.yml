@@ -18,6 +18,8 @@ on:
         required: true
       AWS_S3_TERRAFORM_KEY:
         required: true
+      AWS_S3_TERRAFORM_PERSONAS_KEY:
+        required: true
       AWS_DYNAMODB_TERRAFORM_TABLE:
         required: true
       DB_HOST:
@@ -77,6 +79,7 @@ jobs:
         with:
           S3TerraformBucket: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
           S3TerraformKey: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          S3TerraformPersonasKey: ${{ secrets.AWS_S3_TERRAFORM_PERSONAS_KEY }}
           DynamoDBTerraformTable: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Generate infra

@@ -1,0 +1,48 @@
+name: "Destroy personas infrastructure"
+description: "Destroy personas infrastructure"
+inputs:
+  dbClientId:
+    description: "Databricks client ID"
+    required: true
+  dbClientSecret:
+    description: "Databricks client secret"
+    required: true
+  dbAccountID:
+    description: "Databricks account ID"
+    required: true
+  dbHost:
+    description: "Databricks host"
+    required: true
+  dbMetastoreID:
+    description: "Databricks metastore ID"
+    required: true
+  dbSqlWarehouseId:
+    description: "Databricks SQL warehouse ID"
+    required: true
+  dbWorkspaceName:
+    description: "Databricks workspace name"
+    required: true
+  ownerGroupName:
+    description: "Owner group name"
+    required: true
+  target:
+    description: "Target to generate"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Generate personas
+      id: generate-personas
+      shell: bash
+      run: make destroy-test-personas-infra
+      env:
+        TF_VAR_databricks_client_id: ${{ inputs.dbClientId }}
+        TF_VAR_databricks_client_secret: ${{ inputs.dbClientSecret }}
+        TF_VAR_databricks_account_id: ${{ inputs.dbAccountID }}
+        TF_VAR_databricks_workspace_host: ${{ inputs.dbHost }}
+        TF_VAR_databricks_metastore_id: ${{ inputs.dbMetastoreID }}
+        TF_VAR_databricks_sql_warehouse_id: ${{ inputs.dbSqlWarehouseId }}
+        TF_VAR_databricks_workspace_name: ${{ inputs.dbWorkspaceName }}
+        TF_VAR_owner_group_name: ${{ inputs.ownerGroupName }}
