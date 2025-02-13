@@ -291,6 +291,20 @@ func TestDataUsageSyncer_syncWorkspace(t *testing.T) {
 			QueryId:          "queryId6",
 			StatementType:    sql.QueryStatementTypeDelete,
 		},
+		{
+			// This query should be ignored
+			QueryText: "DELETE FROM `schema1`.`table1`",
+			Metrics: &sql.QueryMetrics{
+				RowsProducedCount: 20,
+				ReadBytes:         21,
+			},
+			QueryStartTimeMs: startTime.UnixMilli(),
+			QueryEndTimeMs:   endTime.UnixMilli(),
+			Status:           sql.QueryStatusFinished,
+			UserName:         "",
+			QueryId:          "queryId7",
+			StatementType:    sql.QueryStatementTypeDelete,
+		},
 	}
 
 	workspaceRepoMap[deployment].EXPECT().QueryHistory(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, t *time.Time, f func(context.Context, *sql.QueryInfo) error) error {
