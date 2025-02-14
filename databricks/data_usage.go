@@ -159,7 +159,6 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 	}
 
 	err = repo.QueryHistory(ctx, &startDate, func(ctx context.Context, queryInfo *sql.QueryInfo) error {
-
 		if queryInfo.UserName == "" {
 			logger.Debug("Ignoring query with empty user name")
 
