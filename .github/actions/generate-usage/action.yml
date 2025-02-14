@@ -16,10 +16,6 @@ runs:
         run: terraform output
         working-directory: .infra/personas
 
-      - name: Debugging
-        shell: bash
-        run: jq -s 'add' <(cd .infra/personas; terraform output -json) <(cd .infra/infra; terraform output -json)
-
       - name: Generate usage
         shell: bash
         run: make gen-test-usage
