@@ -39,4 +39,4 @@ destroy-grants:
 
 gen-test-usage:
 	bash -c 'jq -s 'add' <(cd .infra/personas; terraform output -json) <(cd .infra/infra; terraform output -json) | \
-	go run ../usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}"'
+	go run .infra/usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}"'
