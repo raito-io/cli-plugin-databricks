@@ -40,7 +40,7 @@ runs:
     - name: Terraform init - infra
       shell: bash
       run: |
-        terraform init \
+        terraform init --upgrade \
           -backend-config=bucket=${{ inputs.S3TerraformBucket }} \
           -backend-config=key=${{ inputs.S3TerraformKey }}  \
           -backend-config=region=${AWS_REGION} \
@@ -53,7 +53,7 @@ runs:
     - name: Terraform init - Personas
       shell: bash
       run: |
-        terraform init \
+        terraform init --upgrade \
           -backend-config=bucket=${{ inputs.S3TerraformBucket }} \
           -backend-config=key=${{ inputs.S3TerraformPersonasKey }}  \
           -backend-config=region=${AWS_REGION} \

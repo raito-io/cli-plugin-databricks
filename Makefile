@@ -38,4 +38,5 @@ destroy-grants:
 	cd .infra/infra; go run destroy.go --dbClientId "${dbClientId}" --dbClientSecret "${dbClientSecret}" --dbHost "${dbHost}" --catalogs="${dbCatalogs}" --drop
 
 gen-test-usage:
-	cd .infra/infra; terraform output -json | go run ../usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}"
+	bash -c 'jq -s 'add' <(cd .infra/infra; terraform output -json) <(cd .infra/personas; terraform output -json) | \
+	go run .infra/usage/usage.go --dbHost "${dbHost}" --dbWarehouseId "${dbWarehouseId}"'
