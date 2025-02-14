@@ -79,8 +79,3 @@ runs:
         TF_VAR_databricks_workspace_name: ${{ inputs.dbWorkspaceName }}
         TF_VAR_owner_group_name: ${{ inputs.ownerGroupName }}
         TARGET: ${{ inputs.target }}
-
-    - name: Debug
-      shell: bash
-      run: terraform output
-      working-directory: .infra/infra
