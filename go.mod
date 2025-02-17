@@ -1,8 +1,7 @@
 module cli-plugin-databricks
 
 go 1.23
-
-toolchain go1.23.1
+toolchain go1.24.0
 
 require (
 	github.com/aws/smithy-go v1.22.2
@@ -15,7 +14,7 @@ require (
 	github.com/raito-io/enumer v0.1.6
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.52.1
+	github.com/vektra/mockery/v2 v2.52.2
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac
 	golang.org/x/net v0.35.0
 	golang.org/x/text v0.22.0
