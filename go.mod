@@ -4,6 +4,12 @@ go 1.24
 
 toolchain go1.24.0
 
+tool (
+	github.com/raito-io/enumer
+	github.com/vektra/mockery/v2
+	golang.org/x/net/idna
+)
+
 require (
 	github.com/aws/smithy-go v1.22.3
 	github.com/databricks/databricks-sdk-go v0.60.0
@@ -12,12 +18,9 @@ require (
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/raito-io/bexpression v0.1.2
 	github.com/raito-io/cli v0.70.0
-	github.com/raito-io/enumer v0.1.6
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.53.2
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/net v0.37.0
 	golang.org/x/text v0.23.0
 )
 
@@ -73,6 +76,7 @@ require (
 	github.com/pascaldekloe/name v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/raito-io/enumer v0.1.6 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -84,6 +88,7 @@ require (
 	github.com/spf13/viper v1.19.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/vektra/mockery/v2 v2.53.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
@@ -92,6 +97,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
