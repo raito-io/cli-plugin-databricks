@@ -7,8 +7,6 @@ resource "databricks_grant" "catalog" {
     dustin      = var.dustin_user_name,
     mary        = var.mary_user_name,
     nick        = var.nick_user_name,
-    owner_group = var.master_owner_group_name,
-    me          = data.databricks_current_user.me.user_name
   })
 
   principal  = each.value
