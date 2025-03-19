@@ -2,11 +2,11 @@ resource "databricks_grant" "catalog" {
   catalog = databricks_catalog.master_catalog.name
 
   for_each = tomap({
-    benjamin    = var.benjamin_user_name,
-    carla       = var.carla_user_name,
-    dustin      = var.dustin_user_name,
-    mary        = var.mary_user_name,
-    nick        = var.nick_user_name,
+    benjamin = var.benjamin_user_name,
+    carla    = var.carla_user_name,
+    dustin   = var.dustin_user_name,
+    mary     = var.mary_user_name,
+    nick     = var.nick_user_name,
   })
 
   principal  = each.value
