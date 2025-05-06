@@ -115,7 +115,7 @@ var databricks_metadata = ds.MetaData{
 			Type: constants.FunctionType,
 			Permissions: []*ds.DataObjectTypePermission{
 				&AllPrivilegesPermission,
-				//&ApplyTagPermission, // Only for models which is not supported at the moment
+				// &ApplyTagPermission, // Only for models which is not supported at the moment
 				&ExecutePermission,
 			},
 		},
@@ -241,10 +241,10 @@ var databricks_metadata = ds.MetaData{
 			},
 		},
 		DefaultMaskExternalName: masks.DefaultMaskId,
-		ApplicableTypes:         []string{ds.Table},
+		ApplicableTypes:         []string{ds.Table, ds.View, constants.MaterializedViewType},
 	},
 	FilterMetadata: &ds.FilterMetadata{
-		ApplicableTypes: []string{ds.Table},
+		ApplicableTypes: []string{ds.Table, ds.View, constants.MaterializedViewType},
 	},
 }
 
