@@ -104,8 +104,8 @@ func (c *PrivilegeCache) ContainsPrivilege(item data_source.DataObjectReference,
 }
 
 type MaskDataObjectsOfSchema struct {
-	DataObjects        map[string][]string //Table Name => []Column Name
-	DeletedDataObjects map[string][]string //Table Name => []Column Name
+	DataObjects        map[string][]string // Table Name => []Column Name
+	DeletedDataObjects map[string][]string // Table Name => []Column Name
 }
 
 func (m *MaskDataObjectsOfSchema) AllDataObjects() map[string][]string {
@@ -152,7 +152,7 @@ type ColumnReference string
 func (c ColumnReference) Escaped() string {
 	escapedString := string(c)
 
-	if !(strings.HasPrefix(escapedString, "`") && strings.HasSuffix(escapedString, "`")) {
+	if !strings.HasPrefix(escapedString, "`") || !strings.HasSuffix(escapedString, "`") {
 		escapedString = fmt.Sprintf("`%s`", escapedString)
 	}
 

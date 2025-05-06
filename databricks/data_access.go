@@ -279,7 +279,7 @@ func (a *AccessSyncer) syncFiltersToTarget(ctx context.Context, filters []*sync_
 			AccessProvider: filter.Id,
 		}
 
-		if len(filter.What) != 1 || !(filter.What[0].DataObject.Type == data_source.Table || filter.What[0].DataObject.Type == data_source.View) {
+		if len(filter.What) != 1 || filter.What[0].DataObject.Type != data_source.Table && filter.What[0].DataObject.Type != data_source.View {
 			feedbackElement.Errors = append(feedbackElement.Errors, "Unsupported what item(s)")
 			a.apFeedbackObjects[filter.Id] = feedbackElement
 
@@ -965,7 +965,7 @@ func (a *AccessSyncer) syncGrantToTarget(_ context.Context, ap *sync_to_target.A
 				for _, principal := range principals {
 					changeCollection.AddPrivilege(itemKey, ap.Id, principal, privilegesSlice...)
 
-					//Add to cache, it must be ignored in sync from target
+					// Add to cache, it must be ignored in sync from target
 					a.privilegeCache.AddPrivilege(do, principal, privilegesSlice...)
 				}
 			}

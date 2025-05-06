@@ -122,7 +122,6 @@ linters:
       - examples$
 issues:
   uniq-by-line: false
-  new-from-merge-base: main # ONLY lint new changes that are not in main branch
 formatters:
   enable:
     - gofmt
