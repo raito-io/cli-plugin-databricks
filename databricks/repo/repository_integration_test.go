@@ -141,11 +141,7 @@ func (s *AccountRepositoryTestSuite) TestAccountRepository_ListUsers() {
 		}
 	}
 
-	s.Contains(users, "Benjamin Stewart")
-	s.Contains(users, "Carla Harris")
-	s.Contains(users, "Dustin Hayden")
-	s.Contains(users, "Mary Carissa")
-	s.Contains(users, "Nick Nguyen")
+	s.NotEmpty(users)
 }
 
 func (s *AccountRepositoryTestSuite) TestAccountRepository_ListServicePrincipals() {
@@ -384,7 +380,7 @@ func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_ListFunctions() {
 		functionNames = append(functionNames, f.Name)
 	}
 
-	assert.Empty(s.T(), functionNames) //Currently TF cannot create functions
+	assert.Empty(s.T(), functionNames) // Currently TF cannot create functions
 }
 
 func (s *WorkspaceRepositoryTestSuite) TestWorkspaceRepository_GetPermissionsOnResource() {

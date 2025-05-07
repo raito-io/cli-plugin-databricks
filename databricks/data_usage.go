@@ -193,7 +193,7 @@ func (d *DataUsageSyncer) syncWorkspace(ctx context.Context, workspace *provisio
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Failed to parse query: %s", err.Error()))
 
-			return nil
+			return nil //nolint: nilerr
 		}
 
 		if len(whatItems) > 0 {

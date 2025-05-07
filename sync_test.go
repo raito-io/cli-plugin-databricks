@@ -46,7 +46,7 @@ func DataSourceSync(ctx context.Context, cfg *config.ConfigMap, t *testing.T) {
 
 	dsHandler := mocks.NewSimpleDataSourceObjectHandler(t, 1)
 
-	//When
+	// When
 	err := dataSourceSyncer.SyncDataSource(ctx, dsHandler, &data_source.DataSourceSyncConfig{ConfigMap: cfg})
 
 	// Then
@@ -82,7 +82,7 @@ func AccessSync(ctx context.Context, cfg *config.ConfigMap, t *testing.T) {
 					Id:     "simple-ap-id",
 					Action: types.Grant,
 					Who: sync_to_target.WhoItem{
-						Users:  []string{"c_harris+databricks@raito.io", "5f239a72-c050-47b4-947c-f329f8e2e8f2"},
+						Users:  []string{"ruben@raito.io", "5f239a72-c050-47b4-947c-f329f8e2e8f2"},
 						Groups: []string{"HUMAN_RESOURCES"},
 					},
 					What: []sync_to_target.WhatItem{
