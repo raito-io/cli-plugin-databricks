@@ -12,7 +12,7 @@ tool (
 
 require (
 	github.com/aws/smithy-go v1.22.3
-	github.com/databricks/databricks-sdk-go v0.67.0
+	github.com/databricks/databricks-sdk-go v0.68.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
