@@ -42,7 +42,7 @@ const (
 	MetastoreType        = "metastore"
 	CatalogType          = "catalog"
 	FunctionType         = "function"
-	MaterializedViewType = "materializedView"
+	MaterializedViewType = "materializedview"
 
 	TagSource = "Databricks"
 )
