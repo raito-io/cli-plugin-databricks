@@ -1098,7 +1098,7 @@ func addUsageToUpperDataObjects(result map[data_source.DataObjectReference]set.S
 		}
 
 		return addUsageToUpperDataObjects(result, data_source.DataObjectReference{FullName: fullname, Type: constants.CatalogType})
-	case data_source.Table, data_source.View, constants.FunctionType:
+	case data_source.Table, data_source.View, constants.FunctionType, constants.MaterializedViewType:
 		fullname, err := cutLastPartFullName(object.FullName)
 		if err != nil {
 			return err
