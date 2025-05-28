@@ -238,12 +238,6 @@ func (a *AccessSyncer) syncGrantsToTarget(ctx context.Context, grants []*sync_to
 	for _, grant := range grants {
 		feedbackElement := sync_to_target.AccessProviderSyncFeedback{
 			AccessProvider: grant.Id,
-			State: &sync_to_target.AccessProviderFeedbackState{
-				Who: sync_to_target.AccessProviderWhoFeedbackState{
-					Users:  grant.Who.Users,
-					Groups: grant.Who.Groups,
-				},
-			},
 		}
 
 		feedbackElement.ActualName = grant.Id
@@ -252,6 +246,13 @@ func (a *AccessSyncer) syncGrantsToTarget(ctx context.Context, grants []*sync_to
 		apErr := a.syncGrantToTarget(ctx, grant, permissionsChanges)
 		if apErr != nil {
 			feedbackElement.Errors = append(feedbackElement.Errors, apErr.Error())
+		} else {
+			feedbackElement.State = &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  grant.Who.Users,
+					Groups: grant.Who.Groups,
+				},
+			}
 		}
 
 		a.apFeedbackObjects[grant.Id] = feedbackElement
@@ -322,7 +323,13 @@ func (a *AccessSyncer) syncFiltersToTarget(ctx context.Context, filters []*sync_
 
 			if err != nil {
 				feedbackElement.Errors = append(feedbackElement.Errors, err.Error())
-				feedbackElement.State = nil
+			} else {
+				feedbackElement.State = &sync_to_target.AccessProviderFeedbackState{
+					Who: sync_to_target.AccessProviderWhoFeedbackState{
+						Users:  filter.Who.Users,
+						Groups: filter.Who.Groups,
+					},
+				}
 			}
 
 			a.apFeedbackObjects[filter.Id] = feedbackElement
