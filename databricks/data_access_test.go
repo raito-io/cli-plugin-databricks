@@ -651,16 +651,32 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			AccessProvider: "workspace-ap-id",
 			ActualName:     "workspace-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 		{
 			AccessProvider: "catalog-ap-id",
 			ActualName:     "catalog-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users: []string{"wannes@raito.io"},
+				},
+			},
 		},
 		{
 			AccessProvider: "multiple-do-ap-id",
 			ActualName:     "multiple-do-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users: []string{"bart@raito.io"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -753,6 +769,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withMasks(t *testing.T) {
 			AccessProvider: "workspace-ap-id",
 			ActualName:     "raito_workspace-ap",
 			ExternalId:     ptr.String("raito_workspace-ap"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -892,11 +914,22 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters(t *testing.T) {
 			AccessProvider: "filter-ap-id1",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 		{
 			AccessProvider: "filter-ap-id2",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-2.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Groups: []string{"group2"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -1049,11 +1082,21 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 			AccessProvider: "filter-ap-id1",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 		{
 			AccessProvider: "filter-ap-id2",
 			ActualName:     "raito_table-1_filter_someid",
-			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"), State: &sync_to_target.AccessProviderFeedbackState{
+			Who: sync_to_target.AccessProviderWhoFeedbackState{
+				Groups: []string{"group2"},
+			},
+		},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -1209,11 +1252,22 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_updateFilter(t *tes
 			AccessProvider: "filter-ap-id1",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 		{
 			AccessProvider: "filter-ap-id2",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Groups: []string{"group2"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -1316,6 +1370,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_deletedFilter(t *te
 			AccessProvider: "filter-ap-id1",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
@@ -1537,17 +1597,33 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withErrors(t *testing.T) {
 			AccessProvider: "workspace-ap-id",
 			ActualName:     "workspace-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users:  []string{"ruben@raito.io"},
+					Groups: []string{"group1"},
+				},
+			},
 		},
 		{
 			AccessProvider: "catalog-ap-id",
 			ActualName:     "catalog-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users: []string{"wannes@raito.io"},
+				},
+			},
 		},
 		{
 			AccessProvider: "multiple-do-ap-id",
 			ActualName:     "multiple-do-ap-id",
 			Type:           ptr.String(access_provider.AclSet),
 			Errors:         []string{fmt.Sprintf("set permissions on %s \"catalog-1.schema-1\" via workspace \"test-deployment\": boom", catalog.SecurableTypeSchema)},
+			State: &sync_to_target.AccessProviderFeedbackState{
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Users: []string{"bart@raito.io"},
+				},
+			},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
