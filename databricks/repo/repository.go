@@ -259,7 +259,7 @@ func (r *WorkspaceRepository) ListFunctions(ctx context.Context, catalogName str
 func (r *WorkspaceRepository) GetCatalogWorkspaceBinding(ctx context.Context, catalogName string) (*catalog.WorkspaceBinding, error) {
 	iterator := r.client.WorkspaceBindings.GetBindings(ctx, catalog.GetBindingsRequest{
 		SecurableName: catalogName,
-		SecurableType: catalog.GetBindingsSecurableTypeCatalog,
+		SecurableType: string(catalog.SecurableTypeCatalog),
 	})
 
 	var err error

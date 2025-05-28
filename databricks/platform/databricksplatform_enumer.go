@@ -4,6 +4,7 @@ package platform
 
 import (
 	"fmt"
+	"github.com/go-errors/errors"
 	"strings"
 )
 
@@ -57,7 +58,7 @@ func DatabricksPlatformString(s string) (DatabricksPlatform, error) {
 	if val, ok := _DatabricksPlatformNameToValueMap[strings.ToLower(s)]; ok {
 		return val, nil
 	}
-	return 0, fmt.Errorf("%s does not belong to DatabricksPlatform values", s)
+	return 0, errors.Errorf("%s does not belong to DatabricksPlatform values", s)
 }
 
 // DatabricksPlatformValues returns all values of the enum

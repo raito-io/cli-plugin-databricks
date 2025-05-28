@@ -4,6 +4,7 @@ package masks
 
 import (
 	"fmt"
+	"github.com/go-errors/errors"
 	"strings"
 )
 
@@ -117,7 +118,7 @@ func SqlDataTypeString(s string) (SqlDataType, error) {
 	if val, ok := _SqlDataTypeNameToValueMap[strings.ToLower(s)]; ok {
 		return val, nil
 	}
-	return 0, fmt.Errorf("%s does not belong to SqlDataType values", s)
+	return 0, errors.Errorf("%s does not belong to SqlDataType values", s)
 }
 
 // SqlDataTypeValues returns all values of the enum
