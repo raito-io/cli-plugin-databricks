@@ -22,6 +22,7 @@ github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 h1:bIqFDwgGXXN1Kpp99pDOdKMTTb5d
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3/go.mod h1:H5O/EsxDWyU+LP/V8i5sm8cxoZgc2fdNR9bxlOFrQTo=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.51.4 h1:SdQnc11mBOCOqUu3O7de4HI5o1+vc6BCugWWKyYhAHY=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.51.4/go.mod h1:ygltZT++6Wn2uG4+tqE0NW1MkdEtb5W2O/CFc0xJX/g=
+github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.52.0/go.mod h1:ygltZT++6Wn2uG4+tqE0NW1MkdEtb5W2O/CFc0xJX/g=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 h1:eAh2A4b5IzM/lum78bZ590jy36+d/aFLgKF/4Vd1xPE=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3/go.mod h1:0yKJC/kb8sAnmlYa6Zs3QVYqaC8ug2AbnNChv5Ox3uA=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 h1:dM9/92u2F1JbDaGooxTq18wmmFzbJRfXfVfy96/1CXM=
@@ -46,6 +47,7 @@ github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSV
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/databricks/databricks-sdk-go v0.68.0 h1:sBsdiF2B0hCmT8NEEkc45tQ73oQSA9nNP7Fhgk/mSR8=
 github.com/databricks/databricks-sdk-go v0.68.0/go.mod h1:xBtjeP9nq+6MgTewZW1EcbRkD7aDY9gZvcRPcwPhZjw=
+github.com/databricks/databricks-sdk-go v0.71.0/go.mod h1:xBtjeP9nq+6MgTewZW1EcbRkD7aDY9gZvcRPcwPhZjw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
@@ -97,6 +99,7 @@ github.com/hashicorp/yamux v0.1.2 h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8
 github.com/hashicorp/yamux v0.1.2/go.mod h1:C+zze2n6e/7wshOZep2A70/aQU6QBRWJO/G6FT1wIns=
 github.com/hasura/go-graphql-client v0.13.1 h1:kKbjhxhpwz58usVl+Xvgah/TDha5K2akNTRQdsEHN6U=
 github.com/hasura/go-graphql-client v0.13.1/go.mod h1:k7FF7h53C+hSNFRG3++DdVZWIuHdCaTbI7siTJ//zGQ=
+github.com/hasura/go-graphql-client v0.14.0/go.mod h1:jfSZtBER3or+88Q9vFhWHiFMPppfYILRyl+0zsgPIIw=
 github.com/huandu/xstrings v1.5.0 h1:2ag3IFq9ZDANvthTwTiqSSZLjDc+BedvHPAp5tJy2TI=
 github.com/huandu/xstrings v1.5.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSASxEI=
@@ -144,6 +147,7 @@ github.com/raito-io/bexpression v0.1.2 h1:DHBTG2kNGSfwM3BwH97WP1vFjB2N8Ub41RRNUD
 github.com/raito-io/bexpression v0.1.2/go.mod h1:z0in8o1zo5cPNeCUa3Mh5ZP7h6v/LX0JH5/NbV3VtzI=
 github.com/raito-io/cli v0.71.1 h1:NMy6v9i/xtwhVzbskN6/qkczMddlLjSvnNXBTlncxCA=
 github.com/raito-io/cli v0.71.1/go.mod h1:PwOWuKLvECD2U0/QvU5OYpJ+rNQILJf83QnSWDHH8fE=
+github.com/raito-io/cli v0.72.0/go.mod h1:Ju5ShVWpgQfBYYNw1loD0+oThitu9GKLqMboilO0VMM=
 github.com/raito-io/enumer v0.1.6 h1:iXX63/mgapmsAYENKWnt8mGOTvQ3DN2NCXIAI3XhPaM=
 github.com/raito-io/enumer v0.1.6/go.mod h1:XyBW7tZ1xL9x4yclF+GOBY5W/2m3CiRtqZqveGIkEHo=
 github.com/raito-io/golang-set v0.0.4 h1:7zk8r1TCE/F9JOOgseIXYx7oZJdC9/j5uivkCYjnCg0=
@@ -234,6 +238,7 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 h1:
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/grpc v1.71.1 h1:ffsFWr7ygTUscGPI0KKK6TLrGz0476KUvvsbqWK0rPI=
 google.golang.org/grpc v1.71.1/go.mod h1:H0GRtasmQOh9LkFoCPDu3ZrwUtD1YGE+b2vYBYd/8Ec=
+google.golang.org/grpc v1.72.0/go.mod h1:wH5Aktxcg25y1I3w7H69nHfXdOG3UiadoBtjh3izSDM=
 google.golang.org/protobuf v1.36.6 h1:z1NpPI8ku2WgiWnf+t9wTPsn6eP1L7ksHUlkfLvd9xY=
 google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
