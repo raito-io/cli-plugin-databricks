@@ -1093,10 +1093,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget_withFilters_singleTable(t *test
 			AccessProvider: "filter-ap-id2",
 			ActualName:     "raito_table-1_filter_someid",
 			ExternalId:     ptr.String("metastore-id1.catalog-1.schema-1.table-1.filter"), State: &sync_to_target.AccessProviderFeedbackState{
-			Who: sync_to_target.AccessProviderWhoFeedbackState{
-				Groups: []string{"group2"},
+				Who: sync_to_target.AccessProviderWhoFeedbackState{
+					Groups: []string{"group2"},
+				},
 			},
-		},
 		},
 	}, accessProviderHandlerMock.AccessProviderFeedback)
 }
