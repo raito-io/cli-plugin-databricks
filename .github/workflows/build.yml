@@ -88,6 +88,7 @@ jobs:
       - name: Print Spaced Secrets
         env:
           DB_ACCOUNT_ID: ${{ secrets.DB_ACCOUNT_ID }}
+          DB_HOST: ${{ secrets.DB_HOST }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_PLATFORM: ${{ secrets.DB_PLATFORM }}
           DB_TESTING_DEPLOYMENT: ${{ secrets.DB_DEPLOYMENT_ID }}
